@@ -13,6 +13,7 @@
 </p>
 
 <p align="center">
+  <a href="README.ko.md">한국어</a> &middot;
   <a href="#quick-start">Get Started</a> &middot;
   <a href="#features-overview">Features</a> &middot;
   <a href="#multi-agent-system">Multi-Agent</a> &middot;
@@ -31,11 +32,11 @@ Claude Code is powerful out of the box — but it doesn't enforce testing, doesn
 ```mermaid
 graph LR
     A[You type a prompt] --> B{OMH Hooks}
-    B --> C[Ambiguity? → Ask first]
-    B --> D[3+ tasks? → Plan mode]
-    B --> E[rm -rf? → Warn]
-    B --> F[Code changed? → Test reminder]
-    B --> G[git commit? → Convention check]
+    B --> C[Ambiguity? Ask first]
+    B --> D[3+ tasks? Plan mode]
+    B --> E[rm -rf? Warn]
+    B --> F[Code changed? Test reminder]
+    B --> G[git commit? Convention check]
     style B fill:#7C3AED,color:#fff
 ```
 
@@ -67,7 +68,7 @@ Either way, start Claude Code as usual — harness features activate automatical
 
 ## Onboarding Guide
 
-처음 사용하는 분들을 위한 단계별 온보딩 가이드입니다.
+A step-by-step guide for first-time users.
 
 ```mermaid
 flowchart LR
@@ -103,58 +104,58 @@ npm install -g oh-my-harness
 oh-my-harness init
 ```
 
-이 단계에서 자동으로 수행되는 작업:
-- `.claude/.omh/harness.config.json` 생성 (기본 설정)
-- `.gitignore`에 `.claude/.omh/` 추가
-- 프로젝트 컨벤션 자동 감지 (언어, 테스트, 린터, 포매터)
+What happens automatically:
+- Creates `.claude/.omh/harness.config.json` (default settings)
+- Adds `.claude/.omh/` to `.gitignore`
+- Detects project conventions (language, test framework, linter, formatter)
 
 ### Step 3 — Configure (optional)
 
-기본 설정으로도 충분하지만, 필요에 따라 조정할 수 있습니다:
+Defaults work great out of the box. Adjust as needed:
 
 ```bash
-# 현재 설정 확인
+# View current settings
 /set-harness
 
-# 자주 사용하는 설정 예시
-/set-harness testEnforcement.minCases 3     # 테스트 케이스 최소 3개
-/set-harness features.scopeGuard true       # 파일 수정 범위 제한 활성화
-/set-harness scopeGuard.allowedPaths ["src"] # src/ 내부만 수정 허용
+# Common examples
+/set-harness testEnforcement.minCases 3     # Require 3+ test cases
+/set-harness features.scopeGuard true       # Enable file scope restriction
+/set-harness scopeGuard.allowedPaths ["src"] # Only allow changes in src/
 ```
 
 ### Step 4 — Use
 
-설정 완료 후 Claude Code를 평소처럼 사용하면 됩니다. OMH가 자동으로 동작합니다:
+After setup, just use Claude Code normally. OMH works automatically:
 
-| 상황 | OMH 동작 |
-|------|---------|
-| 세션 시작 | 프로젝트 컨벤션 감지 및 컨텍스트 주입 |
-| "리팩토링해줘" (모호한 요청) | 구체적인 범위를 먼저 질문 |
-| 3개 이상의 작업 요청 | Plan 모드 제안 |
-| `rm -rf` 실행 시도 | 사용자 확인 요청 경고 |
-| `git commit` 실행 | 커밋 컨벤션 형식 안내 |
-| 코드 수정 완료 | 테스트 존재 여부 확인 리마인드 |
-| 컨텍스트 압축 직전 | 현재 상태 스냅샷 저장 |
+| Situation | OMH Action |
+|-----------|-----------|
+| Session starts | Detects project conventions, injects context |
+| Vague request ("fix it") | Asks for specific scope first |
+| 3+ tasks in one message | Suggests plan mode |
+| `rm -rf` attempted | Warns and asks for confirmation |
+| `git commit` executed | Shows commit convention format |
+| Code changes completed | Reminds to verify tests exist |
+| Context compaction imminent | Saves state snapshot |
 
 ### Step 5 — Scale with Multi-Agent
 
-병렬 작업이 필요할 때 multi-agent를 활용합니다:
+When you need parallel work:
 
 ```bash
-# 3개의 에이전트를 동시에 실행
+# Spawn 3 agents simultaneously
 /agent-spawn 3 "fix all TypeScript errors in src/"
 
-# 진행 상황 확인
+# Check progress
 /agent-status
 
-# 완료된 작업 머지
+# Merge completed work
 /agent-apply all
 
-# 정리
+# Cleanup
 /agent-stop all
 ```
 
-> **Tip:** 처음에는 `useWorktree: true` (기본값)로 사용하세요. 각 에이전트가 독립된 git 브랜치에서 작업하므로 충돌 걱정이 없습니다.
+> **Tip:** Start with `useWorktree: true` (default). Each agent works on an isolated git branch, so there's no risk of conflicts.
 
 ---
 
@@ -244,10 +245,10 @@ sequenceDiagram
     OMH-->>CC: Project: node | test: vitest | lint: eslint
 
     Note over U,CC: User sends prompt
-    U->>CC: "리팩토링해줘 그리고 테스트 추가"
+    U->>CC: "refactor auth and add tests"
     CC->>OMH: UserPromptSubmit
-    OMH-->>CC: 2 tasks detected → suggest plan mode
-    OMH-->>CC: Request is ambiguous → ask for clarification
+    OMH-->>CC: 2 tasks detected, suggest plan mode
+    OMH-->>CC: Request is ambiguous, ask for clarification
 
     Note over CC,OMH: Tool execution
     CC->>OMH: PreToolUse (Bash: rm -rf dist/)
@@ -376,9 +377,9 @@ Detects vague requests using a scoring system (threshold: 2):
 
 | Signal | Score | Example |
 |--------|:-----:|---------|
-| Vague references | +1 | "이거 수정해줘", "그거 고쳐" |
-| Scope-less verbs | +1 | "리팩토링해줘" (no file/function target) |
-| Open-ended choices | +1 | "~하거나", "~든지" |
+| Vague references | +1 | "fix this", "change that" |
+| Scope-less verbs | +1 | "refactor" (no file/function target) |
+| Open-ended choices | +1 | "or something", "whatever" |
 | Very short message | +1 | < 15 chars without specific identifiers |
 | English scope-less | +1 | "fix it", "clean up" without target |
 
@@ -497,7 +498,7 @@ graph TD
     CONFIRM -->|Yes| CHECK[Check prerequisites: tmux, claude, git]
     CHECK --> WT{"useWorktree?"}
 
-    WT -->|true| CREATE_WT["Create worktrees<br/>.claude/.omh/worktrees/agent-{1,2,3}"]
+    WT -->|true| CREATE_WT["Create worktrees<br/>.claude/.omh/worktrees/agent-1,2,3"]
     WT -->|false| SHARED[Agents share project root]
 
     CREATE_WT --> TMUX[Create tmux session: omh-agents]
