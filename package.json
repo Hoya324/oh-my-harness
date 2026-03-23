@@ -1,0 +1,17 @@
+{
+  "name": "oh-my-harness",
+  "version": "0.1.0",
+  "description": "Lightweight Claude Code harness — smart defaults, test enforcement, model routing",
+  "type": "module",
+  "bin": {
+    "oh-my-harness": "./bin/cli.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "keywords": ["claude-code", "harness", "ai", "developer-tools"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,344 @@
+#!/usr/bin/env node
+import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync, rmSync } from 'fs';
+import { join, dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG_ROOT = join(__dirname, '..');
+const OMH_DIR = '.claude/.omh';
+const COMMANDS_DIR = '.claude/commands';
+const CLAUDE_MD = '.claude/CLAUDE.md';
+const SETTINGS = '.claude/settings.local.json';
+
+const [,, command, ...args] = process.argv;
+
+function projectRoot() {
+  return process.cwd();
+}
+
+function omhDir(root) { return join(root, OMH_DIR); }
+
+// --- INIT ---
+function init(root) {
+  const omh = omhDir(root);
+  const hooksDir = join(omh, 'hooks');
+  const cmdDir = join(root, COMMANDS_DIR);
+
+  // Create directories
+  mkdirSync(hooksDir, { recursive: true });
+  mkdirSync(cmdDir, { recursive: true });
+
+  // Copy config template
+  const configDest = join(omh, 'harness.config.json');
+  if (!existsSync(configDest)) {
+    cpSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), configDest);
+    console.log('  created .claude/.omh/harness.config.json');
+  } else {
+    console.log('  exists  .claude/.omh/harness.config.json (kept)');
+  }
+
+  // Copy hooks + lib
+  const hookLibDir = join(hooksDir, 'lib');
+  mkdirSync(hookLibDir, { recursive: true });
+  cpSync(join(PKG_ROOT, 'hooks', 'lib', 'output.mjs'), join(hookLibDir, 'output.mjs'));
+  const allHooks = [
+    'session-start.mjs', 'pre-prompt.mjs', 'post-task.mjs',
+    'dangerous-guard.mjs', 'pre-compact.mjs', 'commit-convention.mjs',
+    'scope-guard.mjs', 'usage-tracker.mjs',
+  ];
+  for (const hook of allHooks) {
+    cpSync(join(PKG_ROOT, 'hooks', hook), join(hooksDir, hook));
+  }
+  console.log('  copied  .claude/.omh/hooks/ (8 hooks + lib)');
+
+  // Copy commands
+  const allCmds = [
+    'set-harness.md', 'init-project.md',
+    'agent-spawn.md', 'agent-status.md', 'agent-apply.md', 'agent-stop.md',
+  ];
+  for (const cmd of allCmds) {
+    cpSync(join(PKG_ROOT, 'templates', 'commands', cmd), join(cmdDir, cmd));
+  }
+  console.log('  copied  .claude/commands/ (6 commands)');
+
+  // Generate/update settings.local.json with hooks
+  mergeSettings(root);
+  console.log('  updated .claude/settings.local.json (hooks registered)');
+
+  // Append CLAUDE.md block
+  appendClaudeMd(root);
+  console.log('  updated .claude/CLAUDE.md (harness block)');
+
+  // Auto .gitignore
+  updateGitignore(root, 'add');
+  console.log('  updated .gitignore (.claude/.omh/ added)');
+
+  console.log('\n  oh-my-harness initialized! Use /set-harness to configure.');
+}
+
+// --- MERGE SETTINGS ---
+function mergeSettings(root) {
+  const settingsPath = join(root, SETTINGS);
+  let settings = {};
+  if (existsSync(settingsPath)) {
+    try { settings = JSON.parse(readFileSync(settingsPath, 'utf8')); } catch {}
+  }
+
+  const hooksBase = '.claude/.omh/hooks';
+  const harnessHooks = {
+    SessionStart: [{
+      matcher: '*',
+      hooks: [{ type: 'command', command: `node ${hooksBase}/session-start.mjs`, timeout: 10 }],
+    }],
+    UserPromptSubmit: [{
+      matcher: '*',
+      hooks: [{ type: 'command', command: `node ${hooksBase}/pre-prompt.mjs`, timeout: 3 }],
+    }],
+    PreToolUse: [{
+      matcher: '*',
+      hooks: [{ type: 'command', command: `node ${hooksBase}/dangerous-guard.mjs`, timeout: 3 }],
+    }],
+    PostToolUse: [{
+      matcher: '*',
+      hooks: [
+        { type: 'command', command: `node ${hooksBase}/commit-convention.mjs`, timeout: 3 },
+        { type: 'command', command: `node ${hooksBase}/scope-guard.mjs`, timeout: 3 },
+        { type: 'command', command: `node ${hooksBase}/usage-tracker.mjs`, timeout: 3 },
+      ],
+    }],
+    PreCompact: [{
+      matcher: '*',
+      hooks: [{ type: 'command', command: `node ${hooksBase}/pre-compact.mjs`, timeout: 5 }],
+    }],
+    Stop: [{
+      matcher: '*',
+      hooks: [{ type: 'command', command: `node ${hooksBase}/post-task.mjs`, timeout: 5 }],
+    }],
+  };
+
+  // Read config for model routing
+  const configPath = join(omhDir(root), 'harness.config.json');
+  let config;
+  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { config = {}; }
+
+  // Merge hooks — keep existing non-harness hooks, replace harness ones
+  if (!settings.hooks) settings.hooks = {};
+  for (const [event, hookDefs] of Object.entries(harnessHooks)) {
+    const existing = settings.hooks[event] || [];
+    // Remove previous harness hooks
+    const filtered = existing.filter(h =>
+      !h.hooks?.some(hh => hh.command?.includes('.omh/hooks/'))
+    );
+    settings.hooks[event] = [...filtered, ...hookDefs];
+  }
+
+  // Register model-routed agents if contextOptimization enabled
+  if (config.features?.contextOptimization && config.modelRouting) {
+    settings.agents = settings.agents || {};
+    const routing = config.modelRouting;
+    if (routing.quick) settings.agents['harness:quick'] = { model: routing.quick };
+    if (routing.standard) settings.agents['harness:standard'] = { model: routing.standard };
+    if (routing.complex) settings.agents['harness:architect'] = { model: routing.complex };
+  }
+
+  writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+}
+
+// --- CLAUDE.MD ---
+function appendClaudeMd(root) {
+  const mdPath = join(root, CLAUDE_MD);
+  const tmpl = readFileSync(join(PKG_ROOT, 'templates', 'CLAUDE.md.tmpl'), 'utf8');
+
+  // Read config for template values
+  const configPath = join(omhDir(root), 'harness.config.json');
+  let config;
+  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { config = {}; }
+
+  const minCases = config.testEnforcement?.minCases || 2;
+
+  // Read conventions cache if available
+  const cachePath = join(omhDir(root), 'conventions.json');
+  let conventionsBlock = '';
+  if (existsSync(cachePath)) {
+    try {
+      const conv = JSON.parse(readFileSync(cachePath, 'utf8'));
+      if (conv.language) {
+        const lines = [`### Project Conventions (auto-detected)`, `- Language: ${conv.language}`];
+        if (conv.testFramework) lines.push(`- Test: ${conv.testFramework}`);
+        if (conv.linter) lines.push(`- Linter: ${conv.linter}`);
+        if (conv.formatter) lines.push(`- Formatter: ${conv.formatter}`);
+        if (conv.buildTool) lines.push(`- Build: ${conv.buildTool}`);
+        conventionsBlock = lines.join('\n');
+      }
+    } catch {}
+  }
+
+  let content = tmpl
+    .replace('{{minCases}}', String(minCases))
+    .replace('{{conventionsBlock}}', conventionsBlock);
+
+  // Ensure .claude dir exists
+  mkdirSync(dirname(mdPath), { recursive: true });
+
+  if (existsSync(mdPath)) {
+    const existing = readFileSync(mdPath, 'utf8');
+    if (existing.includes('<!-- HARNESS:START -->')) {
+      // Replace existing block
+      const replaced = existing.replace(
+        /<!-- HARNESS:START -->[\s\S]*?<!-- HARNESS:END -->/,
+        content.trim()
+      );
+      writeFileSync(mdPath, replaced);
+    } else {
+      // Append
+      writeFileSync(mdPath, existing.trimEnd() + '\n\n' + content);
+    }
+  } else {
+    writeFileSync(mdPath, content);
+  }
+}
+
+// --- UPDATE ---
+function update(root) {
+  if (!existsSync(join(omhDir(root), 'harness.config.json'))) {
+    console.error('  oh-my-harness not initialized. Run: oh-my-harness init');
+    process.exit(1);
+  }
+  mergeSettings(root);
+  appendClaudeMd(root);
+  console.log('  oh-my-harness updated from config.');
+}
+
+// --- STATUS ---
+function status(root) {
+  const configPath = join(omhDir(root), 'harness.config.json');
+  if (!existsSync(configPath)) {
+    console.log('  oh-my-harness is not initialized in this project.');
+    return;
+  }
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  console.log('  oh-my-harness status:');
+  console.log(`  Features:`);
+  for (const [k, v] of Object.entries(config.features || {})) {
+    console.log(`    ${k}: ${v ? 'ON' : 'OFF'}`);
+  }
+  console.log(`  Model Routing:`);
+  for (const [k, v] of Object.entries(config.modelRouting || {})) {
+    console.log(`    ${k}: ${v}`);
+  }
+  console.log(`  Test Enforcement: min ${config.testEnforcement?.minCases || 2} cases`);
+  console.log(`  Auto-Plan threshold: ${config.autoPlan?.threshold || 3} tasks`);
+  console.log(`  Ambiguity threshold: ${config.ambiguityDetection?.threshold || 2}`);
+}
+
+// --- RESET ---
+function reset(root) {
+  const omh = omhDir(root);
+  if (existsSync(omh)) {
+    rmSync(omh, { recursive: true });
+    console.log('  removed .claude/.omh/');
+  }
+  // Remove commands
+  const allCmds = [
+    'set-harness.md', 'init-project.md',
+    'agent-spawn.md', 'agent-status.md', 'agent-apply.md', 'agent-stop.md',
+  ];
+  for (const cmd of allCmds) {
+    const p = join(root, COMMANDS_DIR, cmd);
+    if (existsSync(p)) rmSync(p);
+  }
+  console.log('  removed .claude/commands/ (all harness commands)');
+
+  // Remove CLAUDE.md block
+  const mdPath = join(root, CLAUDE_MD);
+  if (existsSync(mdPath)) {
+    const content = readFileSync(mdPath, 'utf8');
+    if (content.includes('<!-- HARNESS:START -->')) {
+      const cleaned = content.replace(
+        /\n*<!-- HARNESS:START -->[\s\S]*?<!-- HARNESS:END -->\n*/,
+        '\n'
+      );
+      writeFileSync(mdPath, cleaned.trim() + '\n');
+      console.log('  cleaned CLAUDE.md harness block');
+    }
+  }
+
+  // Clean hooks from settings.local.json
+  const settingsPath = join(root, SETTINGS);
+  if (existsSync(settingsPath)) {
+    try {
+      const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+      if (settings.hooks) {
+        for (const event of Object.keys(settings.hooks)) {
+          settings.hooks[event] = (settings.hooks[event] || []).filter(h =>
+            !h.hooks?.some(hh => hh.command?.includes('.omh/hooks/'))
+          );
+          if (settings.hooks[event].length === 0) delete settings.hooks[event];
+        }
+        if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
+      }
+      if (settings.agents) {
+        for (const key of Object.keys(settings.agents)) {
+          if (key.startsWith('harness:')) delete settings.agents[key];
+        }
+        if (Object.keys(settings.agents).length === 0) delete settings.agents;
+      }
+      writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+      console.log('  cleaned settings.local.json');
+    } catch {}
+  }
+
+  // Clean .gitignore
+  updateGitignore(root, 'remove');
+  console.log('  cleaned .gitignore');
+
+  console.log('\n  oh-my-harness removed.');
+}
+
+// --- GITIGNORE ---
+function updateGitignore(root, action) {
+  const giPath = join(root, '.gitignore');
+  const entry = '.claude/.omh/';
+  if (action === 'add') {
+    let content = '';
+    if (existsSync(giPath)) {
+      content = readFileSync(giPath, 'utf8');
+      if (content.includes(entry)) return; // already present
+    }
+    const newline = content.length > 0 && !content.endsWith('\n') ? '\n' : '';
+    writeFileSync(giPath, content + newline + `\n# oh-my-harness\n${entry}\n`);
+  } else if (action === 'remove') {
+    if (!existsSync(giPath)) return;
+    let content = readFileSync(giPath, 'utf8');
+    content = content.replace(/\n?# oh-my-harness\n\.claude\/\.omh\/\n?/g, '\n');
+    writeFileSync(giPath, content.trim() + '\n');
+  }
+}
+
+// --- MAIN ---
+const root = projectRoot();
+switch (command) {
+  case 'init':
+    console.log('\n  Initializing oh-my-harness...\n');
+    init(root);
+    break;
+  case 'update':
+    update(root);
+    break;
+  case 'status':
+    status(root);
+    break;
+  case 'reset':
+    reset(root);
+    break;
+  default:
+    console.log(`
+  oh-my-harness — Lightweight Claude Code harness
+
+  Usage:
+    oh-my-harness init     Set up harness in current project
+    oh-my-harness update   Regenerate settings from config
+    oh-my-harness status   Show current configuration
+    oh-my-harness reset    Remove all harness files
+`);
+}
