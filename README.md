@@ -65,6 +65,99 @@ Either way, start Claude Code as usual — harness features activate automatical
 
 ---
 
+## Onboarding Guide
+
+처음 사용하는 분들을 위한 단계별 온보딩 가이드입니다.
+
+```mermaid
+flowchart LR
+    A["1. Install"] --> B["2. Setup"]
+    B --> C["3. Configure"]
+    C --> D["4. Use"]
+    D --> E["5. Scale"]
+
+    style A fill:#7C3AED,color:#fff
+    style B fill:#6D28D9,color:#fff
+    style C fill:#5B21B6,color:#fff
+    style D fill:#4C1D95,color:#fff
+    style E fill:#3B0764,color:#fff
+```
+
+### Step 1 — Install
+
+```bash
+# Plugin (recommended)
+/install-plugin https://github.com/Hoya324/oh-my-harness
+
+# or npm
+npm install -g oh-my-harness
+```
+
+### Step 2 — Setup
+
+```bash
+# Plugin mode
+/harness-setup
+
+# npm mode
+oh-my-harness init
+```
+
+이 단계에서 자동으로 수행되는 작업:
+- `.claude/.omh/harness.config.json` 생성 (기본 설정)
+- `.gitignore`에 `.claude/.omh/` 추가
+- 프로젝트 컨벤션 자동 감지 (언어, 테스트, 린터, 포매터)
+
+### Step 3 — Configure (optional)
+
+기본 설정으로도 충분하지만, 필요에 따라 조정할 수 있습니다:
+
+```bash
+# 현재 설정 확인
+/set-harness
+
+# 자주 사용하는 설정 예시
+/set-harness testEnforcement.minCases 3     # 테스트 케이스 최소 3개
+/set-harness features.scopeGuard true       # 파일 수정 범위 제한 활성화
+/set-harness scopeGuard.allowedPaths ["src"] # src/ 내부만 수정 허용
+```
+
+### Step 4 — Use
+
+설정 완료 후 Claude Code를 평소처럼 사용하면 됩니다. OMH가 자동으로 동작합니다:
+
+| 상황 | OMH 동작 |
+|------|---------|
+| 세션 시작 | 프로젝트 컨벤션 감지 및 컨텍스트 주입 |
+| "리팩토링해줘" (모호한 요청) | 구체적인 범위를 먼저 질문 |
+| 3개 이상의 작업 요청 | Plan 모드 제안 |
+| `rm -rf` 실행 시도 | 사용자 확인 요청 경고 |
+| `git commit` 실행 | 커밋 컨벤션 형식 안내 |
+| 코드 수정 완료 | 테스트 존재 여부 확인 리마인드 |
+| 컨텍스트 압축 직전 | 현재 상태 스냅샷 저장 |
+
+### Step 5 — Scale with Multi-Agent
+
+병렬 작업이 필요할 때 multi-agent를 활용합니다:
+
+```bash
+# 3개의 에이전트를 동시에 실행
+/agent-spawn 3 "fix all TypeScript errors in src/"
+
+# 진행 상황 확인
+/agent-status
+
+# 완료된 작업 머지
+/agent-apply all
+
+# 정리
+/agent-stop all
+```
+
+> **Tip:** 처음에는 `useWorktree: true` (기본값)로 사용하세요. 각 에이전트가 독립된 git 브랜치에서 작업하므로 충돌 걱정이 없습니다.
+
+---
+
 ## Features Overview
 
 | # | Feature | Hook | Default | What it does |
@@ -110,10 +203,10 @@ graph TB
         HOOKS --> H7[pre-compact.mjs]
         HOOKS --> H8[post-task.mjs]
 
-        SKILLS --> S1[/harness-setup]
-        SKILLS --> S2[/set-harness]
-        SKILLS --> S3[/agent-spawn]
-        SKILLS --> S4[/agent-status]
+        SKILLS --> S1["/harness-setup"]
+        SKILLS --> S2["/set-harness"]
+        SKILLS --> S3["/agent-spawn"]
+        SKILLS --> S4["/agent-status"]
 
         AGENTS --> A1["harness:quick (haiku)"]
         AGENTS --> A2["harness:standard (sonnet)"]
