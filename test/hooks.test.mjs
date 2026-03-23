@@ -103,6 +103,32 @@ describe('pre-prompt hook', () => {
     const parsed = parseHookOutput(raw);
     assert.ok(!parsed || parsed.suppressOutput === true);
   });
+
+  it('detects English ambiguous request', () => {
+    writeConfig({
+      features: { autoPlanMode: false, ambiguityDetection: true },
+      autoPlan: { threshold: 3 },
+      ambiguityDetection: { threshold: 2 },
+    });
+    const raw = runHook('pre-prompt.mjs', {
+      prompt: 'fix it',
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('모호합니다') || ctx.includes('ambiguous') || ctx.length > 0);
+  });
+
+  it('detects English multi-task list', () => {
+    writeConfig({
+      features: { autoPlanMode: true, ambiguityDetection: false },
+      autoPlan: { threshold: 3 },
+      ambiguityDetection: { threshold: 2 },
+    });
+    const raw = runHook('pre-prompt.mjs', {
+      prompt: '1. Add login feature\n2. Write tests\n3. Update docs\n4. Fix deploy script',
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('4'));
+  });
 });
 
 // --- post-task ---
@@ -310,6 +336,17 @@ describe('usage-tracker hook', () => {
     assert.equal(usage.sessions.s1.tool_counts.Edit, 2);
     assert.equal(usage.sessions.s1.tool_counts.Bash, 1);
     assert.equal(usage.sessions.s1.total_calls, 3);
+  });
+
+  it('is silent when DISABLE_HARNESS is set', () => {
+    writeConfig({ features: { usageTracking: true } });
+    const raw = runHook('usage-tracker.mjs', {
+      tool_name: 'Edit', session_id: 'disabled-session',
+    }, { DISABLE_HARNESS: '1' });
+    const parsed = parseHookOutput(raw);
+    assert.ok(!parsed || parsed.suppressOutput === true);
+    const usagePath = join(TMP, '.claude', '.omh', 'usage.json');
+    assert.ok(!existsSync(usagePath));
   });
 });
 

@@ -1,14 +1,14 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
-import { mkdirSync, rmSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 const TMP = join(import.meta.dirname, '__tmp_cli');
 const CLI = join(import.meta.dirname, '..', 'bin', 'cli.mjs');
 
-function runCli(command) {
-  return execFileSync('node', [CLI, command], {
+function runCli(...args) {
+  return execFileSync('node', [CLI, ...args], {
     cwd: TMP,
     encoding: 'utf8',
     timeout: 10000,
@@ -141,5 +141,47 @@ describe('cli status', () => {
   it('shows not initialized message when no config', () => {
     const output = runCli('status');
     assert.ok(output.includes('not initialized'));
+  });
+});
+
+describe('cli update', () => {
+  it('regenerates settings from existing config', () => {
+    runCli('init');
+    // Modify settings to simulate drift
+    const settingsPath = join(TMP, '.claude', 'settings.local.json');
+    writeFileSync(settingsPath, JSON.stringify({}));
+    runCli('update');
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    assert.ok(settings.hooks?.SessionStart);
+    assert.ok(settings.hooks?.Stop);
+  });
+
+  it('fails when not initialized', () => {
+    assert.throws(() => runCli('update'), /not initialized/);
+  });
+});
+
+describe('cli --version', () => {
+  it('prints version number', () => {
+    const output = runCli('--version');
+    assert.match(output.trim(), /^\d+\.\d+\.\d+$/);
+  });
+
+  it('prints version with -v flag', () => {
+    const output = runCli('-v');
+    assert.match(output.trim(), /^\d+\.\d+\.\d+$/);
+  });
+});
+
+describe('cli unknown command', () => {
+  it('shows error for unknown command', () => {
+    assert.throws(() => runCli('foobar'), /Unknown command/);
+  });
+
+  it('shows help with --help flag', () => {
+    const output = runCli('--help');
+    assert.ok(output.includes('oh-my-harness'));
+    assert.ok(output.includes('init'));
+    assert.ok(output.includes('usage'));
   });
 });

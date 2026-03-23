@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { hookOutput, hookSilent } from './lib/output.mjs';
+import { detectConventions } from './lib/detect.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configDir = join(projectRoot, '.claude', '.omh');
@@ -11,51 +12,6 @@ const cachePath = join(configDir, 'conventions.json');
 function readStdin() {
   try { return JSON.parse(readFileSync('/dev/stdin', 'utf8')); }
   catch { return {}; }
-}
-
-function detectConventions(root) {
-  const result = { language: null, testFramework: null, linter: null, formatter: null, buildTool: null };
-  const pkgPath = join(root, 'package.json');
-  if (existsSync(pkgPath)) {
-    result.language = 'node';
-    try {
-      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-      if (deps.vitest) result.testFramework = 'vitest';
-      else if (deps.jest) result.testFramework = 'jest';
-      else if (deps.mocha) result.testFramework = 'mocha';
-      if (deps.biome || deps['@biomejs/biome']) { result.linter = 'biome'; result.formatter = 'biome'; }
-      else { if (deps.eslint) result.linter = 'eslint'; if (deps.prettier) result.formatter = 'prettier'; }
-      if (deps.typescript) result.buildTool = 'typescript';
-    } catch {}
-    return result;
-  }
-  if (existsSync(join(root, 'pyproject.toml')) || existsSync(join(root, 'setup.py'))) {
-    result.language = 'python';
-    try {
-      const c = readFileSync(join(root, 'pyproject.toml'), 'utf8');
-      if (c.includes('pytest')) result.testFramework = 'pytest';
-      if (c.includes('ruff')) { result.linter = 'ruff'; result.formatter = 'ruff'; }
-      else { if (c.includes('flake8')) result.linter = 'flake8'; if (c.includes('black')) result.formatter = 'black'; }
-    } catch {}
-    return result;
-  }
-  if (existsSync(join(root, 'go.mod'))) {
-    result.language = 'go'; result.testFramework = 'go test';
-    if (existsSync(join(root, '.golangci.yml')) || existsSync(join(root, '.golangci.yaml'))) result.linter = 'golangci-lint';
-    return result;
-  }
-  if (existsSync(join(root, 'Cargo.toml'))) {
-    result.language = 'rust'; result.testFramework = 'cargo test'; result.linter = 'clippy'; result.formatter = 'rustfmt';
-    return result;
-  }
-  if (existsSync(join(root, 'build.gradle')) || existsSync(join(root, 'build.gradle.kts'))) {
-    result.language = 'java'; result.testFramework = 'junit'; result.buildTool = 'gradle'; return result;
-  }
-  if (existsSync(join(root, 'pom.xml'))) {
-    result.language = 'java'; result.testFramework = 'junit'; result.buildTool = 'maven'; return result;
-  }
-  return result;
 }
 
 try {

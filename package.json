@@ -7,8 +7,20 @@
     "oh-my-harness": "./bin/cli.mjs"
   },
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "node --test test/*.test.mjs"
   },
+  "files": [
+    "bin",
+    "hooks",
+    "lib",
+    "skills",
+    "agents",
+    "templates",
+    ".claude-plugin",
+    "CLAUDE.md",
+    "README.md"
+  ],
   "keywords": ["claude-code", "harness", "ai", "developer-tools"],
   "license": "MIT",
   "engines": {

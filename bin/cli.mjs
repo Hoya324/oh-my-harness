@@ -12,6 +12,15 @@ const SETTINGS = '.claude/settings.local.json';
 
 const [,, command, ...args] = process.argv;
 
+function getVersion() {
+  const pkg = JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf8'));
+  return pkg.version;
+}
+
+function stripFrontmatter(content) {
+  return content.replace(/^---[\s\S]*?---\n*/, '');
+}
+
 function projectRoot() {
   return process.cwd();
 }
@@ -41,6 +50,7 @@ function init(root) {
   const hookLibDir = join(hooksDir, 'lib');
   mkdirSync(hookLibDir, { recursive: true });
   cpSync(join(PKG_ROOT, 'hooks', 'lib', 'output.mjs'), join(hookLibDir, 'output.mjs'));
+  cpSync(join(PKG_ROOT, 'lib', 'detect.mjs'), join(hookLibDir, 'detect.mjs'));
   const allHooks = [
     'session-start.mjs', 'pre-prompt.mjs', 'post-task.mjs',
     'dangerous-guard.mjs', 'pre-compact.mjs', 'commit-convention.mjs',
@@ -51,13 +61,18 @@ function init(root) {
   }
   console.log('  copied  .claude/.omh/hooks/ (8 hooks + lib)');
 
-  // Copy commands
-  const allCmds = [
-    'set-harness.md', 'init-project.md',
-    'agent-spawn.md', 'agent-status.md', 'agent-apply.md', 'agent-stop.md',
+  // Copy commands from skills (strip YAML frontmatter)
+  const skillMap = [
+    ['set-harness', 'set-harness.md'],
+    ['init-project', 'init-project.md'],
+    ['agent-spawn', 'agent-spawn.md'],
+    ['agent-status', 'agent-status.md'],
+    ['agent-apply', 'agent-apply.md'],
+    ['agent-stop', 'agent-stop.md'],
   ];
-  for (const cmd of allCmds) {
-    cpSync(join(PKG_ROOT, 'templates', 'commands', cmd), join(cmdDir, cmd));
+  for (const [skill, cmdFile] of skillMap) {
+    const skillContent = readFileSync(join(PKG_ROOT, 'skills', skill, 'SKILL.md'), 'utf8');
+    writeFileSync(join(cmdDir, cmdFile), stripFrontmatter(skillContent));
   }
   console.log('  copied  .claude/commands/ (6 commands)');
 
@@ -316,6 +331,69 @@ function updateGitignore(root, action) {
 }
 
 // --- MAIN ---
+function showHelp() {
+  console.log(`
+  oh-my-harness v${getVersion()} — Lightweight Claude Code harness
+
+  Usage:
+    oh-my-harness init      Set up harness in current project
+    oh-my-harness update    Regenerate settings from config
+    oh-my-harness status    Show current configuration
+    oh-my-harness usage     Show tool usage statistics
+    oh-my-harness reset     Remove all harness files
+
+  Options:
+    --version, -v           Show version number
+    --help, -h              Show this help message
+`);
+}
+
+// --- USAGE ---
+function usage(root) {
+  const usagePath = join(omhDir(root), 'usage.json');
+  if (!existsSync(usagePath)) {
+    console.log('  No usage data found. Usage tracking will start in your next session.');
+    return;
+  }
+  try {
+    const data = JSON.parse(readFileSync(usagePath, 'utf8'));
+    const sessions = data.sessions || {};
+    const sessionIds = Object.keys(sessions);
+    console.log('  oh-my-harness usage statistics:\n');
+    console.log(`  Total sessions: ${sessionIds.length}`);
+    console.log(`  Total tool calls: ${data.total_calls || 0}`);
+
+    // Aggregate tool counts
+    const totals = {};
+    for (const s of Object.values(sessions)) {
+      for (const [tool, count] of Object.entries(s.tool_counts || {})) {
+        totals[tool] = (totals[tool] || 0) + count;
+      }
+    }
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    if (sorted.length > 0) {
+      console.log('\n  Top tools:');
+      for (const [tool, count] of sorted.slice(0, 10)) {
+        console.log(`    ${tool}: ${count}`);
+      }
+    }
+
+    if (args.includes('--verbose') && sessionIds.length > 0) {
+      console.log('\n  Per-session breakdown:');
+      for (const [id, s] of Object.entries(sessions).slice(-5)) {
+        console.log(`\n    Session ${id}:`);
+        console.log(`      Started: ${s.started || 'unknown'}`);
+        console.log(`      Calls: ${s.total || 0}`);
+        for (const [tool, count] of Object.entries(s.tool_counts || {})) {
+          console.log(`        ${tool}: ${count}`);
+        }
+      }
+    }
+  } catch {
+    console.error('  Failed to read usage data.');
+  }
+}
+
 const root = projectRoot();
 switch (command) {
   case 'init':
@@ -328,17 +406,23 @@ switch (command) {
   case 'status':
     status(root);
     break;
+  case 'usage':
+    usage(root);
+    break;
   case 'reset':
     reset(root);
     break;
+  case '--version':
+  case '-v':
+    console.log(getVersion());
+    break;
+  case '--help':
+  case '-h':
+  case undefined:
+    showHelp();
+    break;
   default:
-    console.log(`
-  oh-my-harness — Lightweight Claude Code harness
-
-  Usage:
-    oh-my-harness init     Set up harness in current project
-    oh-my-harness update   Regenerate settings from config
-    oh-my-harness status   Show current configuration
-    oh-my-harness reset    Remove all harness files
-`);
+    console.error(`  Unknown command: ${command}`);
+    showHelp();
+    process.exit(1);
 }
