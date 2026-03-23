@@ -2,10 +2,12 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-const TMP = join(import.meta.dirname, '__tmp_cli');
-const CLI = join(import.meta.dirname, '..', 'bin', 'cli.mjs');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TMP = join(__dirname, '__tmp_cli');
+const CLI = join(__dirname, '..', 'bin', 'cli.mjs');
 
 function runCli(...args) {
   return execFileSync('node', [CLI, ...args], {

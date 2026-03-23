@@ -7,7 +7,7 @@ const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
 
 function readStdin() {
-  try { return JSON.parse(readFileSync('/dev/stdin', 'utf8')); }
+  try { return JSON.parse(readFileSync(0, 'utf8')); }
   catch { return {}; }
 }
 

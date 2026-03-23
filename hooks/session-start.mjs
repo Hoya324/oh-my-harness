@@ -10,7 +10,7 @@ const configPath = join(configDir, 'harness.config.json');
 const cachePath = join(configDir, 'conventions.json');
 
 function readStdin() {
-  try { return JSON.parse(readFileSync('/dev/stdin', 'utf8')); }
+  try { return JSON.parse(readFileSync(0, 'utf8')); }
   catch { return {}; }
 }
 

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "oh-my-harness",
+  "description": "Lightweight Claude Code harness with smart defaults, test enforcement, and multi-agent orchestration",
+  "owner": { "name": "Hoya324" },
+  "plugins": [
+    {
+      "name": "oh-my-harness",
+      "description": "Zero-config harness: convention detection, test enforcement, model routing, ambiguity guard, dangerous guard, multi-agent with git worktrees",
+      "version": "0.1.0",
+      "author": { "name": "Hoya324" },
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/Hoya324/oh-my-harness",
+      "tags": ["harness", "hooks", "multi-agent", "worktree", "test-enforcement"]
+    }
+  ],
+  "version": "0.1.0"
+}

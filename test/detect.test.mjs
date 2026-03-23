@@ -1,10 +1,12 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { detectConventions } from '../lib/detect.mjs';
 
-const TMP = join(import.meta.dirname, '__tmp_detect');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TMP = join(__dirname, '__tmp_detect');
 
 beforeEach(() => { mkdirSync(TMP, { recursive: true }); });
 afterEach(() => { rmSync(TMP, { recursive: true, force: true }); });

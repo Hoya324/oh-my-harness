@@ -1,8 +1,8 @@
 /**
  * Hook output helpers — standardized JSON format for Claude Code hooks.
  */
-import { appendFileSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { createRequire } from 'module';
+const _require = createRequire(import.meta.url);
 
 export function hookOutput(hookEventName, additionalContext) {
   return JSON.stringify({
@@ -50,6 +50,8 @@ export function hookSilent() {
 export function hookDebug(hookName, error) {
   if (!process.env.OMH_DEBUG) return;
   try {
+    const { appendFileSync, mkdirSync } = _require('fs');
+    const { join } = _require('path');
     const root = process.env.PROJECT_PATH || process.cwd();
     const logDir = join(root, '.claude', '.omh');
     mkdirSync(logDir, { recursive: true });

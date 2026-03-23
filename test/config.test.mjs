@@ -1,10 +1,12 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { readConfig, writeConfig, getDefault, configPath } from '../lib/config.mjs';
 
-const TMP = join(import.meta.dirname, '__tmp_config');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TMP = join(__dirname, '__tmp_config');
 
 beforeEach(() => { mkdirSync(join(TMP, '.claude', '.omh'), { recursive: true }); });
 afterEach(() => { rmSync(TMP, { recursive: true, force: true }); });

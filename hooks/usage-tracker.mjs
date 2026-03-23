@@ -8,7 +8,7 @@ const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
 const usagePath = join(projectRoot, '.claude', '.omh', 'usage.json');
 
 function readStdin() {
-  try { return JSON.parse(readFileSync('/dev/stdin', 'utf8')); }
+  try { return JSON.parse(readFileSync(0, 'utf8')); }
   catch { return {}; }
 }
 

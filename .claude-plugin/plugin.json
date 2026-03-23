@@ -1,0 +1,11 @@
+{
+  "name": "oh-my-harness",
+  "version": "0.1.0",
+  "description": "Lightweight Claude Code harness — smart defaults, test enforcement, model routing",
+  "author": { "name": "Hoya324" },
+  "repository": "https://github.com/Hoya324/oh-my-harness",
+  "license": "MIT",
+  "keywords": ["claude-code", "plugin", "harness", "hooks", "multi-agent"],
+  "skills": "./skills/",
+  "agents": "./agents/"
+}

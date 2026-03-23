@@ -2,10 +2,12 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
 import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-const TMP = join(import.meta.dirname, '__tmp_hooks');
-const HOOKS_DIR = join(import.meta.dirname, '..', 'hooks');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TMP = join(__dirname, '__tmp_hooks');
+const HOOKS_DIR = join(__dirname, '..', 'hooks');
 
 function runHook(hookFile, stdinData, env = {}) {
   const input = typeof stdinData === 'string' ? stdinData : JSON.stringify(stdinData);
