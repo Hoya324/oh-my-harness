@@ -20,7 +20,7 @@ Example: /agent-stop 2
 3. **Check for unapplied changes** (only when `useWorktree` is true):
    For each agent being stopped:
    ```bash
-   git log main..omh/agent-{i} --oneline
+   git log "main..omh/agent-{i}" --oneline
    ```
    If there are unmerged commits, **warn the user** using AskUserQuestion:
    ```
@@ -37,16 +37,16 @@ Example: /agent-stop 2
 4. **Kill tmux panes** for target agents:
    ```bash
    # Stopping all agents:
-   tmux kill-session -t {tmuxSession}
+   tmux kill-session -t "{tmuxSession}"
    # Stopping a specific agent:
-   tmux send-keys -t {tmuxSession}:0.{i-1} C-c
-   tmux send-keys -t {tmuxSession}:0.{i-1} "exit" Enter
+   tmux send-keys -t "{tmuxSession}:0.{i-1}" C-c
+   tmux send-keys -t "{tmuxSession}:0.{i-1}" "exit" Enter
    ```
 
 5. **Remove worktrees** (only when `useWorktree` is true):
    ```bash
    git worktree remove .claude/.omh/worktrees/agent-{i} --force
-   git branch -D omh/agent-{i}
+   git branch -D "omh/agent-{i}"
    ```
    Skip this step entirely when `useWorktree` is false.
 

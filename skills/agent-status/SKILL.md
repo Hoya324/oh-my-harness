@@ -14,14 +14,14 @@ Usage: /agent-status
 
 2. **Read `useWorktree`** from `agents.json` to determine how to check progress.
 
-3. **Check tmux session**: `tmux has-session -t {tmuxSession} 2>/dev/null`
+3. **Check tmux session**: `tmux has-session -t "{tmuxSession}" 2>/dev/null`
    If the session doesn't exist, report that agents are no longer running and suggest cleanup.
 
 4. **For each agent**, check:
-   - Is the tmux pane still alive: `tmux list-panes -t {tmuxSession} -F '#{pane_index} #{pane_pid} #{pane_dead}'`
+   - Is the tmux pane still alive: `tmux list-panes -t "{tmuxSession}" -F '#{pane_index} #{pane_pid} #{pane_dead}'`
    - If `useWorktree` is true:
-     - New commits: `git log main..omh/agent-{i} --oneline`
-     - Diff summary: `git diff main...omh/agent-{i} --stat`
+     - New commits: `git log "main..omh/agent-{i}" --oneline`
+     - Diff summary: `git diff "main...omh/agent-{i}" --stat`
    - If `useWorktree` is false:
      - Report pane status only (no branch-level diff available)
 

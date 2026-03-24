@@ -18,6 +18,10 @@ Example: /agent-spawn 3 fix all TypeScript errors in src/
    - `multiAgent.useWorktree` — whether to create isolated git worktrees (default: true)
    - `multiAgent.tmuxSession` — tmux session name (default: `omh-agents`)
 
+   **Validate inputs** before proceeding:
+   - `tmuxSession` must match `^[a-zA-Z0-9_-]+$` — if not, reject with error: "Invalid tmux session name. Only alphanumeric, dash, underscore allowed."
+   - Agent count `N` must be a positive integer ≤ maxAgents
+
 3. **Confirm with user** using AskUserQuestion before doing anything:
    Show a clear summary of exactly what will happen:
    ```
@@ -51,10 +55,10 @@ Example: /agent-spawn 3 fix all TypeScript errors in src/
 6. **Create tmux session**:
    ```bash
    # First pane — agent-1 workdir
-   tmux new-session -d -s {tmuxSession} -c {workdir-for-agent-1}
+   tmux new-session -d -s "{tmuxSession}" -c {workdir-for-agent-1}
    # Remaining panes
-   tmux split-window -t {tmuxSession} -c {workdir-for-agent-i}   # repeat for i=2..N
-   tmux select-layout -t {tmuxSession} tiled
+   tmux split-window -t "{tmuxSession}" -c {workdir-for-agent-i}   # repeat for i=2..N
+   tmux select-layout -t "{tmuxSession}" tiled
    ```
 
 7. **Prepare task descriptions**:
@@ -70,7 +74,7 @@ Example: /agent-spawn 3 fix all TypeScript errors in src/
 8. **Launch Claude in each pane**:
    Use `--permission-mode bypassPermissions` instead of `--dangerously-skip-permissions` to avoid the interactive consent prompt:
    ```bash
-   tmux send-keys -t {tmuxSession}:0.{i-1} "claude --permission-mode bypassPermissions -p 'TASK.md 파일을 읽고 그 안의 지시사항대로 작업해줘.'" Enter
+   tmux send-keys -t "{tmuxSession}:0.{i-1}" "claude --permission-mode bypassPermissions -p 'TASK.md 파일을 읽고 그 안의 지시사항대로 작업해줘.'" Enter
    ```
    **Important**:
    - The `-p` (print) flag skips the workspace trust dialog and runs non-interactively.
@@ -82,17 +86,17 @@ Example: /agent-spawn 3 fix all TypeScript errors in src/
    ```bash
    # Detect terminal emulator and open accordingly
    if [[ "$TERM_PROGRAM" == "iTerm.app" ]] || pgrep -q iTerm2; then
-     osascript -e 'tell application "iTerm2" to create window with default profile command "tmux attach -t {tmuxSession}"'
+     osascript -e 'tell application "iTerm2" to create window with default profile command "tmux attach -t \"{tmuxSession}\""'
    elif [[ "$TERM_PROGRAM" == "WarpTerminal" ]] || pgrep -q Warp; then
-     open -a "Warp" --args -e "tmux attach -t {tmuxSession}"
+     open -a "Warp" --args -e "tmux attach -t \"{tmuxSession}\""
    else
-     osascript -e 'tell application "Terminal" to do script "tmux attach -t {tmuxSession}"'
+     osascript -e 'tell application "Terminal" to do script "tmux attach -t \"{tmuxSession}\""'
    fi
    ```
    On Linux (non-macOS):
    ```bash
    # Fallback: suggest manual attach
-   echo "Run: tmux attach -t {tmuxSession}"
+   echo "Run: tmux attach -t \"{tmuxSession}\""
    ```
 
 10. **Save agent state** to `.claude/.omh/agents.json`:

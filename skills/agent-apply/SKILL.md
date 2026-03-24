@@ -20,8 +20,8 @@ Example: /agent-apply all
 
 4. **For each agent to apply**, show a diff preview:
    ```bash
-   git log main..omh/agent-{i} --oneline
-   git diff main...omh/agent-{i} --stat
+   git log "main..omh/agent-{i}" --oneline
+   git diff "main...omh/agent-{i}" --stat
    ```
 
 5. **Ask user confirmation** using AskUserQuestion:
@@ -30,7 +30,7 @@ Example: /agent-apply all
 
 6. **Merge changes** for confirmed agents:
    ```bash
-   git merge omh/agent-{i} --no-ff -m "merge: agent-{i} - {task description}"
+   git merge "omh/agent-{i}" --no-ff -m "merge: agent-{i} - {task description}"
    ```
    If merge conflicts occur, report them to the user and suggest manual resolution.
 

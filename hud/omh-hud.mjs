@@ -595,4 +595,27 @@ async function main() {
   }
 }
 
-main();
+export {
+  getContextPercent,
+  clamp,
+  parseUsageResponse,
+  formatResetTime,
+  formatDuration,
+  getLimitColor,
+  getContextColor,
+  getSessionColor,
+  processEntry,
+  readTailLines,
+  parseTranscript,
+  render,
+  readUsageCache,
+  writeUsageCache,
+  isUsageCacheValid,
+  readHudState,
+  writeHudState,
+};
+
+const isDirectRun = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
+if (isDirectRun) {
+  main();
+}
