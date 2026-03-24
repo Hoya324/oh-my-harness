@@ -1,8 +1,6 @@
 # Dependencies
 node_modules/
 
-# oh-my-harness runtime data
-.claude/.omh/
 
 # OMC state
 .omc/

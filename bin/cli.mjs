@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync, rmSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -27,11 +28,28 @@ function projectRoot() {
 
 function omhDir(root) { return join(root, OMH_DIR); }
 
+// --- DUCK ---
+function showDuck() {
+  const duckPath = join(PKG_ROOT, 'lib', 'duck.sh');
+  if (existsSync(duckPath)) {
+    try { execSync(`bash "${duckPath}"`, { stdio: 'inherit' }); } catch {}
+  }
+}
+
 // --- INIT ---
 function init(root) {
   const omh = omhDir(root);
   const hooksDir = join(omh, 'hooks');
   const cmdDir = join(root, COMMANDS_DIR);
+  const isFirstRun = !existsSync(join(omh, 'harness.config.json'));
+
+  // Show duck welcome on first run
+  if (isFirstRun) {
+    showDuck();
+    console.log('  Welcome to oh-my-harness!\n');
+    console.log('  Smart defaults for Claude Code — test enforcement, guard rails,');
+    console.log('  convention detection, and model routing, all in one harness.\n');
+  }
 
   // Create directories
   mkdirSync(hooksDir, { recursive: true });
@@ -396,10 +414,14 @@ function usage(root) {
 
 const root = projectRoot();
 switch (command) {
-  case 'init':
-    console.log('\n  Initializing oh-my-harness...\n');
+  case 'init': {
+    const configExists = existsSync(join(omhDir(root), 'harness.config.json'));
+    if (configExists) {
+      console.log('\n  Updating oh-my-harness...\n');
+    }
     init(root);
     break;
+  }
   case 'update':
     update(root);
     break;
