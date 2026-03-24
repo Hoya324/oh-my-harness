@@ -20,15 +20,15 @@ try {
   if (!config.features?.testEnforcement) { console.log(hookSilent()); process.exit(0); }
 
   const input = readStdin();
-  const transcript = JSON.stringify(input);
+  const toolName = input.tool_name || input.toolName || '';
+  const toolInput = input.tool_input || input.toolInput || {};
+  const filePath = toolInput.file_path || toolInput.filePath || toolInput.path || '';
   const codeChangeTools = ['Edit', 'Write', 'NotebookEdit'];
-  const hasCodeChanges = codeChangeTools.some(tool =>
-    transcript.includes(`"${tool}"`) || transcript.includes(`tool_name":"${tool}`)
-  );
-  const codeExtPattern = /\.(js|ts|jsx|tsx|py|go|rs|java|kt|rb|php|c|cpp|h|swift|vue|svelte)["'\s]/i;
-  const hasCodeFiles = codeExtPattern.test(transcript);
+  const hasCodeChanges = codeChangeTools.includes(toolName);
+  const codeExtPattern = /\.(js|ts|jsx|tsx|py|go|rs|java|kt|rb|php|c|cpp|h|swift|vue|svelte)$/i;
+  const hasCodeFiles = codeExtPattern.test(filePath);
 
-  if (hasCodeChanges || hasCodeFiles) {
+  if (hasCodeChanges && hasCodeFiles) {
     const lang = config.language || 'ko';
     const dict = getLang(lang);
     const minCases = config.testEnforcement?.minCases || 2;

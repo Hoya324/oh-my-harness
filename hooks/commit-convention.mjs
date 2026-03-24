@@ -55,7 +55,7 @@ try {
   const toolName = input.tool_name || input.toolName || '';
   const toolInput = JSON.stringify(input.tool_input || input.toolInput || input.input || '');
 
-  if (toolName !== 'Bash' || !/git\s+commit/.test(toolInput)) process.exit(0);
+  if (toolName !== 'Bash' || !/git\s+(-C\s+\S+\s+)?commit/.test(toolInput)) process.exit(0);
 
   const convention = config.commitConvention?.style === 'auto'
     ? detectConvention(projectRoot)

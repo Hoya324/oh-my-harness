@@ -56,12 +56,18 @@ Example: /agent-spawn 3 fix all TypeScript errors in src/
    tmux select-layout -t {tmuxSession} tiled
    ```
 
-7. **Launch Claude in each pane**:
+7. **Sanitize task description** (shell injection prevention):
    ```bash
-   tmux send-keys -t {tmuxSession}:0.{i-1} "claude --dangerously-skip-permissions '{task}'" Enter
+   # Escape single quotes in task description before passing to shell
+   sanitized_task=$(printf '%s' "{task}" | sed "s/'/'\\\\''/g")
    ```
 
-8. **Save agent state** to `.claude/.omh/agents.json`:
+8. **Launch Claude in each pane**:
+   ```bash
+   tmux send-keys -t {tmuxSession}:0.{i-1} "claude --dangerously-skip-permissions '${sanitized_task}'" Enter
+   ```
+
+9. **Save agent state** to `.claude/.omh/agents.json`:
    ```json
    {
      "session": "{tmuxSession}",
@@ -75,7 +81,7 @@ Example: /agent-spawn 3 fix all TypeScript errors in src/
    ```
    When `useWorktree` is false, omit `branch` and `worktree` fields per agent.
 
-9. **Report summary** and next steps:
+10. **Report summary** and next steps:
    ```
    Spawned {N} agents in tmux session '{tmuxSession}'.
 
@@ -93,3 +99,4 @@ Example: /agent-spawn 3 fix all TypeScript errors in src/
 - **useWorktree=false**: agents share the working directory; safe only for read-only or non-conflicting tasks
 - **--dangerously-skip-permissions**: agents bypass tool confirmation prompts — always disclose this to the user
 - **Never exceed maxAgents**: if N > maxAgents, cap and inform the user
+- **Shell injection prevention**: always escape single quotes in task descriptions before passing to shell commands
