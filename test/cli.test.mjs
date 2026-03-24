@@ -22,7 +22,7 @@ beforeEach(() => { mkdirSync(TMP, { recursive: true }); });
 afterEach(() => { rmSync(TMP, { recursive: true, force: true }); });
 
 describe('cli init', () => {
-  it('creates all expected files including new hooks', () => {
+  it('creates all expected files including new hooks and gate', () => {
     runCli('init');
     assert.ok(existsSync(join(TMP, '.claude', '.omh', 'harness.config.json')));
     assert.ok(existsSync(join(TMP, '.claude', '.omh', 'hooks', 'lib', 'output.mjs')));
@@ -34,13 +34,14 @@ describe('cli init', () => {
     assert.ok(existsSync(join(TMP, '.claude', '.omh', 'hooks', 'commit-convention.mjs')));
     assert.ok(existsSync(join(TMP, '.claude', '.omh', 'hooks', 'scope-guard.mjs')));
     assert.ok(existsSync(join(TMP, '.claude', '.omh', 'hooks', 'usage-tracker.mjs')));
+    assert.ok(existsSync(join(TMP, '.claude', '.omh', 'hooks', 'hook-gate.sh')));
     assert.ok(existsSync(join(TMP, '.claude', 'commands', 'set-harness.md')));
     assert.ok(existsSync(join(TMP, '.claude', 'commands', 'init-project.md')));
     assert.ok(existsSync(join(TMP, '.claude', 'settings.local.json')));
     assert.ok(existsSync(join(TMP, '.claude', 'CLAUDE.md')));
   });
 
-  it('registers all hook events in settings.local.json', () => {
+  it('registers all hook events with 2-stage gate in settings.local.json', () => {
     runCli('init');
     const settings = JSON.parse(readFileSync(join(TMP, '.claude', 'settings.local.json'), 'utf8'));
     assert.ok(settings.hooks.SessionStart);
@@ -49,8 +50,11 @@ describe('cli init', () => {
     assert.ok(settings.hooks.PostToolUse);
     assert.ok(settings.hooks.PreCompact);
     assert.ok(settings.hooks.Stop);
-    // PreToolUse has dangerous-guard
-    assert.ok(settings.hooks.PreToolUse[0].hooks[0].command.includes('dangerous-guard.mjs'));
+    // PreToolUse uses hook-gate.sh with dangerous-guard
+    const preToolCmd = settings.hooks.PreToolUse[0].hooks[0].command;
+    assert.ok(preToolCmd.includes('hook-gate.sh'), 'should use 2-stage gate');
+    assert.ok(preToolCmd.includes('dangerous-guard.mjs'), 'should reference hook');
+    assert.ok(preToolCmd.includes('dangerousGuard'), 'should pass feature key');
     // PostToolUse has 3 hooks
     assert.equal(settings.hooks.PostToolUse[0].hooks.length, 3);
   });
@@ -64,16 +68,20 @@ describe('cli init', () => {
     assert.equal(settings.agents['harness:architect'].model, 'opus');
   });
 
-  it('adds HARNESS block to CLAUDE.md with new sections', () => {
+  it('adds HARNESS block to CLAUDE.md with enabled sections only', () => {
     runCli('init');
     const md = readFileSync(join(TMP, '.claude', 'CLAUDE.md'), 'utf8');
     assert.ok(md.includes('<!-- HARNESS:START -->'));
     assert.ok(md.includes('<!-- HARNESS:END -->'));
+    // Enabled by default
     assert.ok(md.includes('Test Enforcement'));
     assert.ok(md.includes('Ambiguity Guard'));
     assert.ok(md.includes('Dangerous Operation Guard'));
     assert.ok(md.includes('Commit Convention'));
-    assert.ok(md.includes('Scope Guard'));
+    assert.ok(md.includes('Model Routing'));
+    assert.ok(md.includes('Multi-Agent'));
+    // scopeGuard is disabled by default → should NOT appear
+    assert.ok(!md.includes('Scope Guard'), 'Scope Guard should not appear when disabled');
   });
 
   it('is idempotent — running twice does not duplicate', () => {

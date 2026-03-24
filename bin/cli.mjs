@@ -155,7 +155,8 @@ async function init(root, scope) {
   for (const hook of allHooks) {
     cpSync(join(PKG_ROOT, 'hooks', hook), join(hooksDir, hook));
   }
-  logDone(`8 hooks + shared libraries`);
+  cpSync(join(PKG_ROOT, 'hooks', 'hook-gate.sh'), join(hooksDir, 'hook-gate.sh'));
+  logDone(`8 hooks + gate + shared libraries`);
   logInfo('session-start, pre-prompt, post-task, dangerous-guard,');
   logInfo('pre-compact, commit-convention, scope-guard, usage-tracker');
 
@@ -258,34 +259,37 @@ function mergeSettings(root, scope = 'project') {
   }
 
   const hooksBase = '.claude/.omh/hooks';
+  const gate = `bash ${hooksBase}/hook-gate.sh`;
+  // 2-Stage Prompt Evaluation: bash pre-filter checks feature flag before spawning Node.
+  // Format: bash hook-gate.sh <hook-script> <feature1> [feature2 ...]
   const harnessHooks = {
     SessionStart: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `node ${hooksBase}/session-start.mjs`, timeout: 10 }],
+      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/session-start.mjs conventionSetup`, timeout: 10 }],
     }],
     UserPromptSubmit: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `node ${hooksBase}/pre-prompt.mjs`, timeout: 3 }],
+      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/pre-prompt.mjs autoPlanMode ambiguityDetection`, timeout: 3 }],
     }],
     PreToolUse: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `node ${hooksBase}/dangerous-guard.mjs`, timeout: 3 }],
+      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/dangerous-guard.mjs dangerousGuard`, timeout: 3 }],
     }],
     PostToolUse: [{
       matcher: '*',
       hooks: [
-        { type: 'command', command: `node ${hooksBase}/commit-convention.mjs`, timeout: 3 },
-        { type: 'command', command: `node ${hooksBase}/scope-guard.mjs`, timeout: 3 },
-        { type: 'command', command: `node ${hooksBase}/usage-tracker.mjs`, timeout: 3 },
+        { type: 'command', command: `${gate} ${hooksBase}/commit-convention.mjs commitConvention`, timeout: 3 },
+        { type: 'command', command: `${gate} ${hooksBase}/scope-guard.mjs scopeGuard`, timeout: 3 },
+        { type: 'command', command: `${gate} ${hooksBase}/usage-tracker.mjs usageTracking`, timeout: 3 },
       ],
     }],
     PreCompact: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `node ${hooksBase}/pre-compact.mjs`, timeout: 5 }],
+      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/pre-compact.mjs contextSnapshot`, timeout: 5 }],
     }],
     Stop: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `node ${hooksBase}/post-task.mjs`, timeout: 5 }],
+      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/post-task.mjs testEnforcement`, timeout: 5 }],
     }],
   };
 
@@ -319,37 +323,105 @@ function mergeSettings(root, scope = 'project') {
 }
 
 // --- CLAUDE.MD ---
-function appendClaudeMd(root) {
-  const mdPath = join(root, CLAUDE_MD);
-  const tmpl = readFileSync(join(PKG_ROOT, 'templates', 'CLAUDE.md.tmpl'), 'utf8');
+// Builds CLAUDE.md content programmatically based on enabled features.
+// Compressed text (~50% smaller), feature-conditional (Progressive Disclosure),
+// and ordered static→dynamic for Anthropic prompt cache compatibility.
+function buildClaudeMdContent(root, config) {
+  const f = config.features || {};
+  const s = [];
 
-  // Read config for template values
-  const configPath = join(omhDir(root), 'harness.config.json');
-  let config;
-  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { config = {}; }
+  // --- Static core (cache-stable across turns) ---
+  s.push('<!-- HARNESS:START -->');
+  s.push('## oh-my-harness');
+  s.push('');
+  s.push('Relay all `[omh:*]` hook tags to the user.');
 
-  const minCases = config.testEnforcement?.minCases || 2;
+  if (f.contextOptimization) {
+    s.push('');
+    s.push('### Model Routing');
+    s.push('Delegate by complexity with `[omh:model-routing → <model>]`:');
+    s.push('- **harness:quick** (haiku): lookups, reads, exploration');
+    s.push('- **harness:standard** (sonnet): implementation, bug fixes, debugging');
+    s.push('- **harness:architect** (opus): architecture, complex refactoring, security');
+  }
 
-  // Read conventions cache if available
+  if (f.testEnforcement) {
+    const min = config.testEnforcement?.minCases || 2;
+    s.push('');
+    s.push('### Test Enforcement');
+    s.push(`After code changes: verify tests exist (min ${min} cases: happy, edge, error), suggest adding if missing, run to confirm pass.`);
+  }
+
+  if (f.autoPlanMode) {
+    s.push('');
+    s.push('### Auto-Plan Mode');
+    s.push('On 3+ distinct tasks: list → propose plan → confirm before proceeding.');
+  }
+
+  if (f.ambiguityDetection) {
+    s.push('');
+    s.push('### Ambiguity Guard');
+    s.push('On vague requests (no target, broad verbs like "refactor"/"improve"): AskUserQuestion to clarify before starting.');
+  }
+
+  if (f.dangerousGuard) {
+    s.push('');
+    s.push('### Dangerous Operation Guard');
+    s.push('Before destructive ops (rm -rf, force push, DROP TABLE): confirm with user. Never auto-approve. Caution on .env/credentials.');
+  }
+
+  if (f.commitConvention) {
+    s.push('');
+    s.push('### Commit Convention');
+    s.push('Follow project convention (auto-detected). Default: `<type>(<scope>): <description>`');
+  }
+
+  if (f.scopeGuard) {
+    s.push('');
+    s.push('### Scope Guard');
+    s.push('Only modify within `scopeGuard.allowedPaths`. Confirm before out-of-scope edits.');
+  }
+
+  // Multi-Agent — always included (skills are always installed)
+  s.push('');
+  s.push('### Multi-Agent');
+  s.push('On `/agent-spawn`: confirm → worktree `omh/agent-{N}` → never auto-merge → show diffs → warn on unmerged before stop.');
+
+  // --- Dynamic section (conventions — changes per project, placed last for cache) ---
   const cachePath = join(omhDir(root), 'conventions.json');
   let conventionsBlock = '';
-  if (existsSync(cachePath)) {
-    try {
+  try {
+    if (existsSync(cachePath)) {
       const conv = JSON.parse(readFileSync(cachePath, 'utf8'));
       if (conv.language) {
-        const lines = [`### Project Conventions (auto-detected)`, `- Language: ${conv.language}`];
+        const lines = [`### Conventions (auto-detected)`, `- Language: ${conv.language}`];
         if (conv.testFramework) lines.push(`- Test: ${conv.testFramework}`);
         if (conv.linter) lines.push(`- Linter: ${conv.linter}`);
         if (conv.formatter) lines.push(`- Formatter: ${conv.formatter}`);
         if (conv.buildTool) lines.push(`- Build: ${conv.buildTool}`);
         conventionsBlock = lines.join('\n');
       }
-    } catch {}
+    }
+  } catch {}
+
+  if (conventionsBlock) {
+    s.push('');
+    s.push(conventionsBlock);
   }
 
-  let content = tmpl
-    .replace('{{minCases}}', String(minCases))
-    .replace('{{conventionsBlock}}', conventionsBlock);
+  s.push('<!-- HARNESS:END -->');
+  return s.join('\n');
+}
+
+function appendClaudeMd(root) {
+  const mdPath = join(root, CLAUDE_MD);
+
+  // Read config
+  const configPath = join(omhDir(root), 'harness.config.json');
+  let config;
+  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { config = {}; }
+
+  const content = buildClaudeMdContent(root, config);
 
   // Ensure .claude dir exists
   mkdirSync(dirname(mdPath), { recursive: true });

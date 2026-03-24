@@ -40,6 +40,13 @@ const dictionary = {
       ],
       testEnforcementPrompt:
         '4. 테스트 미존재 시 작업 완료 전에 반드시 사용자에게 알림',
+      antiRatHeader: (count) =>
+        `[omh:anti-rationalization] ⛔ ${count}개 파일에 테스트 없음 — 작업 완료 전 확인 필요:`,
+      antiRatMissing: (file) => `  - ${file} → 테스트 파일 없음`,
+      antiRatFooter: (minCases) =>
+        `최소 ${minCases}개 테스트 케이스(happy, edge, error) 추가를 제안하세요. 테스트 없이 완료 선언 금지.`,
+      antiRatVerified: (count) =>
+        `[omh:test-enforcement] ✓ ${count}개 파일 테스트 확인됨. 실행으로 통과 여부 확인하세요.`,
     },
   },
 
@@ -66,6 +73,13 @@ const dictionary = {
       ],
       testEnforcementPrompt:
         '4. Notify user when tests are missing before completing task',
+      antiRatHeader: (count) =>
+        `[omh:anti-rationalization] ⛔ ${count} file(s) missing tests — verify before declaring complete:`,
+      antiRatMissing: (file) => `  - ${file} → no test file found`,
+      antiRatFooter: (minCases) =>
+        `Suggest adding at least ${minCases} test cases (happy, edge, error). Do NOT declare task complete without tests.`,
+      antiRatVerified: (count) =>
+        `[omh:test-enforcement] ✓ ${count} file(s) have tests. Run tests to verify they pass.`,
     },
   },
 };

@@ -199,32 +199,53 @@ describe('pre-prompt hook', () => {
   });
 });
 
-// --- post-task ---
+// --- post-task (anti-rationalization gate) ---
 describe('post-task hook', () => {
-  it('reminds about tests when code changes detected', () => {
+  it('reports missing tests for changed code file via stdin fallback', () => {
     writeConfig({
       features: { testEnforcement: true },
       testEnforcement: { minCases: 3, promptOnMissing: true },
     });
+    // No git repo in TMP → falls back to stdin tool_input
     const raw = runHook('post-task.mjs', {
       tool_name: 'Edit',
-      transcript: 'Modified src/service.ts',
+      tool_input: { file_path: 'src/service.ts' },
     });
     const ctx = getContext(raw);
-    assert.ok(ctx.includes('코드 변경이 감지'));
-    assert.ok(ctx.includes('3개'));
+    assert.ok(ctx.includes('anti-rationalization'), 'should emit anti-rationalization tag');
+    assert.ok(ctx.includes('service.ts'), 'should mention the file');
+    assert.ok(ctx.includes('3'), 'should mention min test cases');
+  });
+
+  it('reports verified when test file exists', () => {
+    writeConfig({
+      features: { testEnforcement: true },
+      testEnforcement: { minCases: 2 },
+    });
+    // Create a source file and its test file
+    mkdirSync(join(TMP, 'src'), { recursive: true });
+    writeFileSync(join(TMP, 'src', 'utils.ts'), 'export function foo() {}');
+    writeFileSync(join(TMP, 'src', 'utils.test.ts'), 'test("foo", () => {})');
+    const raw = runHook('post-task.mjs', {
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/utils.ts' },
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('test-enforcement'), 'should confirm tests found');
+    assert.ok(!ctx.includes('anti-rationalization'), 'should not warn');
   });
 
   it('stays silent when no code changes', () => {
     writeConfig({
       features: { testEnforcement: true },
-      testEnforcement: { minCases: 2, promptOnMissing: true },
+      testEnforcement: { minCases: 2 },
     });
     const raw = runHook('post-task.mjs', {
       tool_name: 'Read',
-      transcript: 'Read some files',
+      tool_input: { file_path: 'src/readme.md' },
     });
-    assert.equal(raw, '');
+    const parsed = parseHookOutput(raw);
+    assert.ok(!parsed || parsed.suppressOutput === true || raw === '');
   });
 
   it('stays silent when testEnforcement disabled', () => {
@@ -232,9 +253,25 @@ describe('post-task hook', () => {
       features: { testEnforcement: false },
       testEnforcement: { minCases: 2 },
     });
-    const raw = runHook('post-task.mjs', { tool_name: 'Edit' });
+    const raw = runHook('post-task.mjs', {
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/service.ts' },
+    });
     const parsed = parseHookOutput(raw);
     assert.ok(!parsed || parsed.suppressOutput === true);
+  });
+
+  it('ignores test files themselves', () => {
+    writeConfig({
+      features: { testEnforcement: true },
+      testEnforcement: { minCases: 2 },
+    });
+    const raw = runHook('post-task.mjs', {
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/service.test.ts' },
+    });
+    const parsed = parseHookOutput(raw);
+    assert.ok(!parsed || parsed.suppressOutput === true || raw === '');
   });
 });
 
