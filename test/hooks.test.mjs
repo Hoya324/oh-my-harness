@@ -278,7 +278,7 @@ describe('post-task hook', () => {
 // --- session-start ---
 describe('session-start hook', () => {
   it('detects Node.js conventions', () => {
-    writeConfig({ features: { conventionSetup: true } });
+    writeConfig({ features: { conventionSetup: true, skillScaffolding: false } });
     writeFileSync(join(TMP, 'package.json'), JSON.stringify({
       devDependencies: { jest: '^29.0.0', eslint: '^8.0.0' },
     }));
@@ -289,7 +289,7 @@ describe('session-start hook', () => {
   });
 
   it('is silent for unknown project type', () => {
-    writeConfig({ features: { conventionSetup: true } });
+    writeConfig({ features: { conventionSetup: true, skillScaffolding: false } });
     const raw = runHook('session-start.mjs', {});
     assert.equal(raw, '');
   });

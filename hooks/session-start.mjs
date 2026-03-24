@@ -51,6 +51,14 @@ try {
     if (conventions.buildTool) parts.push(`build: ${conventions.buildTool}`);
     console.log(hookOutput('SessionStart', parts.join(' | ')));
   }
+
+  // Skill scaffold hint
+  if (config.features?.skillScaffolding !== false) {
+    const skillsDir = join(projectRoot, '.claude', 'skills');
+    if (!existsSync(skillsDir)) {
+      console.log(hookOutput('SessionStart', '[omh:skill-hint] No project skills found. Run /init-project to scaffold.'));
+    }
+  }
 } catch {
   console.log(hookSilent());
 }

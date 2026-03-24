@@ -43,6 +43,20 @@ graph LR
 
 ---
 
+## Philosophy
+
+**Minimal guards, maximum customization.**
+
+OMH believes the best harness is one you barely notice. Instead of blocking and enforcing, OMH guides with smart defaults — warnings instead of walls, reminders instead of restrictions.
+
+Where OMH truly shines is helping you build and use **project-specific skills**. Every codebase is different: your test conventions, review checklists, and lint workflows are unique. OMH auto-scaffolds per-project skills based on your detected stack, then gets out of the way so you can customize them.
+
+- **Built-in skills** (agent management, setup) stay in the plugin
+- **Project skills** (code-review, test-write, lint-fix) live in `.claude/skills/` — your project, your rules
+- Run `/init-project` to scaffold, then customize freely
+
+---
+
 ## Quick Start
 
 ### Option A: Claude Code Plugin (recommended)
@@ -111,6 +125,7 @@ oh-my-harness init
 | 10 | Usage Tracking | `PostToolUse` | ON | Records tool usage per session |
 | 11 | Auto .gitignore | CLI init | ON | Adds `.claude/.omh/` to `.gitignore` |
 | 12 | Multi-Agent | `/agent-spawn` | — | Parallel Claude agents in tmux with git worktrees |
+| 13 | Skill Scaffolding | `/init-project` | ON | Auto-generates project-specific skills based on detected stack |
 
 > See [Feature Details](docs/features.md) for full descriptions of each feature.
 

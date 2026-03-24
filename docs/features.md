@@ -256,3 +256,52 @@ Silently records every tool invocation to `.claude/.omh/usage.json`:
   }
 }
 ```
+
+### 11. Skill Scaffolding
+
+Automatically generates project-specific skills in `.claude/skills/` based on detected conventions.
+
+**Scaffolded skills:**
+
+| Skill | What it does |
+|-------|-------------|
+| `code-review` | Language-specific review checklist |
+| `test-write` | Test writing conventions for detected framework |
+| `lint-fix` | Lint check and auto-fix workflow |
+
+**Supported languages:**
+
+| Language | Test Framework | Linter | Notes |
+|----------|---------------|--------|-------|
+| Node.js | vitest / jest / mocha | eslint / biome | TypeScript support auto-detected |
+| Python | pytest | ruff / flake8 | black / ruff formatting |
+| Go | go test | golangci-lint | Table-driven test patterns |
+| Rust | cargo test | clippy | rustfmt formatting |
+| Java | junit | — | Gradle / Maven build |
+| Kotlin | kotest / junit5 | ktlint / detekt | Null safety checks |
+
+**How it works:**
+
+1. Run `/init-project` or `oh-my-harness init`
+2. OMH detects your project's language and tools
+3. Skill templates are rendered with your specific tools (e.g., "vitest" not "test runner")
+4. Skills are written to `.claude/skills/` — Claude Code auto-discovers them
+5. Customize freely — OMH never overwrites existing skills
+
+> Skills are user-owned files. `oh-my-harness reset` will NOT delete them.
+
+**Session hint:**
+
+If no project skills are detected, OMH shows a hint on session start:
+```
+[omh:skill-hint] No project skills found. Run /init-project to scaffold.
+```
+
+**Configuration:**
+```json
+{
+  "features": { "skillScaffolding": true }
+}
+```
+
+Set to `false` to disable scaffold hints and skip skill generation during init.

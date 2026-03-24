@@ -1,6 +1,6 @@
 ---
 name: init-project
-description: Detect and apply project conventions for this codebase (language, test framework, linter)
+description: Detect and apply project conventions for this codebase (language, test framework, linter) and scaffold project-specific skills
 level: 2
 ---
 
@@ -20,5 +20,11 @@ Usage: /init-project
 5. Read `.claude/.omh/conventions.json` if it exists and show cached results
 6. Update the cache by writing detection results to `.claude/.omh/conventions.json`
 7. Report all findings to the user in a summary table
+8. Check if `.claude/skills/` directory exists
+9. If `.claude/skills/` does not exist and a language was detected:
+   - Scaffold project-specific skills (code-review, test-write, lint-fix) based on detected conventions
+   - Use the detected test framework, linter, and formatter in skill templates
+   - Report scaffolded skills to the user
+10. If `.claude/skills/` already exists, inform the user that existing skills are preserved
 
 This is typically run once when starting work on a new project.

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync, rmSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync, rmSync, readdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { createInterface } from 'readline';
+import { scaffoldProjectSkills } from '../lib/scaffold-skills.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -111,7 +112,7 @@ async function init(root, scope) {
   const hooksDir = join(omh, 'hooks');
   const cmdDir = join(root, COMMANDS_DIR);
   const isFirstRun = !existsSync(join(omh, 'harness.config.json'));
-  const totalSteps = 7;
+  const totalSteps = 8;
 
   // Header
   if (isFirstRun) {
@@ -198,6 +199,36 @@ async function init(root, scope) {
   installHud(root);
   logDone('Status line configured');
 
+  // Step 8: Project Skills
+  logStep(8, totalSteps, 'Project Skills');
+  const configForSkills = JSON.parse(readFileSync(join(omh, 'harness.config.json'), 'utf8'));
+  if (configForSkills.features?.skillScaffolding !== false) {
+    const skillsDir = join(root, '.claude', 'skills');
+    if (existsSync(skillsDir) && readdirSync(skillsDir).length > 0) {
+      logDone('Project skills preserved (existing)');
+    } else {
+      // Detect or use cached conventions
+      let conventions;
+      const convCachePath = join(omh, 'conventions.json');
+      if (existsSync(convCachePath)) {
+        try { conventions = JSON.parse(readFileSync(convCachePath, 'utf8')); } catch {}
+      }
+      if (!conventions || !conventions.language) {
+        const { detectConventions } = await import('../lib/detect.mjs');
+        conventions = detectConventions(root);
+      }
+      const result = scaffoldProjectSkills(root, conventions);
+      if (result.created.length > 0) {
+        logDone(`${result.created.length} project skills scaffolded (${conventions.language || 'generic'})`);
+        logInfo(result.created.join(', '));
+      } else {
+        logDone('No skills scaffolded (language not detected)');
+      }
+    }
+  } else {
+    logInfo('Skill scaffolding disabled');
+  }
+
   // Summary
   log('');
   log(`  ${GREEN}${BOLD}oh-my-harness is ready!${RESET}`);
@@ -205,6 +236,7 @@ async function init(root, scope) {
   log(`  ${DIM}Config ${RESET} .claude/.omh/harness.config.json`);
   log(`  ${DIM}Scope  ${RESET} ${scopeLabel}`);
   log(`  ${DIM}Hooks  ${RESET} 8 active (6 events)`);
+  log(`  ${DIM}Skills ${RESET} project skills in .claude/skills/`);
   log(`  ${DIM}Agents ${RESET} haiku / sonnet / opus`);
   log('');
   log(`  ${DIM}Use ${RESET}${BOLD}/set-harness${RESET}${DIM} to customize anytime.${RESET}`);
@@ -494,6 +526,7 @@ function reset(root) {
     rmSync(omh, { recursive: true });
     logDone('Removed .claude/.omh/');
   }
+  logInfo('Project skills (.claude/skills/) preserved — user-owned');
   // Remove commands
   const allCmds = [
     'set-harness.md', 'init-project.md',
@@ -594,6 +627,11 @@ function showHelp() {
     oh-my-harness status                           Show configuration
     oh-my-harness usage ${DIM}[--verbose]${RESET}               Show tool statistics
     oh-my-harness reset                            Remove all harness files
+
+  ${BOLD}Skill Scaffolding${RESET}
+    On init, project-specific skills (code-review, test-write, lint-fix) are
+    scaffolded into ${DIM}.claude/skills/${RESET} based on detected language/framework.
+    Disable with: ${DIM}oh-my-harness set features.skillScaffolding false${RESET}
 
   ${BOLD}Options${RESET}
     --scope project   ${DIM}Install to .claude/settings.local.json (default)${RESET}

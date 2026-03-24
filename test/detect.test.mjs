@@ -67,7 +67,37 @@ line-length = 100
     assert.equal(result.formatter, 'rustfmt');
   });
 
-  it('detects Java Gradle project', () => {
+  it('detects Kotlin project via build.gradle.kts', () => {
+    writeFileSync(join(TMP, 'build.gradle.kts'), 'plugins { kotlin("jvm") version "1.9.0" }\n');
+    const result = detectConventions(TMP);
+    assert.equal(result.language, 'kotlin');
+    assert.equal(result.testFramework, 'junit5');
+    assert.equal(result.buildTool, 'gradle');
+  });
+
+  it('detects Kotlin project with kotest and ktlint via build.gradle.kts', () => {
+    writeFileSync(join(TMP, 'build.gradle.kts'), `
+plugins { kotlin("jvm") version "1.9.0" }
+dependencies {
+  testImplementation("io.kotest:kotest-runner-junit5:5.7.0")
+}
+plugins { id("org.jlleitschuh.gradle.ktlint") version "11.6.0" }
+`);
+    const result = detectConventions(TMP);
+    assert.equal(result.language, 'kotlin');
+    assert.equal(result.testFramework, 'kotest');
+    assert.equal(result.linter, 'ktlint');
+    assert.equal(result.buildTool, 'gradle');
+  });
+
+  it('detects Kotlin project via build.gradle with kotlin plugin', () => {
+    writeFileSync(join(TMP, 'build.gradle'), 'apply plugin: "kotlin"\n');
+    const result = detectConventions(TMP);
+    assert.equal(result.language, 'kotlin');
+    assert.equal(result.buildTool, 'gradle');
+  });
+
+  it('detects Java Gradle project (plain build.gradle without kotlin)', () => {
     writeFileSync(join(TMP, 'build.gradle'), 'plugins { id "java" }\n');
     const result = detectConventions(TMP);
     assert.equal(result.language, 'java');

@@ -35,6 +35,7 @@ Example: /set-harness multiAgent.useWorktree false
 - **features.scopeGuard** (bool) — Restrict file modifications to allowed paths
 - **features.usageTracking** (bool) — Track tool usage per session
 - **features.autoGitignore** (bool) — Auto-add .claude/.omh/ to .gitignore
+- **features.skillScaffolding** (bool) — Scaffold project-specific skills on init
 - **testEnforcement.minCases** (number) — Minimum test cases required per file
 - **testEnforcement.promptOnMissing** (bool) — Alert when tests are missing
 - **modelRouting.quick/standard/complex** (haiku/sonnet/opus) — Model for each tier
