@@ -88,7 +88,39 @@ Based on the user's answers:
 mkdir -p .claude/.omh
 ```
 
-Write the config to `.claude/.omh/harness.config.json` with the user's choices merged into the defaults.
+Write the config to `.claude/.omh/harness.config.json` with the user's choices merged into the following default template.
+
+**IMPORTANT: Feature keys MUST match exactly — hooks read these exact names.**
+
+```json
+{
+  "version": 1,
+  "features": {
+    "conventionSetup": true,
+    "testEnforcement": true,
+    "contextOptimization": true,
+    "autoPlanMode": true,
+    "ambiguityDetection": true,
+    "dangerousGuard": true,
+    "contextSnapshot": true,
+    "commitConvention": true,
+    "scopeGuard": false,
+    "usageTracking": true,
+    "autoGitignore": true
+  },
+  "testEnforcement": { "minCases": 2, "promptOnMissing": true },
+  "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
+  "autoPlan": { "threshold": 3 },
+  "ambiguityDetection": { "threshold": 2, "language": "auto" },
+  "commitConvention": { "style": "auto" },
+  "scopeGuard": { "allowedPaths": [] },
+  "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" }
+}
+```
+
+- For **Minimal profile**, set all features to `false` except: `testEnforcement`, `dangerousGuard`, `commitConvention`, `autoGitignore`
+- For **Custom profile**, toggle individual features based on user selection
+- Never rename feature keys — hooks depend on these exact names
 
 ### 6. Update .gitignore
 
@@ -101,13 +133,16 @@ fi
 ### 7. Enable HUD (Status Line)
 
 Register the oh-my-harness HUD in the user's Claude Code settings.
+
+**IMPORTANT**: `$CLAUDE_PLUGIN_ROOT` is NOT available in statusLine context (it's a global setting, not a plugin hook). Use a dynamic path lookup instead.
+
 Write the statusLine config to `~/.claude/settings.json`:
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "node \"$CLAUDE_PLUGIN_ROOT/hud/omh-hud.mjs\""
+    "command": "bash -c 'node \"$(ls ~/.claude/plugins/cache/oh-my-harness/*/*/hud/omh-hud.mjs 2>/dev/null | head -1)\"'"
   }
 }
 ```

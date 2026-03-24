@@ -45,14 +45,16 @@ try {
   }
 
   if (toolName === 'Write' || toolName === 'Edit') {
+    const rawInput = input.tool_input || input.toolInput || {};
+    const filePath = rawInput.file_path || rawInput.filePath || rawInput.path || '';
     const sensitivePatterns = [
-      { pattern: /\.env(?:\.|$|")/, label: '.env file' },
+      { pattern: /\.env(?:\.|$)/, label: '.env file' },
       { pattern: /credentials/i, label: 'credentials file' },
       { pattern: /secret/i, label: 'secrets file' },
       { pattern: /id_rsa|\.pem|\.key/, label: 'private key file' },
     ];
     for (const { pattern, label } of sensitivePatterns) {
-      if (pattern.test(toolInput)) warnings.push(`writing to ${label}`);
+      if (pattern.test(filePath)) warnings.push(`writing to ${label}`);
     }
   }
 
