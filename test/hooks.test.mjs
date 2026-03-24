@@ -358,7 +358,7 @@ describe('pre-compact hook', () => {
     writeConfig({ features: { contextSnapshot: true } });
     const raw = runHook('pre-compact.mjs', { summary: 'Working on auth module' });
     const parsed = parseHookOutput(raw);
-    assert.ok(parsed.systemMessage.includes('oh-my-harness'));
+    assert.ok(parsed.systemMessage.includes('omh'));
     const snapshotPath = join(TMP, '.claude', '.omh', 'context-snapshot.md');
     assert.ok(existsSync(snapshotPath));
     const snapshot = readFileSync(snapshotPath, 'utf8');
