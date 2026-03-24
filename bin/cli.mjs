@@ -106,7 +106,43 @@ function init(root) {
   updateGitignore(root, 'add');
   console.log('  updated .gitignore (.claude/.omh/ added)');
 
+  // Install HUD (statusLine) — npm mode copies hud to .claude/.omh/hud/
+  installHud(root);
+  console.log('  installed HUD status line');
+
   console.log('\n  oh-my-harness initialized! Use /set-harness to configure.');
+}
+
+// --- HUD ---
+function installHud(root) {
+  const hudSrc = join(PKG_ROOT, 'hud', 'omh-hud.mjs');
+  const hudDest = join(omhDir(root), 'hud');
+  mkdirSync(hudDest, { recursive: true });
+  cpSync(hudSrc, join(hudDest, 'omh-hud.mjs'));
+
+  // Skip global settings update during tests
+  if (process.env.NODE_TEST_CONTEXT || process.env.OMH_SKIP_GLOBAL) return;
+
+  // Register statusLine in user settings (~/.claude/settings.json)
+  const homedir = process.env.HOME || process.env.USERPROFILE || '';
+  const userSettingsPath = join(homedir, '.claude', 'settings.json');
+  let userSettings = {};
+  if (existsSync(userSettingsPath)) {
+    try { userSettings = JSON.parse(readFileSync(userSettingsPath, 'utf8')); } catch {}
+  }
+
+  // Only set if not already configured or if it's an OMH statusLine
+  const existing = userSettings.statusLine;
+  const isOmh = existing?.command?.includes('omh-hud');
+  if (!existing || isOmh) {
+    const hudPath = join(omhDir(root), 'hud', 'omh-hud.mjs');
+    userSettings.statusLine = {
+      type: 'command',
+      command: `node "${hudPath}"`,
+    };
+    mkdirSync(dirname(userSettingsPath), { recursive: true });
+    writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2) + '\n');
+  }
 }
 
 // --- MERGE SETTINGS ---

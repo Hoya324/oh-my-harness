@@ -13,6 +13,7 @@
   "files": [
     "bin",
     "hooks",
+    "hud",
     "lib",
     "skills",
     "agents",

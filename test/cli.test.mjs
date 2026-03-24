@@ -14,6 +14,7 @@ function runCli(...args) {
     cwd: TMP,
     encoding: 'utf8',
     timeout: 10000,
+    env: { ...process.env, OMH_SKIP_GLOBAL: '1' },
   });
 }
 

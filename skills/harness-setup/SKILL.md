@@ -98,7 +98,23 @@ if ! grep -q '.claude/.omh/' .gitignore 2>/dev/null; then
 fi
 ```
 
-### 7. Report Summary
+### 7. Enable HUD (Status Line)
+
+Register the oh-my-harness HUD in the user's Claude Code settings.
+Write the statusLine config to `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "node \"$CLAUDE_PLUGIN_ROOT/hud/omh-hud.mjs\""
+  }
+}
+```
+
+If `statusLine` is already set to a non-harness value, ask the user before overwriting.
+
+### 8. Report Summary
 
 Show the duck one more time, then output:
 ```
@@ -108,6 +124,7 @@ Project  : {language} | test: {testFramework} | lint: {linter} | fmt: {formatter
 Config   : .claude/.omh/harness.config.json
 Features : {N} active ({disabled features list})
 Commit   : {commitStyle}
+HUD      : enabled (restart Claude Code to see status line)
 
 Hooks are provided automatically by the plugin.
 Use /set-harness to change settings anytime.
