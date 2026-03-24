@@ -7,5 +7,9 @@
   "license": "MIT",
   "keywords": ["claude-code", "plugin", "harness", "hooks", "multi-agent"],
   "skills": "./skills/",
-  "agents": "./agents/"
+  "agents": [
+    "./agents/quick.md",
+    "./agents/standard.md",
+    "./agents/architect.md"
+  ]
 }
