@@ -29,7 +29,7 @@ const dictionary = {
     },
     messages: {
       autoPlan: (count) =>
-        `[omh:auto-plan] ${count}개의 독립 작업이 감지되었습니다. plan 모드 사용을 권장합니다. 작업을 나열하고 실행 순서를 사용자에게 확인하세요.`,
+        `[omh:auto-plan] ${count}개의 독립 작업이 감지되었습니다. EnterPlanMode 도구를 호출하여 plan 모드로 전환하세요.`,
       ambiguityGuard:
         '[omh:ambiguity-guard] 요청이 모호합니다. 작업 전에 AskUserQuestion 도구로 사용자에게 구체적 범위와 방향을 확인하세요.',
       testEnforcement: (minCases) => [
@@ -55,7 +55,7 @@ const dictionary = {
     },
     messages: {
       autoPlan: (count) =>
-        `[omh:auto-plan] ${count} independent tasks detected. Plan mode recommended. List tasks and confirm execution order with the user.`,
+        `[omh:auto-plan] ${count} independent tasks detected. Call EnterPlanMode tool to switch to plan mode.`,
       ambiguityGuard:
         '[omh:ambiguity-guard] Request is ambiguous. Use AskUserQuestion tool to clarify specific scope and direction before starting work.',
       testEnforcement: (minCases) => [

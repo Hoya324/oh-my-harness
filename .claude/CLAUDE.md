@@ -22,9 +22,9 @@ When delegating, prefix with: `[omh:model-routing → <model>]` (e.g. `[omh:mode
 
 ### Auto-Plan Mode
 When a user message contains 3+ distinct requests or tasks:
-1. List all detected tasks
-2. Propose an execution plan with ordering and dependencies
-3. Ask for confirmation before proceeding
+1. Call the `EnterPlanMode` tool to switch to plan mode (Shift+Tab equivalent)
+2. In plan mode, propose an execution plan with ordering and dependencies
+3. Wait for user approval before proceeding with implementation
 
 ### Ambiguity Guard
 When a request is vague (no specific file/function target, scope-less verbs like "refactor" or "improve"):

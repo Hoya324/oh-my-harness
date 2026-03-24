@@ -153,7 +153,7 @@ Detects 3+ independent tasks in a single message:
 - Bullet points (`-`, `*`)
 - Korean conjunctions (`그리고`, `또한`, `추가로`, `아울러`, `더불어`)
 
-Suggests plan mode — does not force it.
+Calls `EnterPlanMode` tool to switch to real plan mode (Shift+Tab equivalent).
 
 ### 5. Ambiguity Guard
 
