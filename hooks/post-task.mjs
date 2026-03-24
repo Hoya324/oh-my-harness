@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 import { hookOutput, hookSilent } from './lib/output.mjs';
+import { getLang } from './lib/dictionary.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
@@ -28,15 +29,12 @@ try {
   const hasCodeFiles = codeExtPattern.test(transcript);
 
   if (hasCodeChanges || hasCodeFiles) {
+    const lang = config.language || 'ko';
+    const dict = getLang(lang);
     const minCases = config.testEnforcement?.minCases || 2;
-    const lines = [
-      `[omh:test-enforcement] 코드 변경이 감지되었습니다. 다음을 확인하세요:`,
-      `1. 변경된 코드에 대한 테스트 파일이 존재하는지 확인`,
-      `2. 각 테스트 파일에 최소 ${minCases}개 이상의 테스트 케이스가 있는지 확인`,
-      `3. 테스트가 없다면 사용자에게 테스트 추가를 제안`,
-    ];
+    const lines = dict.messages.testEnforcement(minCases);
     if (config.testEnforcement?.promptOnMissing) {
-      lines.push(`4. 테스트 미존재 시 작업 완료 전에 반드시 사용자에게 알림`);
+      lines.push(dict.messages.testEnforcementPrompt);
     }
     console.log(hookOutput('Stop', lines.join('\n')));
   }

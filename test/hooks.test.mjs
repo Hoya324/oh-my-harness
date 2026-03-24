@@ -131,6 +131,72 @@ describe('pre-prompt hook', () => {
     const ctx = getContext(raw);
     assert.ok(ctx.includes('4'));
   });
+
+  it('detects comma-separated tasks (Korean)', () => {
+    writeConfig({
+      features: { autoPlanMode: true, ambiguityDetection: false },
+      autoPlan: { threshold: 3 },
+      ambiguityDetection: { threshold: 2 },
+    });
+    const raw = runHook('pre-prompt.mjs', {
+      prompt: '기능, 성능, 컨벤션을 확인해줘',
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('3개의 독립 작업') || ctx.includes('3'));
+  });
+
+  it('detects comma-separated tasks (English)', () => {
+    writeConfig({
+      features: { autoPlanMode: true, ambiguityDetection: false },
+      autoPlan: { threshold: 3 },
+      ambiguityDetection: { threshold: 2 },
+    });
+    const raw = runHook('pre-prompt.mjs', {
+      prompt: 'Check features, performance, conventions in the current branch',
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('3'));
+  });
+
+  it('detects open-ended scope with 등 as ambiguous', () => {
+    writeConfig({
+      features: { autoPlanMode: false, ambiguityDetection: true },
+      autoPlan: { threshold: 3 },
+      ambiguityDetection: { threshold: 2 },
+    });
+    const raw = runHook('pre-prompt.mjs', {
+      prompt: '기능, 성능, 등을 확인해서 리뷰해줘',
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('모호합니다'));
+  });
+
+  it('fires both auto-plan and ambiguity for complex vague request', () => {
+    writeConfig({
+      features: { autoPlanMode: true, ambiguityDetection: true },
+      autoPlan: { threshold: 3 },
+      ambiguityDetection: { threshold: 2 },
+    });
+    const raw = runHook('pre-prompt.mjs', {
+      prompt: '현재 브랜치에 있는 기능, 성능, 컨벤션, 등을 확인해서 리뷰해줘',
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('auto-plan'), 'should detect multi-task');
+    assert.ok(ctx.includes('ambiguity-guard'), 'should detect ambiguity');
+  });
+
+  it('uses English messages for English prompts', () => {
+    writeConfig({
+      features: { autoPlanMode: false, ambiguityDetection: true },
+      autoPlan: { threshold: 3 },
+      ambiguityDetection: { threshold: 2 },
+    });
+    const raw = runHook('pre-prompt.mjs', {
+      prompt: 'review it etc.',
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('ambiguous') || ctx.includes('AskUserQuestion'));
+  });
 });
 
 // --- post-task ---

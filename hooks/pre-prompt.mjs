@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 import { hookOutput, hookSilent } from './lib/output.mjs';
+import { getDictionary } from './lib/dictionary.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
@@ -21,7 +22,9 @@ try {
   const prompt = input.prompt || input.message || '';
   if (!prompt.trim()) { console.log(hookSilent()); process.exit(0); }
 
-  const messages = [];
+  const dict = getDictionary(prompt);
+  const { patterns, messages } = dict;
+  const result = [];
 
   // 4-A: Multi-task detection → Auto-Plan
   if (config.features?.autoPlanMode) {
@@ -31,10 +34,16 @@ try {
     if (numbered) taskCount = Math.max(taskCount, numbered.length);
     const bullets = prompt.match(/^\s*[-*]\s+\S/gm);
     if (bullets) taskCount = Math.max(taskCount, bullets.length);
-    const conjunctions = prompt.match(/(그리고|또한|추가로|아울러|더불어|그 다음)/g);
+    const conjunctions = prompt.match(patterns.conjunctions);
     if (conjunctions) taskCount = Math.max(taskCount, conjunctions.length + 1);
+    // Comma-separated noun phrases: "기능, 성능, 컨벤션" or "features, performance, conventions"
+    const commaItems = prompt.match(/[\w가-힣]+(?:\s*,\s*[\w가-힣]+){2,}/g);
+    if (commaItems) {
+      const maxItems = Math.max(...commaItems.map(m => m.split(',').length));
+      taskCount = Math.max(taskCount, maxItems);
+    }
     if (taskCount >= threshold) {
-      messages.push(`[omh:auto-plan] ${taskCount}개의 독립 작업이 감지되었습니다. plan 모드 사용을 권장합니다. 작업을 나열하고 실행 순서를 사용자에게 확인하세요.`);
+      result.push(messages.autoPlan(taskCount));
     }
   }
 
@@ -42,20 +51,18 @@ try {
   if (config.features?.ambiguityDetection) {
     const ambThreshold = config.ambiguityDetection?.threshold || 2;
     let ambiguityScore = 0;
-    if (/(?:이거|그거|저거|이것|그것|저것)\s/.test(prompt)) ambiguityScore++;
-    if (/(?:리팩토링|개선|정리|수정|고쳐|바꿔|변경|업데이트)(?:해줘|해주세요|하자|해봐)/.test(prompt) &&
-        !/(?:파일|함수|클래스|메서드|컴포넌트|모듈)\s/.test(prompt)) ambiguityScore++;
-    if (/(?:하거나|든지|같은거|뭐든|아무거나)/.test(prompt)) ambiguityScore++;
+    if (patterns.vaguePronouns.test(prompt)) ambiguityScore++;
+    if (patterns.vagueVerbs.test(prompt) && !patterns.targetNouns.test(prompt)) ambiguityScore++;
+    if (patterns.vagueExpressions.test(prompt)) ambiguityScore++;
+    if (patterns.openEndedScope.test(prompt)) ambiguityScore++;
     if (prompt.trim().length <= 15 && !/[A-Za-z_]\w*[\./]/.test(prompt)) ambiguityScore++;
-    if (/(?:fix it|change it|update it|refactor|clean up|improve)\b/i.test(prompt) &&
-        !/(?:file|function|class|method|component)\s/i.test(prompt)) ambiguityScore++;
     if (ambiguityScore >= ambThreshold) {
-      messages.push(`[omh:ambiguity-guard] 요청이 모호합니다. 작업 전에 AskUserQuestion 도구로 사용자에게 구체적 범위와 방향을 확인하세요.`);
+      result.push(messages.ambiguityGuard);
     }
   }
 
-  if (messages.length > 0) {
-    console.log(hookOutput('UserPromptSubmit', messages.join('\n')));
+  if (result.length > 0) {
+    console.log(hookOutput('UserPromptSubmit', result.join('\n')));
   }
 } catch {
   console.log(hookSilent());
