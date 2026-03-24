@@ -128,3 +128,4 @@ Example: /agent-spawn 3 fix all TypeScript errors in src/
 - **--permission-mode bypassPermissions -p**: agents run non-interactively without consent prompts — always disclose this to the user
 - **Never exceed maxAgents**: if N > maxAgents, cap and inform the user
 - **Auto-view**: always open a new terminal window showing the tmux session after spawning
+- **Shell injection prevention**: task descriptions are written to TASK.md files, never passed inline to shell commands

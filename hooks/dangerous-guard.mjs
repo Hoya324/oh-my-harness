@@ -38,6 +38,9 @@ try {
       { pattern: /curl\s+.*\|\s*(ba)?sh/, label: 'curl | sh (remote execution)' },
       { pattern: /npm\s+publish/, label: 'npm publish' },
       { pattern: /docker\s+system\s+prune/, label: 'docker system prune' },
+      { pattern: /\bsudo\s+/, label: 'sudo (elevated privileges)' },
+      { pattern: /\bchown\s+/, label: 'chown (ownership change)' },
+      { pattern: /\bln\s+(-[a-zA-Z]*s[a-zA-Z]*f|-sf|-fs)\b/, label: 'ln -sf (force symlink)' },
     ];
     for (const { pattern, label } of dangerousPatterns) {
       if (pattern.test(toolInput)) warnings.push(label);
