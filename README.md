@@ -70,6 +70,34 @@ Either way, start Claude Code as usual — harness features activate automatical
 
 ---
 
+## Updating
+
+When a new version is released, update to get the latest hooks, detection patterns, and features.
+
+### Plugin mode
+
+```bash
+# Pull the latest plugin version
+claude plugins update oh-my-harness
+
+# Re-initialize to apply updated hooks and dictionary
+/harness-setup
+```
+
+### npm CLI mode
+
+```bash
+# Update the global package
+npm update -g oh-my-harness
+
+# Re-run init to copy updated hooks into your project
+oh-my-harness init
+```
+
+> **Note:** `init` preserves your existing `harness.config.json`. Only hooks, commands, and CLAUDE.md instructions are refreshed.
+
+---
+
 ## Features Overview
 
 | # | Feature | Hook | Default | What it does |

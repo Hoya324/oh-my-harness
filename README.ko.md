@@ -70,6 +70,34 @@ oh-my-harness init
 
 ---
 
+## 업데이트
+
+새 버전이 출시되면 최신 훅, 감지 패턴, 기능을 적용할 수 있습니다.
+
+### 플러그인 모드
+
+```bash
+# 최신 플러그인 버전 가져오기
+claude plugins update oh-my-harness
+
+# 업데이트된 훅과 사전 적용을 위해 재초기화
+/harness-setup
+```
+
+### npm CLI 모드
+
+```bash
+# 글로벌 패키지 업데이트
+npm update -g oh-my-harness
+
+# init 재실행으로 업데이트된 훅을 프로젝트에 복사
+oh-my-harness init
+```
+
+> **참고:** `init`은 기존 `harness.config.json`을 보존합니다. 훅, 명령어, CLAUDE.md 지시문만 갱신됩니다.
+
+---
+
 ## 기능 목록
 
 | # | 기능 | 훅 | 기본값 | 설명 |

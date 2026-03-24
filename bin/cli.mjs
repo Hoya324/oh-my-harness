@@ -68,6 +68,7 @@ function init(root) {
   const hookLibDir = join(hooksDir, 'lib');
   mkdirSync(hookLibDir, { recursive: true });
   cpSync(join(PKG_ROOT, 'hooks', 'lib', 'output.mjs'), join(hookLibDir, 'output.mjs'));
+  cpSync(join(PKG_ROOT, 'hooks', 'lib', 'dictionary.mjs'), join(hookLibDir, 'dictionary.mjs'));
   cpSync(join(PKG_ROOT, 'lib', 'detect.mjs'), join(hookLibDir, 'detect.mjs'));
   const allHooks = [
     'session-start.mjs', 'pre-prompt.mjs', 'post-task.mjs',
