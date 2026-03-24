@@ -1,10 +1,12 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { scaffoldProjectSkills, renderTemplate } from '../lib/scaffold-skills.mjs';
 
-const TMP = join(import.meta.dirname, '.tmp-scaffold');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TMP = join(__dirname, '.tmp-scaffold');
 
 describe('scaffold-skills', () => {
   beforeEach(() => { mkdirSync(TMP, { recursive: true }); });
