@@ -1,6 +1,10 @@
 <!-- HARNESS:START -->
 ## oh-my-harness: Smart Defaults
 
+### Hook Output Visibility
+When you receive `[omh:*]` tags from hook output (via system-reminder or additionalContext), always relay them to the user.
+Show the tag and message in your response so the user can see which OMH feature fired.
+
 ### Test Enforcement
 After completing any code change, verify:
 1. Tests exist for the changed code
