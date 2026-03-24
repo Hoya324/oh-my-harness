@@ -97,6 +97,23 @@ describe('cli init', () => {
     const matches = gi.match(/\.claude\/\.omh\//g);
     assert.equal(matches.length, 1);
   });
+
+  it('accepts --scope project flag', () => {
+    runCli('init', '--scope', 'project');
+    assert.ok(existsSync(join(TMP, '.claude', 'settings.local.json')));
+    const settings = JSON.parse(readFileSync(join(TMP, '.claude', 'settings.local.json'), 'utf8'));
+    assert.ok(settings.hooks?.SessionStart);
+  });
+
+  it('defaults to project scope in non-interactive mode', () => {
+    runCli('init');
+    assert.ok(existsSync(join(TMP, '.claude', 'settings.local.json')));
+  });
+
+  it('shows scope info in init output', () => {
+    const output = runCli('init', '--scope', 'project');
+    assert.ok(output.includes('Project'));
+  });
 });
 
 describe('cli reset', () => {

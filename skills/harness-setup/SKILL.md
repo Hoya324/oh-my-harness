@@ -52,18 +52,23 @@ Let's set up your project in a few quick steps.
 
 Ask the user the following questions using AskUserQuestion (ask all at once):
 
-**Question 1 — Project Detection**
+**Question 1 — Installation Scope**
+> "설치 범위를 선택해주세요."
+- Project (Recommended): `.claude/settings.local.json` — 이 프로젝트에만 적용
+- User (Global): `~/.claude/settings.json` — 모든 프로젝트에 적용
+
+**Question 2 — Project Detection**
 > "프로젝트 컨벤션을 자동 감지할까요?"
 - Auto-detect (Recommended): package.json, pyproject.toml, go.mod 등을 스캔해서 자동 설정
 - Manual: 직접 언어/프레임워크를 지정
 
-**Question 2 — Feature Profile**
+**Question 3 — Feature Profile**
 > "어떤 기능 프로필을 사용할까요?"
 - Full (Recommended): 모든 기능 활성화 (scopeGuard 제외)
 - Minimal: testEnforcement + dangerousGuard + commitConvention만 활성화
 - Custom: 기능을 하나씩 선택
 
-**Question 3 — Commit Convention**
+**Question 4 — Commit Convention**
 > "커밋 메시지 컨벤션은?"
 - Auto-detect (Recommended): git log에서 자동 감지
 - Conventional Commits: `type(scope): description`
@@ -72,6 +77,9 @@ Ask the user the following questions using AskUserQuestion (ask all at once):
 ### 4. Apply Choices
 
 Based on the user's answers:
+
+- **Project scope** selected → Config and hooks target `.claude/settings.local.json` (this project only)
+- **User scope** selected → Config stays in `.claude/.omh/` but hooks are registered in `~/.claude/settings.json` (applies to all projects)
 
 - **Auto-detect** selected → Run convention detection (scan project root for package.json, pyproject.toml, go.mod, Cargo.toml, build.gradle, pom.xml) and save to `.claude/.omh/conventions.json`
 - **Manual** selected → Ask for language, test framework, linter, formatter, build tool
@@ -155,6 +163,7 @@ Show the duck one more time, then output:
 ```
 oh-my-harness is ready!
 
+Scope    : {Project|User (Global)}
 Project  : {language} | test: {testFramework} | lint: {linter} | fmt: {formatter}
 Config   : .claude/.omh/harness.config.json
 Features : {N} active ({disabled features list})
