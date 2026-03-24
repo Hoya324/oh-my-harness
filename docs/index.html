@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oh My Harness — Smart Defaults for Claude Code</title>
+  <meta name="description" content="Lightweight Claude Code harness with smart defaults, safety guards, model routing, and multi-agent orchestration.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Nav -->
+  <nav>
+    <div class="nav-left">
+      <a href="index.html" class="nav-logo">
+        Oh My Harness
+      </a>
+    </div>
+    <div class="nav-center">
+      <a href="docs.html" class="nav-link" data-i18n="nav.docs">Docs</a>
+      <a href="docs.html#features" class="nav-link" data-i18n="nav.features">Features</a>
+      <a href="https://github.com/Hoya324/oh-my-harness" class="nav-link" target="_blank">GitHub</a>
+    </div>
+    <div class="nav-right">
+      <div class="lang-switcher" id="lang-switcher">
+        <span class="lang-icon">A/&#44032;</span>
+        <span class="lang-label" id="lang-label">EN</span>
+        <span class="lang-chevron">&#9662;</span>
+        <div class="lang-dropdown" id="lang-dropdown">
+          <div class="lang-dropdown-title">Choose a language</div>
+          <div class="lang-option active" data-lang="en">English</div>
+          <div class="lang-option" data-lang="ko">&#54620;&#44397;&#50612;</div>
+        </div>
+      </div>
+      <div class="theme-toggle" id="theme-toggle">
+        <span class="toggle-icon" id="theme-icon">&#9790;</span>
+      </div>
+      <a href="https://github.com/Hoya324/oh-my-harness" class="nav-github" target="_blank" title="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge" data-i18n="index.hero.badge">v0.1.0 &middot; MIT License</div>
+    <h1 class="hero-title" data-i18n-html="index.hero.title">
+      Oh My<br><span class="gradient-text">Harness</span>
+      <span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>
+    </h1>
+    <p class="hero-desc" data-i18n="index.hero.desc">
+      A lightweight harness that adds safety guards, intelligent model routing, and multi-agent orchestration — all through native hooks. Zero config, instant boost.
+    </p>
+    <div class="hero-install">
+      <div class="install-box">
+        <span class="install-prefix">$</span>
+        <code id="install-cmd">claude plugin install oh-my-harness@oh-my-harness</code>
+        <button class="copy-btn" onclick="copyInstall()" id="copy-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="hero-actions">
+      <a href="docs.html" class="btn btn-primary" data-i18n="index.hero.getStarted">Get Started</a>
+      <a href="docs.html#features" class="btn btn-outline" data-i18n="index.hero.explore">Explore Features</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num">8</span><span class="stat-label" data-i18n="index.hero.stat.hooks">Hooks</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-num">7</span><span class="stat-label" data-i18n="index.hero.stat.skills">Skills</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-num">3</span><span class="stat-label" data-i18n="index.hero.stat.agents">Agents</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat"><span class="stat-num">13</span><span class="stat-label" data-i18n="index.hero.stat.features">Features</span></div>
+    </div>
+  </section>
+
+  <!-- Philosophy -->
+  <section class="philosophy">
+    <div class="container">
+      <div class="philosophy-content">
+        <span class="label-tag" data-i18n="index.philosophy.tag">Philosophy</span>
+        <h2 data-i18n-html="index.philosophy.title">Minimal guards.<br>Maximum customization.</h2>
+        <p data-i18n="index.philosophy.desc">OMH believes the best harness is one you barely notice. Warnings instead of walls, reminders instead of restrictions. Install once — it works everywhere.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works - Pipeline -->
+  <section class="pipeline-section">
+    <div class="container">
+      <span class="label-tag" data-i18n="index.pipeline.tag">How it works</span>
+      <h2 class="section-title" data-i18n="index.pipeline.title">The Hook Pipeline</h2>
+      <p class="section-desc" data-i18n="index.pipeline.desc">OMH hooks into Claude Code's lifecycle at every stage.</p>
+
+      <div class="pipeline">
+        <div class="pipeline-stage">
+          <div class="stage-marker">1</div>
+          <div class="stage-content">
+            <h3 data-i18n="index.pipeline.s1.title">Session Start</h3>
+            <p data-i18n="index.pipeline.s1.desc">Auto-detects your project's language, test framework, and linter. Injects conventions as context.</p>
+            <code class="stage-tag">[omh:convention-detect]</code>
+          </div>
+        </div>
+        <div class="pipeline-connector"></div>
+        <div class="pipeline-stage">
+          <div class="stage-marker">2</div>
+          <div class="stage-content">
+            <h3 data-i18n="index.pipeline.s2.title">Prompt Analysis</h3>
+            <p data-i18n="index.pipeline.s2.desc">Checks for ambiguity and multi-task requests. Asks clarifying questions or suggests plan mode.</p>
+            <code class="stage-tag">[omh:ambiguity-guard]</code>
+            <code class="stage-tag">[omh:auto-plan]</code>
+          </div>
+        </div>
+        <div class="pipeline-connector"></div>
+        <div class="pipeline-stage">
+          <div class="stage-marker">3</div>
+          <div class="stage-content">
+            <h3 data-i18n="index.pipeline.s3.title">Tool Execution</h3>
+            <p data-i18n="index.pipeline.s3.desc">Warns before destructive commands. Routes subagents to the right model tier. Enforces commit conventions.</p>
+            <code class="stage-tag">[omh:dangerous-guard]</code>
+            <code class="stage-tag">[omh:model-routing]</code>
+          </div>
+        </div>
+        <div class="pipeline-connector"></div>
+        <div class="pipeline-stage">
+          <div class="stage-marker">4</div>
+          <div class="stage-content">
+            <h3 data-i18n="index.pipeline.s4.title">Task Complete</h3>
+            <p data-i18n="index.pipeline.s4.desc">Verifies tests exist for changed code. Saves context snapshots before compaction.</p>
+            <code class="stage-tag">[omh:test-enforcement]</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <span class="label-tag" data-i18n="index.features.tag">Features</span>
+      <h2 class="section-title" data-i18n="index.features.title">Everything OMH does for you</h2>
+      <p class="section-desc" data-i18n="index.features.desc">13 features that activate automatically. No manual intervention needed.</p>
+
+      <div class="feature-rows">
+        <div class="feature-row">
+          <div class="feature-icon-col"><div class="feature-num">01</div></div>
+          <div class="feature-detail">
+            <h3 data-i18n="index.features.f1.title">Safety Guards</h3>
+            <p data-i18n="index.features.f1.desc">Ambiguity detection, dangerous operation warnings, scope restrictions. Guide with warnings, never block.</p>
+          </div>
+          <div class="feature-tags">
+            <span>Ambiguity Guard</span>
+            <span>Dangerous Guard</span>
+            <span>Scope Guard</span>
+          </div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-icon-col"><div class="feature-num">02</div></div>
+          <div class="feature-detail">
+            <h3 data-i18n="index.features.f2.title">Intelligent Model Routing</h3>
+            <p data-i18n="index.features.f2.desc">Automatically delegates tasks to the right model tier — Haiku for lookups, Sonnet for implementation, Opus for architecture.</p>
+          </div>
+          <div class="feature-tags">
+            <span>harness:quick</span>
+            <span>harness:standard</span>
+            <span>harness:architect</span>
+          </div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-icon-col"><div class="feature-num">03</div></div>
+          <div class="feature-detail">
+            <h3 data-i18n="index.features.f3.title">Multi-Agent Orchestration</h3>
+            <p data-i18n="index.features.f3.desc">Spawn parallel Claude agents in tmux panes with git worktree isolation. Preview diffs, merge when ready.</p>
+          </div>
+          <div class="feature-tags">
+            <span>/agent-spawn</span>
+            <span>/agent-apply</span>
+            <span>/agent-stop</span>
+          </div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-icon-col"><div class="feature-num">04</div></div>
+          <div class="feature-detail">
+            <h3 data-i18n="index.features.f4.title">Convention Auto-Detect</h3>
+            <p data-i18n="index.features.f4.desc">Scans your project at session start — detects language, test runner, linter, and formatter. Supports Node, Python, Go, Rust, Java, Kotlin.</p>
+          </div>
+          <div class="feature-tags">
+            <span>SessionStart</span>
+            <span>6 Languages</span>
+          </div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-icon-col"><div class="feature-num">05</div></div>
+          <div class="feature-detail">
+            <h3 data-i18n="index.features.f5.title">Test Enforcement &amp; Skill Scaffolding</h3>
+            <p data-i18n="index.features.f5.desc">Verifies tests exist after every code change. Auto-generates project-specific skills for code review, test writing, and linting.</p>
+          </div>
+          <div class="feature-tags">
+            <span>Test Enforcement</span>
+            <span>/init-project</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Agents -->
+  <section class="agents-section">
+    <div class="container">
+      <span class="label-tag" data-i18n="index.agents.tag">Model Routing</span>
+      <h2 class="section-title" data-i18n="index.agents.title">3 Agent Tiers</h2>
+      <p class="section-desc" data-i18n="index.agents.desc">Cost-efficient delegation. The right model for the right task.</p>
+
+      <div class="agent-cards">
+        <div class="agent-card agent-haiku">
+          <div class="agent-header">
+            <span class="agent-model-tag">Haiku</span>
+            <span class="agent-tier">Quick</span>
+          </div>
+          <p data-i18n="index.agents.haiku.desc">File lookups, simple questions, code exploration, pattern searches.</p>
+          <div class="agent-examples">
+            <code>"Find all TODO comments"</code>
+            <code>"What's in this file?"</code>
+          </div>
+        </div>
+        <div class="agent-card agent-sonnet">
+          <div class="agent-header">
+            <span class="agent-model-tag">Sonnet</span>
+            <span class="agent-tier">Standard</span>
+          </div>
+          <p data-i18n="index.agents.sonnet.desc">Bug fixes, feature implementation, debugging, test writing.</p>
+          <div class="agent-examples">
+            <code>"Fix this validation bug"</code>
+            <code>"Write unit tests"</code>
+          </div>
+        </div>
+        <div class="agent-card agent-opus">
+          <div class="agent-header">
+            <span class="agent-model-tag">Opus</span>
+            <span class="agent-tier">Architect</span>
+          </div>
+          <p data-i18n="index.agents.opus.desc">System design, complex refactoring, security review, deep analysis.</p>
+          <div class="agent-examples">
+            <code>"Design the auth system"</code>
+            <code>"Security audit"</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HUD -->
+  <section class="hud-section">
+    <div class="container">
+      <span class="label-tag" data-i18n="index.hud.tag">Status Line</span>
+      <h2 class="section-title" data-i18n="index.hud.title">Real-time HUD</h2>
+      <p class="section-desc" data-i18n="index.hud.desc">OMH replaces Claude Code's default status line with a live dashboard.</p>
+      <div class="hud-preview">
+        <div class="hud-bar">
+          <span class="hud-segment hud-brand">[OMH]</span>
+          <span class="hud-sep">|</span>
+          <span class="hud-segment">5h:14%<span class="hud-dim">(3h51m)</span></span>
+          <span class="hud-sep">|</span>
+          <span class="hud-segment">wk:7%<span class="hud-dim">(6d5h)</span></span>
+          <span class="hud-sep">|</span>
+          <span class="hud-segment">session:29m</span>
+          <span class="hud-sep">|</span>
+          <span class="hud-segment hud-ctx">ctx:39%</span>
+          <span class="hud-sep">|</span>
+          <span class="hud-segment">&#128295;53</span>
+          <span class="hud-sep">|</span>
+          <span class="hud-segment">agents:2</span>
+          <span class="hud-sep">|</span>
+          <span class="hud-segment hud-model">opus-4-6</span>
+        </div>
+        <div class="hud-labels">
+          <span data-i18n="index.hud.label.rateLimits">Rate limits</span>
+          <span data-i18n="index.hud.label.session">Session</span>
+          <span data-i18n="index.hud.label.context">Context</span>
+          <span data-i18n="index.hud.label.tools">Tools</span>
+          <span data-i18n="index.hud.label.agents">Agents</span>
+          <span data-i18n="index.hud.label.model">Model</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Get Started -->
+  <section class="cta-section" id="get-started">
+    <div class="container">
+      <h2 class="section-title" data-i18n="index.cta.title">Get started in seconds</h2>
+      <div class="cta-steps">
+        <div class="cta-step">
+          <div class="cta-step-num">1</div>
+          <div>
+            <h3 data-i18n="index.cta.s1.title">Install</h3>
+            <code>claude plugin install oh-my-harness@oh-my-harness</code>
+          </div>
+        </div>
+        <div class="cta-step">
+          <div class="cta-step-num">2</div>
+          <div>
+            <h3 data-i18n="index.cta.s2.title">Setup</h3>
+            <code>/harness-setup</code>
+          </div>
+        </div>
+        <div class="cta-step">
+          <div class="cta-step-num">3</div>
+          <div>
+            <h3 data-i18n="index.cta.s3.title">Build</h3>
+            <p data-i18n="index.cta.s3.desc">Smart defaults activate automatically.</p>
+          </div>
+        </div>
+      </div>
+      <div class="cta-actions">
+        <a href="docs.html" class="btn btn-primary" data-i18n="index.cta.readDocs">Read the Docs</a>
+        <a href="https://github.com/Hoya324/oh-my-harness" class="btn btn-outline" target="_blank" data-i18n="index.cta.viewGithub">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-inner">
+      <div class="footer-left">
+        <span class="nav-logo">Oh My Harness</span>
+        <span class="footer-copy" data-i18n="footer.license">MIT License</span>
+      </div>
+      <div class="footer-links">
+        <a href="docs.html" data-i18n="footer.docs">Docs</a>
+        <a href="docs.html#features" data-i18n="footer.features">Features</a>
+        <a href="https://github.com/Hoya324/oh-my-harness" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="theme.js"></script>
+  <script src="i18n.js"></script>
+  <script>
+    function copyInstall() {
+      const cmd = document.getElementById('install-cmd').textContent;
+      navigator.clipboard.writeText(cmd).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+        setTimeout(() => {
+          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+        }, 1500);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docs — Oh My Harness</title>
+  <meta name="description" content="Documentation for Oh My Harness — smart defaults for Claude Code.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Nav -->
+  <nav>
+    <div class="nav-left">
+      <a href="index.html" class="nav-logo">
+        Oh My Harness
+      </a>
+    </div>
+    <div class="nav-center">
+      <a href="docs.html" class="nav-link" style="color:var(--text)" data-i18n="nav.docs">Docs</a>
+      <a href="docs.html#features" class="nav-link" data-i18n="nav.features">Features</a>
+      <a href="https://github.com/Hoya324/oh-my-harness" class="nav-link" target="_blank">GitHub</a>
+    </div>
+    <div class="nav-right">
+      <div class="lang-switcher" id="lang-switcher">
+        <span class="lang-icon">A/&#44032;</span>
+        <span class="lang-label" id="lang-label">EN</span>
+        <span class="lang-chevron">&#9662;</span>
+        <div class="lang-dropdown" id="lang-dropdown">
+          <div class="lang-dropdown-title">Choose a language</div>
+          <div class="lang-option active" data-lang="en">English</div>
+          <div class="lang-option" data-lang="ko">&#54620;&#44397;&#50612;</div>
+        </div>
+      </div>
+      <div class="theme-toggle" id="theme-toggle">
+        <span class="toggle-icon" id="theme-icon">&#9790;</span>
+      </div>
+      <a href="https://github.com/Hoya324/oh-my-harness" class="nav-github" target="_blank" title="GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      </a>
+    </div>
+  </nav>
+
+  <div class="docs-layout">
+    <!-- Sidebar -->
+    <aside class="docs-sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Oh My Harness</div>
+        <div class="sidebar-version">v0.1.0</div>
+      </div>
+
+      <div class="sidebar-external">
+        <a href="https://github.com/Hoya324/oh-my-harness" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          GitHub
+        </a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">
+          <span data-i18n="docs.sidebar.gettingStarted">Getting Started</span>
+          <span class="chevron">&#9662;</span>
+        </div>
+        <div class="sidebar-links">
+          <a href="#installation" class="sidebar-link active" data-i18n="docs.sidebar.installation">Installation</a>
+          <a href="#quick-start" class="sidebar-link" data-i18n="docs.sidebar.quickStart">Quick Start</a>
+          <a href="#configuration" class="sidebar-link" data-i18n="docs.sidebar.configuration">Configuration</a>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">
+          <span data-i18n="docs.sidebar.coreConcepts">Core Concepts</span>
+          <span class="chevron">&#9662;</span>
+        </div>
+        <div class="sidebar-links">
+          <a href="#hooks" class="sidebar-link" data-i18n="docs.sidebar.hooks">Hooks</a>
+          <a href="#skills" class="sidebar-link" data-i18n="docs.sidebar.skills">Skills</a>
+          <a href="#agents" class="sidebar-link" data-i18n="docs.sidebar.agents">Agents</a>
+          <a href="#model-routing" class="sidebar-link" data-i18n="docs.sidebar.modelRouting">Model Routing</a>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">
+          <span data-i18n="docs.sidebar.features">Features</span>
+          <span class="chevron">&#9662;</span>
+        </div>
+        <div class="sidebar-links">
+          <a href="#features" class="sidebar-link" data-i18n="docs.sidebar.overview">Overview</a>
+          <a href="#safety-guards" class="sidebar-link" data-i18n="docs.sidebar.safetyGuards">Safety Guards</a>
+          <a href="#convention-detect" class="sidebar-link" data-i18n="docs.sidebar.conventionDetect">Convention Detect</a>
+          <a href="#test-enforcement" class="sidebar-link" data-i18n="docs.sidebar.testEnforcement">Test Enforcement</a>
+          <a href="#hud" class="sidebar-link" data-i18n="docs.sidebar.hudStatusLine">HUD Status Line</a>
+          <a href="#skill-scaffolding" class="sidebar-link" data-i18n="docs.sidebar.skillScaffolding">Skill Scaffolding</a>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">
+          <span data-i18n="docs.sidebar.multiAgent">Multi-Agent</span>
+          <span class="chevron">&#9662;</span>
+        </div>
+        <div class="sidebar-links">
+          <a href="#multi-agent" class="sidebar-link" data-i18n="docs.sidebar.overview">Overview</a>
+          <a href="#agent-commands" class="sidebar-link" data-i18n="docs.sidebar.commands">Commands</a>
+          <a href="#worktree" class="sidebar-link" data-i18n="docs.sidebar.worktreeMode">Worktree Mode</a>
+          <a href="#safety-policies" class="sidebar-link" data-i18n="docs.sidebar.safetyPolicies">Safety Policies</a>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">
+          <span data-i18n="docs.sidebar.reference">Reference</span>
+          <span class="chevron">&#9662;</span>
+        </div>
+        <div class="sidebar-links">
+          <a href="#settings-reference" class="sidebar-link" data-i18n="docs.sidebar.settingsRef">Settings Reference</a>
+          <a href="#cli-commands" class="sidebar-link" data-i18n="docs.sidebar.cliCommands">CLI Commands</a>
+          <a href="#compatibility" class="sidebar-link" data-i18n="docs.sidebar.omcCompat">OMC Compatibility</a>
+          <a href="#uninstall" class="sidebar-link" data-i18n="docs.sidebar.uninstall">Disable / Uninstall</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="docs-content">
+      <h1 data-i18n="docs.title">Oh My Harness</h1>
+      <p class="doc-subtitle" data-i18n="docs.subtitle">Lightweight Claude Code harness. Zero config, instant boost. Smart defaults, test enforcement, model routing, and multi-agent orchestration — all through native hooks.</p>
+
+      <!-- Installation -->
+      <h2 id="installation" data-i18n="docs.installation.title">Installation</h2>
+
+      <h3 data-i18n="docs.installation.optionA">Option A: Claude Code Plugin (recommended)</h3>
+      <pre><code># 1. Install plugin
+claude plugin install oh-my-harness@oh-my-harness
+
+# 2. Restart Claude Code, then initialize:
+/harness-setup</code></pre>
+
+      <h3 data-i18n="docs.installation.optionB">Option B: npm CLI</h3>
+      <pre><code>npm install -g oh-my-harness
+cd your-project
+oh-my-harness init</code></pre>
+
+      <blockquote><p data-i18n="docs.installation.note">Either way, start Claude Code as usual — harness features activate automatically.</p></blockquote>
+
+      <h3 data-i18n="docs.installation.updating">Updating</h3>
+      <pre><code># Plugin mode
+claude plugin update oh-my-harness@oh-my-harness
+/harness-setup
+
+# npm mode
+npm update -g oh-my-harness
+oh-my-harness init</code></pre>
+      <blockquote><p data-i18n="docs.installation.updateNote"><code>init</code> preserves your existing <code>harness.config.json</code>. Only hooks, commands, and CLAUDE.md instructions are refreshed.</p></blockquote>
+
+      <!-- Quick Start -->
+      <h2 id="quick-start" data-i18n="docs.quickStart.title">Quick Start</h2>
+      <p data-i18n="docs.quickStart.intro">After installation, OMH works immediately. Here's what happens in your first session:</p>
+      <ol>
+        <li data-i18n-html="docs.quickStart.step1"><strong>Convention detected</strong> — OMH scans your project and outputs: <code>[omh:convention-detect] Project: node | test: vitest | lint: eslint</code></li>
+        <li data-i18n-html="docs.quickStart.step2"><strong>Guards active</strong> — Ambiguity detection, dangerous command warnings, and test enforcement are all ON by default.</li>
+        <li data-i18n-html="docs.quickStart.step3"><strong>Model routing ready</strong> — Claude automatically delegates to haiku/sonnet/opus based on task complexity.</li>
+      </ol>
+      <p data-i18n-html="docs.quickStart.scaffold">Run <code>/init-project</code> to scaffold project-specific skills (code review, test writing, lint fixing) for your detected stack.</p>
+
+      <!-- Configuration -->
+      <h2 id="configuration" data-i18n="docs.config.title">Configuration</h2>
+      <p data-i18n-html="docs.config.intro">All settings live in <code>.claude/.omh/harness.config.json</code>.</p>
+
+      <h3 data-i18n="docs.config.defaultConfig">Default Config</h3>
+      <pre><code>{
+  "version": 1,
+  "features": {
+    "conventionSetup": true,
+    "testEnforcement": true,
+    "contextOptimization": true,
+    "autoPlanMode": true,
+    "ambiguityDetection": true,
+    "dangerousGuard": true,
+    "contextSnapshot": true,
+    "commitConvention": true,
+    "scopeGuard": false,
+    "usageTracking": true,
+    "autoGitignore": true,
+    "skillScaffolding": true
+  },
+  "testEnforcement": { "minCases": 2, "promptOnMissing": true },
+  "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
+  "autoPlan": { "threshold": 3 },
+  "ambiguityDetection": { "threshold": 2, "language": "auto" },
+  "commitConvention": { "style": "auto" },
+  "scopeGuard": { "allowedPaths": [] },
+  "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" },
+  "conventions": { "autoDetect": true, "overrides": {} }
+}</code></pre>
+
+      <h3 data-i18n="docs.config.modifySettings">Modify Settings</h3>
+      <pre><code>/set-harness                                # Show all current settings
+/set-harness features.scopeGuard true       # Enable scope guard
+/set-harness testEnforcement.minCases 3     # Require 3+ test cases
+/set-harness modelRouting.standard opus     # Use opus for implementation
+/set-harness commitConvention.style gitmoji # Switch to gitmoji</code></pre>
+
+      <!-- Hooks -->
+      <h2 id="hooks" data-i18n="docs.hooks.title">Hooks</h2>
+      <p data-i18n="docs.hooks.intro">OMH hooks into Claude Code's lifecycle at every stage. All hooks run automatically — no manual intervention needed.</p>
+
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.hooks.th.hookFile">Hook File</th><th data-i18n="docs.hooks.th.event">Event</th><th data-i18n="docs.hooks.th.whatItDoes">What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>session-start.mjs</code></td><td>SessionStart</td><td data-i18n="docs.hooks.r1.desc">Convention detection, skill hints</td></tr>
+          <tr><td><code>pre-prompt.mjs</code></td><td>UserPromptSubmit</td><td data-i18n="docs.hooks.r2.desc">Ambiguity guard, auto-plan mode</td></tr>
+          <tr><td><code>dangerous-guard.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r3.desc">Warns before destructive commands</td></tr>
+          <tr><td><code>commit-convention.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r4.desc">Reminds commit format</td></tr>
+          <tr><td><code>scope-guard.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r5.desc">Warns about out-of-scope edits</td></tr>
+          <tr><td><code>usage-tracker.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r6.desc">Records tool usage</td></tr>
+          <tr><td><code>pre-compact.mjs</code></td><td>PreCompact</td><td data-i18n="docs.hooks.r7.desc">Saves context snapshot</td></tr>
+          <tr><td><code>post-task.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r8.desc">Test enforcement reminder</td></tr>
+        </tbody>
+      </table>
+
+      <h3 data-i18n-html="docs.hooks.featureTags">Feature Tags — <code>[omh:*]</code></h3>
+      <p data-i18n="docs.hooks.featureTagsIntro">Every OMH action is prefixed with a tag so you always know which feature fired:</p>
+      <pre><code>[omh:convention-detect]       → Detected project conventions
+[omh:ambiguity-guard]        → Asking for clarification
+[omh:auto-plan]              → Detected 3+ tasks
+[omh:dangerous-guard]        → Warning before destructive command
+[omh:model-routing → sonnet] → Delegating to sonnet
+[omh:test-enforcement]       → Reminding to verify tests
+[omh:commit-convention]      → Showing commit format
+[omh:scope-guard]            → Warning about edit outside paths
+[omh:context-snapshot]       → Saving state before compaction</code></pre>
+
+      <!-- Skills -->
+      <h2 id="skills" data-i18n="docs.skills.title">Skills</h2>
+      <p data-i18n="docs.skills.intro">OMH provides 7 built-in slash commands:</p>
+
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.skills.th.command">Command</th><th data-i18n="docs.skills.th.description">Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/harness-setup</code></td><td data-i18n="docs.skills.r1">Initialize oh-my-harness with interactive onboarding</td></tr>
+          <tr><td><code>/set-harness [path] [value]</code></td><td data-i18n="docs.skills.r2">View or modify harness settings</td></tr>
+          <tr><td><code>/init-project</code></td><td data-i18n="docs.skills.r3">Detect conventions and scaffold project skills</td></tr>
+          <tr><td><code>/agent-spawn [N] [task]</code></td><td data-i18n="docs.skills.r4">Spawn N parallel Claude agents in tmux</td></tr>
+          <tr><td><code>/agent-status</code></td><td data-i18n="docs.skills.r5">Check status of running agents</td></tr>
+          <tr><td><code>/agent-apply [id|all]</code></td><td data-i18n="docs.skills.r6">Preview diffs and merge agent worktree changes</td></tr>
+          <tr><td><code>/agent-stop [id|all]</code></td><td data-i18n="docs.skills.r7">Stop agents and cleanup worktrees</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Agents -->
+      <h2 id="agents" data-i18n="docs.agents.title">Agents</h2>
+      <p data-i18n="docs.agents.intro">OMH provides 3 built-in agent types for cost-efficient subagent delegation:</p>
+
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.agents.th.agent">Agent</th><th data-i18n="docs.agents.th.model">Model</th><th data-i18n="docs.agents.th.useFor">Use For</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>harness:quick</code></td><td>Haiku</td><td data-i18n="docs.agents.r1">File lookups, simple questions, exploration</td></tr>
+          <tr><td><code>harness:standard</code></td><td>Sonnet</td><td data-i18n="docs.agents.r2">Implementation, bug fixes, debugging</td></tr>
+          <tr><td><code>harness:architect</code></td><td>Opus</td><td data-i18n="docs.agents.r3">Architecture, complex analysis, security review</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Model Routing -->
+      <h2 id="model-routing" data-i18n="docs.modelRouting.title">Model Routing</h2>
+      <p data-i18n-html="docs.modelRouting.intro">Claude automatically routes subagent work to the appropriate model tier based on task complexity. This is configured in <code>CLAUDE.md</code> and agent definitions.</p>
+      <p data-i18n-html="docs.modelRouting.announce">Announce with: <code>[omh:model-routing → &lt;model&gt;]</code></p>
+      <pre><code># Customize model assignments
+/set-harness modelRouting.quick haiku
+/set-harness modelRouting.standard sonnet
+/set-harness modelRouting.complex opus</code></pre>
+
+      <!-- Features -->
+      <h2 id="features" data-i18n="docs.features.title">Features Overview</h2>
+
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.features.th.num">#</th><th data-i18n="docs.features.th.feature">Feature</th><th data-i18n="docs.features.th.hook">Hook</th><th data-i18n="docs.features.th.default">Default</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Convention Auto-Detect</td><td>SessionStart</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>2</td><td>Test Enforcement</td><td>Stop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>3</td><td>Model Routing</td><td>CLAUDE.md</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>4</td><td>Auto-Plan Mode</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>5</td><td>Ambiguity Guard</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>6</td><td>Dangerous Guard</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>7</td><td>Context Snapshot</td><td>PreCompact</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>8</td><td>Commit Convention</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>9</td><td>Scope Guard</td><td>PostToolUse</td><td><span class="feature-badge badge-off">OFF</span></td></tr>
+          <tr><td>10</td><td>Usage Tracking</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>11</td><td>Auto .gitignore</td><td>CLI init</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>12</td><td>Multi-Agent</td><td>/agent-spawn</td><td>—</td></tr>
+          <tr><td>13</td><td>Skill Scaffolding</td><td>/init-project</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+        </tbody>
+      </table>
+
+      <!-- Safety Guards -->
+      <h2 id="safety-guards" data-i18n="docs.safetyGuards.title">Safety Guards</h2>
+
+      <h3 data-i18n="docs.safetyGuards.ambiguity.title">Ambiguity Guard</h3>
+      <p data-i18n="docs.safetyGuards.ambiguity.intro">Detects vague requests using a scoring system (threshold: 2):</p>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.safetyGuards.ambiguity.th.signal">Signal</th><th data-i18n="docs.safetyGuards.ambiguity.th.score">Score</th><th data-i18n="docs.safetyGuards.ambiguity.th.example">Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td data-i18n="docs.safetyGuards.ambiguity.r1.signal">Vague references</td><td>+1</td><td data-i18n="docs.safetyGuards.ambiguity.r1.example">"fix this", "change that"</td></tr>
+          <tr><td data-i18n="docs.safetyGuards.ambiguity.r2.signal">Scope-less verbs</td><td>+1</td><td data-i18n="docs.safetyGuards.ambiguity.r2.example">"refactor" (no target)</td></tr>
+          <tr><td data-i18n="docs.safetyGuards.ambiguity.r3.signal">Open-ended choices</td><td>+1</td><td data-i18n="docs.safetyGuards.ambiguity.r3.example">"or something", "whatever"</td></tr>
+          <tr><td data-i18n="docs.safetyGuards.ambiguity.r4.signal">Very short message</td><td>+1</td><td data-i18n="docs.safetyGuards.ambiguity.r4.example">&lt; 15 chars</td></tr>
+        </tbody>
+      </table>
+
+      <h3 data-i18n="docs.safetyGuards.dangerous.title">Dangerous Guard</h3>
+      <p data-i18n="docs.safetyGuards.dangerous.intro">Warns before potentially destructive operations:</p>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.safetyGuards.dangerous.th.pattern">Pattern</th><th data-i18n="docs.safetyGuards.dangerous.th.warning">Warning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>rm -rf</code></td><td data-i18n="docs.safetyGuards.dangerous.r1">File deletion</td></tr>
+          <tr><td><code>git push --force</code></td><td data-i18n="docs.safetyGuards.dangerous.r2">Force push</td></tr>
+          <tr><td><code>git reset --hard</code></td><td data-i18n="docs.safetyGuards.dangerous.r3">Hard reset</td></tr>
+          <tr><td><code>DROP TABLE</code></td><td data-i18n="docs.safetyGuards.dangerous.r4">Database destruction</td></tr>
+          <tr><td><code>chmod 777</code></td><td data-i18n="docs.safetyGuards.dangerous.r5">Unsafe permissions</td></tr>
+          <tr><td><code>curl | sh</code></td><td data-i18n="docs.safetyGuards.dangerous.r6">Remote execution</td></tr>
+          <tr><td><code>.env</code> files</td><td data-i18n="docs.safetyGuards.dangerous.r7">Environment secrets</td></tr>
+          <tr><td><code>id_rsa</code>, <code>.pem</code>, <code>.key</code></td><td data-i18n="docs.safetyGuards.dangerous.r8">Private keys</td></tr>
+        </tbody>
+      </table>
+      <blockquote><p data-i18n="docs.safetyGuards.dangerous.note">Warning only — does not block execution. Asks Claude to confirm with user.</p></blockquote>
+
+      <h3 data-i18n="docs.safetyGuards.scope.title">Scope Guard</h3>
+      <p data-i18n="docs.safetyGuards.scope.intro">When enabled, warns if Edit/Write targets files outside allowed directories.</p>
+      <pre><code>{
+  "features": { "scopeGuard": true },
+  "scopeGuard": { "allowedPaths": ["src/auth", "src/utils"] }
+}</code></pre>
+      <blockquote><p data-i18n="docs.safetyGuards.scope.note">OFF by default. Enable when you want to restrict Claude's write scope.</p></blockquote>
+
+      <!-- Convention Detect -->
+      <h2 id="convention-detect" data-i18n="docs.conventionDetect.title">Convention Auto-Detect</h2>
+      <p data-i18n="docs.conventionDetect.intro">Scans project root on session start and injects detected conventions as context. Results are cached for 1 hour.</p>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.conventionDetect.th.projectFile">Project File</th><th data-i18n="docs.conventionDetect.th.language">Language</th><th data-i18n="docs.conventionDetect.th.detectedTools">Detected Tools</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>package.json</code></td><td>Node.js</td><td>jest / vitest / mocha, eslint / biome, prettier</td></tr>
+          <tr><td><code>pyproject.toml</code></td><td>Python</td><td>pytest, ruff / flake8, black, mypy</td></tr>
+          <tr><td><code>go.mod</code></td><td>Go</td><td>go test, golangci-lint</td></tr>
+          <tr><td><code>Cargo.toml</code></td><td>Rust</td><td>cargo test, clippy, rustfmt</td></tr>
+          <tr><td><code>build.gradle</code></td><td>Java</td><td>junit, gradle</td></tr>
+          <tr><td><code>pom.xml</code></td><td>Java</td><td>junit, maven</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Test Enforcement -->
+      <h2 id="test-enforcement" data-i18n="docs.testEnforcement.title">Test Enforcement</h2>
+      <p data-i18n="docs.testEnforcement.intro">After code changes (Edit / Write / NotebookEdit), injects a reminder at session stop:</p>
+      <ul>
+        <li data-i18n="docs.testEnforcement.li1">Verify test files exist for changed code</li>
+        <li data-i18n-html="docs.testEnforcement.li2">Each test file has at least <strong>N</strong> cases (configurable, default: 2)</li>
+        <li data-i18n-html="docs.testEnforcement.li3">Tests must cover <strong>happy path</strong>, <strong>edge case</strong>, and <strong>error case</strong> at minimum</li>
+      </ul>
+
+      <!-- HUD -->
+      <h2 id="hud" data-i18n="docs.hud.title">HUD Status Line</h2>
+      <p data-i18n="docs.hud.intro">OMH replaces Claude Code's default status line with a real-time dashboard:</p>
+      <pre><code>[OMH] | 5h:14%(3h51m) | wk:7%(6d5h) | session:29m | ctx:39% | &#128295;53 | agents:2 | opus-4-6</code></pre>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.hud.th.segment">Segment</th><th data-i18n="docs.hud.th.meaning">Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>5h:14%(3h51m)</code></td><td data-i18n="docs.hud.r1">5-hour rate limit usage, resets in 3h 51m</td></tr>
+          <tr><td><code>wk:7%(6d5h)</code></td><td data-i18n="docs.hud.r2">Weekly rate limit usage, resets in 6d 5h</td></tr>
+          <tr><td><code>session:29m</code></td><td data-i18n="docs.hud.r3">Current session duration</td></tr>
+          <tr><td><code>ctx:39%</code></td><td data-i18n="docs.hud.r4">Context window usage (green → yellow → red)</td></tr>
+          <tr><td><code>&#128295;53</code></td><td data-i18n="docs.hud.r5">Total tool calls this session</td></tr>
+          <tr><td><code>agents:2</code></td><td data-i18n="docs.hud.r6">Running subagents</td></tr>
+          <tr><td><code>opus-4-6</code></td><td data-i18n="docs.hud.r7">Active model</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Skill Scaffolding -->
+      <h2 id="skill-scaffolding" data-i18n="docs.skillScaffolding.title">Skill Scaffolding</h2>
+      <p data-i18n-html="docs.skillScaffolding.intro">Run <code>/init-project</code> to auto-generate project-specific skills based on your detected stack.</p>
+      <h3 data-i18n="docs.skillScaffolding.generated">Generated Skills</h3>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.skillScaffolding.th.skill">Skill</th><th data-i18n="docs.skillScaffolding.th.whatItDoes">What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>code-review</code></td><td data-i18n="docs.skillScaffolding.r1">Language-specific review checklist</td></tr>
+          <tr><td><code>test-write</code></td><td data-i18n="docs.skillScaffolding.r2">Test writing conventions for detected framework</td></tr>
+          <tr><td><code>lint-fix</code></td><td data-i18n="docs.skillScaffolding.r3">Lint check and auto-fix workflow</td></tr>
+        </tbody>
+      </table>
+      <h3 data-i18n="docs.skillScaffolding.supported">Supported Languages</h3>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.skillScaffolding.th.language">Language</th><th data-i18n="docs.skillScaffolding.th.test">Test</th><th data-i18n="docs.skillScaffolding.th.linter">Linter</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Node.js</td><td>vitest / jest / mocha</td><td>eslint / biome</td></tr>
+          <tr><td>Python</td><td>pytest</td><td>ruff / flake8</td></tr>
+          <tr><td>Go</td><td>go test</td><td>golangci-lint</td></tr>
+          <tr><td>Rust</td><td>cargo test</td><td>clippy</td></tr>
+          <tr><td>Java</td><td>junit</td><td>—</td></tr>
+          <tr><td>Kotlin</td><td>kotest / junit5</td><td>ktlint / detekt</td></tr>
+        </tbody>
+      </table>
+      <blockquote><p data-i18n="docs.skillScaffolding.note">Skills are user-owned. Customize freely — OMH never overwrites existing skills.</p></blockquote>
+
+      <!-- Multi-Agent -->
+      <h2 id="multi-agent" data-i18n="docs.multiAgent.title">Multi-Agent System</h2>
+      <p data-i18n="docs.multiAgent.intro">Spawn parallel Claude Code instances in tmux panes, each with an isolated git worktree.</p>
+
+      <h2 id="agent-commands" data-i18n="docs.agentCommands.title">Agent Commands</h2>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.agentCommands.th.command">Command</th><th data-i18n="docs.agentCommands.th.description">Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/agent-spawn [N] [task]</code></td><td data-i18n="docs.agentCommands.r1">Spawn N agents (default: 2) with worktrees in tmux panes</td></tr>
+          <tr><td><code>/agent-status</code></td><td data-i18n="docs.agentCommands.r2">Check status of all agents (commits, changed files)</td></tr>
+          <tr><td><code>/agent-apply [id|all]</code></td><td data-i18n="docs.agentCommands.r3">Preview and merge agent changes to main</td></tr>
+          <tr><td><code>/agent-stop [id|all]</code></td><td data-i18n="docs.agentCommands.r4">Stop agents, warn about unmerged work, cleanup</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="worktree" data-i18n="docs.worktree.title">Worktree Mode</h2>
+      <table>
+        <thead>
+          <tr><th></th><th data-i18n="docs.worktree.th.useWorktreeTrue">useWorktree: true (default)</th><th data-i18n="docs.worktree.th.useWorktreeFalse">useWorktree: false</th></tr>
+        </thead>
+        <tbody>
+          <tr><td data-i18n="docs.worktree.r1.label"><strong>Isolation</strong></td><td data-i18n="docs.worktree.r1.true">Each agent on its own branch</td><td data-i18n="docs.worktree.r1.false">All agents in project root</td></tr>
+          <tr><td data-i18n="docs.worktree.r2.label"><strong>Conflicts</strong></td><td data-i18n="docs.worktree.r2.true">Impossible during parallel work</td><td data-i18n="docs.worktree.r2.false">Possible — use with care</td></tr>
+          <tr><td data-i18n="docs.worktree.r3.label"><strong>/agent-apply</strong></td><td data-i18n="docs.worktree.r3.true">Required to merge changes</td><td data-i18n="docs.worktree.r3.false">Not applicable</td></tr>
+          <tr><td data-i18n="docs.worktree.r4.label"><strong>Best for</strong></td><td data-i18n="docs.worktree.r4.true">Any parallel code changes</td><td data-i18n="docs.worktree.r4.false">Read-only tasks, analysis</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="safety-policies" data-i18n="docs.safetyPolicies.title">Safety Policies</h2>
+      <ul>
+        <li data-i18n-html="docs.safetyPolicies.li1"><strong>Always ask first</strong> — never spawn without explicit user confirmation</li>
+        <li data-i18n-html="docs.safetyPolicies.li2"><strong>Never auto-merge</strong> — <code>/agent-apply</code> always shows a diff and waits for approval</li>
+        <li data-i18n-html="docs.safetyPolicies.li3"><strong>Never silently discard</strong> — <code>/agent-stop</code> with unmerged commits requires explicit choice</li>
+        <li data-i18n-html="docs.safetyPolicies.li4"><strong>Max agents</strong> — capped by <code>multiAgent.maxAgents</code> (default: 4)</li>
+      </ul>
+
+      <h3 data-i18n="docs.safetyPolicies.prerequisites">Prerequisites</h3>
+      <ul>
+        <li data-i18n-html="docs.safetyPolicies.prereq.tmux"><strong>tmux</strong> — <code>brew install tmux</code> (macOS) / <code>apt install tmux</code> (Linux)</li>
+        <li data-i18n-html="docs.safetyPolicies.prereq.git"><strong>git</strong> — for worktree isolation</li>
+        <li data-i18n-html="docs.safetyPolicies.prereq.claude"><strong>claude CLI</strong> — must be available in PATH</li>
+      </ul>
+
+      <!-- Settings Reference -->
+      <h2 id="settings-reference" data-i18n="docs.settingsRef.title">Settings Reference</h2>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.settingsRef.th.path">Path</th><th data-i18n="docs.settingsRef.th.type">Type</th><th data-i18n="docs.settingsRef.th.default">Default</th><th data-i18n="docs.settingsRef.th.description">Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>features.conventionSetup</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r1">Auto-detect project conventions</td></tr>
+          <tr><td><code>features.testEnforcement</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r2">Remind about tests after changes</td></tr>
+          <tr><td><code>features.autoPlanMode</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r3">Suggest plan mode for multi-task</td></tr>
+          <tr><td><code>features.ambiguityDetection</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r4">Force clarification for vague requests</td></tr>
+          <tr><td><code>features.dangerousGuard</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r5">Warn before destructive commands</td></tr>
+          <tr><td><code>features.scopeGuard</code></td><td>bool</td><td>false</td><td data-i18n="docs.settingsRef.r6">Restrict file modification scope</td></tr>
+          <tr><td><code>features.usageTracking</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r7">Track tool usage</td></tr>
+          <tr><td><code>testEnforcement.minCases</code></td><td>number</td><td>2</td><td data-i18n="docs.settingsRef.r8">Minimum test cases per file</td></tr>
+          <tr><td><code>modelRouting.quick</code></td><td>string</td><td>haiku</td><td data-i18n="docs.settingsRef.r9">Model for exploration</td></tr>
+          <tr><td><code>modelRouting.standard</code></td><td>string</td><td>sonnet</td><td data-i18n="docs.settingsRef.r10">Model for implementation</td></tr>
+          <tr><td><code>modelRouting.complex</code></td><td>string</td><td>opus</td><td data-i18n="docs.settingsRef.r11">Model for architecture</td></tr>
+          <tr><td><code>autoPlan.threshold</code></td><td>number</td><td>3</td><td data-i18n="docs.settingsRef.r12">Tasks to trigger auto-plan</td></tr>
+          <tr><td><code>multiAgent.maxAgents</code></td><td>number</td><td>4</td><td data-i18n="docs.settingsRef.r13">Max parallel agents</td></tr>
+          <tr><td><code>multiAgent.useWorktree</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r14">Use git worktrees for isolation</td></tr>
+        </tbody>
+      </table>
+
+      <!-- CLI Commands -->
+      <h2 id="cli-commands" data-i18n="docs.cliCommands.title">CLI Commands</h2>
+      <pre><code>oh-my-harness init      # Set up harness in current project
+oh-my-harness update    # Regenerate settings from config
+oh-my-harness status    # Show current configuration
+oh-my-harness reset     # Remove all harness files (clean uninstall)</code></pre>
+
+      <!-- Compatibility -->
+      <h2 id="compatibility" data-i18n="docs.compatibility.title">OMC Compatibility</h2>
+      <p data-i18n="docs.compatibility.intro">Oh My Harness coexists cleanly with Oh My ClaudeCode:</p>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.compatibility.th.concern">Concern</th><th>OMH</th><th>OMC</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CLAUDE.md markers</td><td><code>&lt;!-- HARNESS:START/END --&gt;</code></td><td><code>&lt;!-- OMC:START/END --&gt;</code></td></tr>
+          <tr><td>Hook namespace</td><td><code>.omh/hooks/</code></td><td>OMC plugin hooks</td></tr>
+          <tr><td>Agent prefix</td><td><code>harness:</code></td><td><code>oh-my-claudecode:</code></td></tr>
+          <tr><td>Kill switch</td><td><code>DISABLE_HARNESS=1</code></td><td><code>DISABLE_OMC=1</code></td></tr>
+        </tbody>
+      </table>
+      <blockquote><p data-i18n="docs.compatibility.note">Both plugins can be installed simultaneously without conflicts.</p></blockquote>
+
+      <!-- Uninstall -->
+      <h2 id="uninstall" data-i18n="docs.uninstall.title">Disable / Uninstall</h2>
+      <pre><code># Temporarily disable
+DISABLE_HARNESS=1 claude
+
+# Plugin mode — uninstall
+claude plugin uninstall oh-my-harness
+
+# npm mode — full removal
+oh-my-harness reset
+npm uninstall -g oh-my-harness</code></pre>
+
+      <h3 data-i18n="docs.uninstall.requirements">Requirements</h3>
+      <ul>
+        <li><strong>Node.js</strong> >= 18</li>
+        <li><strong>Claude Code</strong> CLI</li>
+        <li><strong>tmux</strong> — for multi-agent only</li>
+        <li><strong>git</strong> — for worktree isolation</li>
+      </ul>
+    </main>
+  </div>
+
+  <script src="theme.js"></script>
+  <script src="i18n.js"></script>
+  <script>
+    // Highlight active sidebar link on scroll
+    const sections = document.querySelectorAll('h2[id]');
+    const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+    function highlightSidebar() {
+      let current = '';
+      sections.forEach(section => {
+        const top = section.offsetTop - 100;
+        if (window.scrollY >= top) {
+          current = section.getAttribute('id');
+        }
+      });
+      sidebarLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+      });
+    }
+
+    window.addEventListener('scroll', highlightSidebar);
+    highlightSidebar();
+  </script>
+</body>
+</html>
