@@ -48,10 +48,13 @@ graph LR
 ### 방법 A: Claude Code 플러그인 (권장)
 
 ```bash
-# Claude Code에서:
-/install-plugin https://github.com/Hoya324/oh-my-harness
+# 1. 마켓플레이스 등록
+claude plugins marketplace add https://github.com/Hoya324/oh-my-harness
 
-# 프로젝트 설정 초기화:
+# 2. 플러그인 설치
+claude plugins install oh-my-harness
+
+# 3. Claude Code 재시작 후 프로젝트 설정 초기화:
 /harness-setup
 ```
 
@@ -89,7 +92,8 @@ flowchart LR
 
 ```bash
 # 플러그인 (권장)
-/install-plugin https://github.com/Hoya324/oh-my-harness
+claude plugins marketplace add https://github.com/Hoya324/oh-my-harness
+claude plugins install oh-my-harness
 
 # 또는 npm
 npm install -g oh-my-harness
@@ -696,7 +700,7 @@ Oh My Harness는 [Oh My ClaudeCode](https://github.com/yeachan-heo/oh-my-claudec
 DISABLE_HARNESS=1 claude
 
 # 플러그인 모드 — 삭제
-/plugin uninstall oh-my-harness
+claude plugins uninstall oh-my-harness
 
 # npm 모드 — 완전 제거
 oh-my-harness reset

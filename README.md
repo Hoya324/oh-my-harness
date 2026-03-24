@@ -48,10 +48,13 @@ graph LR
 ### Option A: Claude Code Plugin (recommended)
 
 ```bash
-# In Claude Code:
-/install-plugin https://github.com/Hoya324/oh-my-harness
+# 1. Register marketplace
+claude plugins marketplace add https://github.com/Hoya324/oh-my-harness
 
-# Then initialize your project config:
+# 2. Install plugin
+claude plugins install oh-my-harness
+
+# 3. Restart Claude Code, then initialize your project config:
 /harness-setup
 ```
 
@@ -89,7 +92,8 @@ flowchart LR
 
 ```bash
 # Plugin (recommended)
-/install-plugin https://github.com/Hoya324/oh-my-harness
+claude plugins marketplace add https://github.com/Hoya324/oh-my-harness
+claude plugins install oh-my-harness
 
 # or npm
 npm install -g oh-my-harness
@@ -696,7 +700,7 @@ Both plugins can be installed simultaneously without conflicts.
 DISABLE_HARNESS=1 claude
 
 # Plugin mode — uninstall
-/plugin uninstall oh-my-harness
+claude plugins uninstall oh-my-harness
 
 # npm mode — full removal
 oh-my-harness reset
