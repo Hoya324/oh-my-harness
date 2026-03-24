@@ -1,4 +1,6 @@
 ---
+name: quick
+description: Quick lookup agent for file searches, simple questions, and exploration
 model: haiku
 ---
 Quick lookup agent for file searches, simple questions, and exploration.

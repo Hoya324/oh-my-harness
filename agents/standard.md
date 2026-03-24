@@ -1,4 +1,6 @@
 ---
+name: standard
+description: Standard implementation agent for bug fixes, features, debugging, and code modifications
 model: sonnet
 ---
 Standard implementation agent for bug fixes, features, debugging, and code modifications.
