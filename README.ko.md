@@ -48,13 +48,10 @@ graph LR
 ### 방법 A: Claude Code 플러그인 (권장)
 
 ```bash
-# 1. 마켓플레이스 등록
-claude plugins marketplace add https://github.com/Hoya324/oh-my-harness
+# 1. 플러그인 설치 (기본: user 스코프)
+claude plugin install oh-my-harness@oh-my-harness
 
-# 2. 플러그인 설치
-claude plugins install oh-my-harness
-
-# 3. Claude Code 재시작 후 프로젝트 설정 초기화:
+# 2. Claude Code 재시작 후 프로젝트 설정 초기화:
 /harness-setup
 ```
 
@@ -78,7 +75,7 @@ oh-my-harness init
 
 ```bash
 # 최신 플러그인 버전 가져오기
-claude plugins update oh-my-harness
+claude plugin update oh-my-harness@oh-my-harness
 
 # 업데이트된 훅과 사전 적용을 위해 재초기화
 /harness-setup

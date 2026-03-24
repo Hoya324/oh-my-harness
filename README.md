@@ -48,13 +48,10 @@ graph LR
 ### Option A: Claude Code Plugin (recommended)
 
 ```bash
-# 1. Register marketplace
-claude plugins marketplace add https://github.com/Hoya324/oh-my-harness
+# 1. Install plugin (user scope by default)
+claude plugin install oh-my-harness@oh-my-harness
 
-# 2. Install plugin
-claude plugins install oh-my-harness
-
-# 3. Restart Claude Code, then initialize your project config:
+# 2. Restart Claude Code, then initialize your project config:
 /harness-setup
 ```
 
@@ -78,7 +75,7 @@ When a new version is released, update to get the latest hooks, detection patter
 
 ```bash
 # Pull the latest plugin version
-claude plugins update oh-my-harness
+claude plugin update oh-my-harness@oh-my-harness
 
 # Re-initialize to apply updated hooks and dictionary
 /harness-setup

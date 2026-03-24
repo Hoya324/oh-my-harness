@@ -117,7 +117,7 @@ Oh My Harness는 [Oh My ClaudeCode](https://github.com/yeachan-heo/oh-my-claudec
 DISABLE_HARNESS=1 claude
 
 # 플러그인 모드 — 삭제
-claude plugins uninstall oh-my-harness
+claude plugin uninstall oh-my-harness@oh-my-harness
 
 # npm 모드 — 완전 제거
 oh-my-harness reset

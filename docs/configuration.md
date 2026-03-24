@@ -117,7 +117,7 @@ Both plugins can be installed simultaneously without conflicts.
 DISABLE_HARNESS=1 claude
 
 # Plugin mode — uninstall
-claude plugins uninstall oh-my-harness
+claude plugin uninstall oh-my-harness@oh-my-harness
 
 # npm mode — full removal
 oh-my-harness reset
