@@ -35,7 +35,7 @@ try {
   writeFileSync(snapshotPath, lines.join('\n'));
 
   console.log(hookCompact(
-    `[oh-my-harness] Context compaction imminent. State saved to .claude/.omh/context-snapshot.md. Summarize current task progress and key decisions before continuing.`
+    `[omh:context-snapshot] Context compaction imminent. State saved to .claude/.omh/context-snapshot.md. Summarize current task progress and key decisions before continuing.`
   ));
 } catch {
   console.log(hookSilent());

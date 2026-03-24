@@ -43,7 +43,7 @@ try {
 
   if (!isAllowed) {
     console.log(hookOutput('PostToolUse',
-      `[oh-my-harness] SCOPE WARNING: "${relPath}" is outside the allowed scope [${allowedPaths.join(', ')}]. Confirm with the user that this modification is intended.`
+      `[omh:scope-guard] SCOPE WARNING: "${relPath}" is outside the allowed scope [${allowedPaths.join(', ')}]. Confirm with the user that this modification is intended.`
     ));
   }
 } catch {

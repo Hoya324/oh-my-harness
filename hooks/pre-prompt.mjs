@@ -34,7 +34,7 @@ try {
     const conjunctions = prompt.match(/(그리고|또한|추가로|아울러|더불어|그 다음)/g);
     if (conjunctions) taskCount = Math.max(taskCount, conjunctions.length + 1);
     if (taskCount >= threshold) {
-      messages.push(`[oh-my-harness] ${taskCount}개의 독립 작업이 감지되었습니다. plan 모드 사용을 권장합니다. 작업을 나열하고 실행 순서를 사용자에게 확인하세요.`);
+      messages.push(`[omh:auto-plan] ${taskCount}개의 독립 작업이 감지되었습니다. plan 모드 사용을 권장합니다. 작업을 나열하고 실행 순서를 사용자에게 확인하세요.`);
     }
   }
 
@@ -50,7 +50,7 @@ try {
     if (/(?:fix it|change it|update it|refactor|clean up|improve)\b/i.test(prompt) &&
         !/(?:file|function|class|method|component)\s/i.test(prompt)) ambiguityScore++;
     if (ambiguityScore >= ambThreshold) {
-      messages.push(`[oh-my-harness] 요청이 모호합니다. 작업 전에 AskUserQuestion 도구로 사용자에게 구체적 범위와 방향을 확인하세요.`);
+      messages.push(`[omh:ambiguity-guard] 요청이 모호합니다. 작업 전에 AskUserQuestion 도구로 사용자에게 구체적 범위와 방향을 확인하세요.`);
     }
   }
 

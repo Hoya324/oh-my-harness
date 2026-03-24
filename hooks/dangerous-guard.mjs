@@ -57,7 +57,7 @@ try {
   }
 
   if (warnings.length > 0) {
-    console.log(hookWarn('PreToolUse', `[oh-my-harness] WARNING: ${warnings.join(', ')}. Confirm with the user before proceeding.`));
+    console.log(hookWarn('PreToolUse', `[omh:dangerous-guard] WARNING: ${warnings.join(', ')}. Confirm with the user before proceeding.`));
   }
 } catch {
   console.log(hookSilent());

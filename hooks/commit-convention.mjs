@@ -31,13 +31,13 @@ function detectConvention(root) {
 
 const messages = {
   conventional: [
-    `[oh-my-harness] Commit convention: Conventional Commits`,
+    `[omh:commit-convention] Commit convention: Conventional Commits`,
     `Format: <type>(<scope>): <description>`,
     `Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore`,
     `Example: feat(auth): add OAuth2 login flow`,
   ],
   gitmoji: [
-    `[oh-my-harness] Commit convention: Gitmoji`,
+    `[omh:commit-convention] Commit convention: Gitmoji`,
     `Format: <emoji> <description>`,
     `Common: feat, fix, docs, refactor, test, config`,
     `Example: feat: Add OAuth2 login flow`,

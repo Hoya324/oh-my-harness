@@ -27,7 +27,7 @@ try {
     try {
       const cached = JSON.parse(readFileSync(cachePath, 'utf8'));
       if (cached._timestamp && Date.now() - cached._timestamp < 3600000 && cached.language) {
-        const parts = [`[oh-my-harness] Project: ${cached.language}`];
+        const parts = [`[omh:convention-detect] Project: ${cached.language}`];
         if (cached.testFramework) parts.push(`test: ${cached.testFramework}`);
         if (cached.linter) parts.push(`lint: ${cached.linter}`);
         if (cached.formatter) parts.push(`fmt: ${cached.formatter}`);
@@ -44,7 +44,7 @@ try {
   writeFileSync(cachePath, JSON.stringify(conventions, null, 2));
 
   if (conventions.language) {
-    const parts = [`[oh-my-harness] Project: ${conventions.language}`];
+    const parts = [`[omh:convention-detect] Project: ${conventions.language}`];
     if (conventions.testFramework) parts.push(`test: ${conventions.testFramework}`);
     if (conventions.linter) parts.push(`lint: ${conventions.linter}`);
     if (conventions.formatter) parts.push(`fmt: ${conventions.formatter}`);
