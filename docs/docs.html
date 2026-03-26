@@ -113,6 +113,19 @@
 
       <div class="sidebar-section">
         <div class="sidebar-section-title">
+          <span data-i18n="docs.sidebar.nativeTeam">Native Team</span>
+          <span class="chevron">&#9662;</span>
+        </div>
+        <div class="sidebar-links">
+          <a href="#native-team" class="sidebar-link" data-i18n="docs.sidebar.overview">Overview</a>
+          <a href="#team-commands" class="sidebar-link" data-i18n="docs.sidebar.commands">Commands</a>
+          <a href="#team-templates" class="sidebar-link" data-i18n="docs.sidebar.templates">Templates</a>
+          <a href="#team-vs-agent" class="sidebar-link" data-i18n="docs.sidebar.comparison">Comparison</a>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">
           <span data-i18n="docs.sidebar.reference">Reference</span>
           <span class="chevron">&#9662;</span>
         </div>
@@ -239,7 +252,7 @@ oh-my-harness init</code></pre>
 
       <!-- Skills -->
       <h2 id="skills" data-i18n="docs.skills.title">Skills</h2>
-      <p data-i18n="docs.skills.intro">OMH provides 7 built-in slash commands:</p>
+      <p data-i18n="docs.skills.intro">OMH provides 10 built-in slash commands:</p>
 
       <table>
         <thead>
@@ -253,6 +266,9 @@ oh-my-harness init</code></pre>
           <tr><td><code>/agent-status</code></td><td data-i18n="docs.skills.r5">Check status of running agents</td></tr>
           <tr><td><code>/agent-apply [id|all]</code></td><td data-i18n="docs.skills.r6">Preview diffs and merge agent worktree changes</td></tr>
           <tr><td><code>/agent-stop [id|all]</code></td><td data-i18n="docs.skills.r7">Stop agents and cleanup worktrees</td></tr>
+          <tr><td><code>/team-spawn [template|N] [task]</code></td><td data-i18n="docs.skills.r8">Create native team with teammates</td></tr>
+          <tr><td><code>/team-status</code></td><td data-i18n="docs.skills.r9">Check team and task progress</td></tr>
+          <tr><td><code>/team-stop</code></td><td data-i18n="docs.skills.r10">Shutdown team and cleanup</td></tr>
         </tbody>
       </table>
 
@@ -300,7 +316,8 @@ oh-my-harness init</code></pre>
           <tr><td>10</td><td>Usage Tracking</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>11</td><td>Auto .gitignore</td><td>CLI init</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>12</td><td>Multi-Agent</td><td>/agent-spawn</td><td>—</td></tr>
-          <tr><td>13</td><td>Skill Scaffolding</td><td>/init-project</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>13</td><td data-i18n="docs.features.nativeTeam">Native Team</td><td>/team-spawn</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>14</td><td>Skill Scaffolding</td><td>/init-project</td><td><span class="feature-badge badge-on">ON</span></td></tr>
         </tbody>
       </table>
 
@@ -468,6 +485,56 @@ oh-my-harness init</code></pre>
         <li data-i18n-html="docs.safetyPolicies.prereq.claude"><strong>claude CLI</strong> — must be available in PATH</li>
       </ul>
 
+      <!-- Native Team -->
+      <h2 id="native-team" data-i18n="docs.nativeTeam.title">Native Team System</h2>
+      <p data-i18n="docs.nativeTeam.intro">Use Claude Code's built-in team orchestration — no tmux or worktree dependencies required.</p>
+
+      <h2 id="team-commands" data-i18n="docs.teamCommands.title">Team Commands</h2>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.teamCommands.th.command">Command</th><th data-i18n="docs.teamCommands.th.description">Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/team-spawn [template|N] [task]</code></td><td data-i18n="docs.teamCommands.r1">Create a team with teammates from a template or custom count</td></tr>
+          <tr><td><code>/team-status</code></td><td data-i18n="docs.teamCommands.r2">Check teammate status and task progress</td></tr>
+          <tr><td><code>/team-stop</code></td><td data-i18n="docs.teamCommands.r3">Shutdown teammates, warn about incomplete tasks, cleanup</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="team-templates" data-i18n="docs.teamTemplates.title">Templates</h2>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.teamTemplates.th.template">Template</th><th data-i18n="docs.teamTemplates.th.members">Members</th><th data-i18n="docs.teamTemplates.th.useFor">Use For</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>fullstack</code></td><td data-i18n="docs.teamTemplates.r1.members">frontend (sonnet) + backend (sonnet) + tester (sonnet)</td><td data-i18n="docs.teamTemplates.r1.useFor">Full-stack feature development</td></tr>
+          <tr><td><code>review</code></td><td data-i18n="docs.teamTemplates.r2.members">reviewer (opus) + tester (sonnet)</td><td data-i18n="docs.teamTemplates.r2.useFor">Code review and testing</td></tr>
+          <tr><td><code>research</code></td><td data-i18n="docs.teamTemplates.r3.members">researcher (haiku) + implementer (sonnet) + architect (opus)</td><td data-i18n="docs.teamTemplates.r3.useFor">Research-driven development</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="team-vs-agent" data-i18n="docs.teamVsAgent.title">Multi-Agent vs Native Team</h2>
+      <table>
+        <thead>
+          <tr><th></th><th data-i18n="docs.teamVsAgent.th.multiAgent">Multi-Agent (/agent-spawn)</th><th data-i18n="docs.teamVsAgent.th.nativeTeam">Native Team (/team-spawn)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td data-i18n="docs.teamVsAgent.r1.label"><strong>Infrastructure</strong></td><td data-i18n="docs.teamVsAgent.r1.agent">tmux + git worktrees</td><td data-i18n="docs.teamVsAgent.r1.team">Claude Code built-in tools</td></tr>
+          <tr><td data-i18n="docs.teamVsAgent.r2.label"><strong>Prerequisites</strong></td><td data-i18n="docs.teamVsAgent.r2.agent">tmux, git, claude CLI</td><td data-i18n="docs.teamVsAgent.r2.team">None (built-in)</td></tr>
+          <tr><td data-i18n="docs.teamVsAgent.r3.label"><strong>Isolation</strong></td><td data-i18n="docs.teamVsAgent.r3.agent">Git branches per agent</td><td data-i18n="docs.teamVsAgent.r3.team">Shared repo (or Agent tool isolation)</td></tr>
+          <tr><td data-i18n="docs.teamVsAgent.r4.label"><strong>Communication</strong></td><td data-i18n="docs.teamVsAgent.r4.agent">Observe tmux panes</td><td data-i18n="docs.teamVsAgent.r4.team">SendMessage between teammates</td></tr>
+          <tr><td data-i18n="docs.teamVsAgent.r5.label"><strong>Best for</strong></td><td data-i18n="docs.teamVsAgent.r5.agent">Parallel code changes needing isolation</td><td data-i18n="docs.teamVsAgent.r5.team">Coordinated team workflows</td></tr>
+        </tbody>
+      </table>
+
+      <h3 data-i18n="docs.nativeTeam.safetyTitle">Team Safety Policies</h3>
+      <ul>
+        <li data-i18n-html="docs.nativeTeam.safety.li1"><strong>Always ask first</strong> — never create a team without explicit user confirmation</li>
+        <li data-i18n-html="docs.nativeTeam.safety.li2"><strong>Never silently discard</strong> — <code>/team-stop</code> with incomplete tasks requires explicit choice</li>
+        <li data-i18n-html="docs.nativeTeam.safety.li3"><strong>Max teammates</strong> — capped by <code>nativeTeam.maxTeammates</code> (default: 4)</li>
+        <li data-i18n-html="docs.nativeTeam.safety.li4"><strong>One team at a time</strong> — must stop existing team before creating a new one</li>
+      </ul>
+
       <!-- Settings Reference -->
       <h2 id="settings-reference" data-i18n="docs.settingsRef.title">Settings Reference</h2>
       <table>
@@ -489,6 +556,9 @@ oh-my-harness init</code></pre>
           <tr><td><code>autoPlan.threshold</code></td><td>number</td><td>3</td><td data-i18n="docs.settingsRef.r12">Tasks to trigger auto-plan</td></tr>
           <tr><td><code>multiAgent.maxAgents</code></td><td>number</td><td>4</td><td data-i18n="docs.settingsRef.r13">Max parallel agents</td></tr>
           <tr><td><code>multiAgent.useWorktree</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r14">Use git worktrees for isolation</td></tr>
+          <tr><td><code>features.nativeTeam</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r15">Enable native team skills</td></tr>
+          <tr><td><code>nativeTeam.maxTeammates</code></td><td>number</td><td>4</td><td data-i18n="docs.settingsRef.r16">Max teammates per team</td></tr>
+          <tr><td><code>nativeTeam.defaultTeamName</code></td><td>string</td><td>omh-team</td><td data-i18n="docs.settingsRef.r17">Default team name</td></tr>
         </tbody>
       </table>
 
