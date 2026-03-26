@@ -12,7 +12,8 @@
     "scopeGuard": false,
     "usageTracking": true,
     "autoGitignore": true,
-    "skillScaffolding": true
+    "skillScaffolding": true,
+    "nativeTeam": true
   },
   "testEnforcement": {
     "minCases": 2,
@@ -40,6 +41,35 @@
     "maxAgents": 4,
     "useWorktree": true,
     "tmuxSession": "omh-agents"
+  },
+  "nativeTeam": {
+    "maxTeammates": 4,
+    "defaultTeamName": "omh-team",
+    "templates": {
+      "fullstack": {
+        "description": "Full-stack development team",
+        "members": [
+          { "name": "frontend", "role": "Frontend developer", "agentType": "standard" },
+          { "name": "backend", "role": "Backend developer", "agentType": "standard" },
+          { "name": "tester", "role": "Test writer and QA", "agentType": "standard" }
+        ]
+      },
+      "review": {
+        "description": "Code review team",
+        "members": [
+          { "name": "reviewer", "role": "Code reviewer", "agentType": "architect" },
+          { "name": "tester", "role": "Test writer", "agentType": "standard" }
+        ]
+      },
+      "research": {
+        "description": "Research and implementation team",
+        "members": [
+          { "name": "researcher", "role": "Research and exploration", "agentType": "quick" },
+          { "name": "implementer", "role": "Implementation", "agentType": "standard" },
+          { "name": "architect", "role": "Architecture review", "agentType": "architect" }
+        ]
+      }
+    }
   },
   "conventions": {
     "autoDetect": true,

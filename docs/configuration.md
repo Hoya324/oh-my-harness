@@ -18,7 +18,8 @@ All settings live in `.claude/.omh/harness.config.json`.
     "commitConvention": true,
     "scopeGuard": false,
     "usageTracking": true,
-    "autoGitignore": true
+    "autoGitignore": true,
+    "nativeTeam": true
   },
   "testEnforcement": { "minCases": 2, "promptOnMissing": true },
   "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
@@ -26,7 +27,8 @@ All settings live in `.claude/.omh/harness.config.json`.
   "ambiguityDetection": { "threshold": 2, "language": "auto" },
   "commitConvention": { "style": "auto" },
   "scopeGuard": { "allowedPaths": [] },
-  "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" }
+  "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" },
+  "nativeTeam": { "maxTeammates": 4, "defaultTeamName": "omh-team" }
 }
 ```
 
@@ -39,6 +41,7 @@ All settings live in `.claude/.omh/harness.config.json`.
 /set-harness modelRouting.standard opus     # Use opus for implementation
 /set-harness commitConvention.style gitmoji # Switch to gitmoji
 /set-harness multiAgent.maxAgents 6         # Allow up to 6 agents
+/set-harness nativeTeam.maxTeammates 6        # Allow up to 6 teammates
 ```
 
 ## Settings Reference
@@ -68,6 +71,9 @@ All settings live in `.claude/.omh/harness.config.json`.
 | `multiAgent.maxAgents` | number | `4` | Max parallel agents |
 | `multiAgent.useWorktree` | bool | `true` | Use git worktrees for isolation |
 | `multiAgent.tmuxSession` | string | `omh-agents` | tmux session name |
+| `features.nativeTeam` | bool | `true` | Enable native team skills |
+| `nativeTeam.maxTeammates` | number | `4` | Max teammates per team |
+| `nativeTeam.defaultTeamName` | string | `omh-team` | Default team name |
 
 ---
 
@@ -91,6 +97,9 @@ oh-my-harness reset     # Remove all harness files (clean uninstall)
 | `/agent-status` | Check status of running agents |
 | `/agent-apply [id\|all]` | Merge agent worktree changes |
 | `/agent-stop [id\|all]` | Stop agents and cleanup |
+| `/team-spawn [template\|N] [task]` | Create native team with teammates |
+| `/team-status` | Check team and task progress |
+| `/team-stop` | Shutdown team and cleanup |
 
 ---
 

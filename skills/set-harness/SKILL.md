@@ -46,3 +46,6 @@ Example: /set-harness multiAgent.useWorktree false
 - **multiAgent.maxAgents** (number) — Maximum parallel agents
 - **multiAgent.useWorktree** (bool) — Use isolated git worktrees per agent
 - **multiAgent.tmuxSession** (string) — Tmux session name for agents
+- **features.nativeTeam** (bool) — Enable native Claude Code team skills
+- **nativeTeam.maxTeammates** (number) — Maximum teammates per team
+- **nativeTeam.defaultTeamName** (string) — Default team name

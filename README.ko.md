@@ -111,6 +111,7 @@ oh-my-harness init
 | 10 | 사용량 추적 | `PostToolUse` | ON | 세션별 도구 사용량 기록 |
 | 11 | 자동 .gitignore | CLI init | ON | `.claude/.omh/`를 `.gitignore`에 추가 |
 | 12 | 멀티 에이전트 | `/agent-spawn` | — | tmux + git worktree를 활용한 병렬 Claude 에이전트 |
+| 13 | 네이티브 팀 | `/team-spawn` | ON | Claude Code 내장 팀 오케스트레이션 (템플릿 지원) |
 
 > 각 기능의 상세 설명은 [기능 문서](docs/features.ko.md)를 참고하세요.
 
@@ -144,6 +145,8 @@ graph TB
         SKILLS --> S2["/set-harness"]
         SKILLS --> S3["/agent-spawn"]
         SKILLS --> S4["/agent-status"]
+        SKILLS --> S5["/team-spawn"]
+        SKILLS --> S6["/team-status"]
 
         AGENTS --> A1["harness:quick (haiku)"]
         AGENTS --> A2["harness:standard (sonnet)"]
@@ -248,6 +251,35 @@ gitGraph
     merge omh/agent-2 id: "/agent-apply 2"
     merge omh/agent-3 id: "/agent-apply 3"
 ```
+
+## 네이티브 팀
+
+> 전체 내용: [docs/multi-agent.ko.md](docs/multi-agent.ko.md#네이티브-팀-시스템)
+
+tmux도, worktree도 필요 없습니다 — Claude Code의 내장 팀 오케스트레이션을 사용합니다.
+
+```mermaid
+graph TD
+    START["/team-spawn fullstack '인증 시스템 구축'"] --> CONFIG[nativeTeam 설정 읽기]
+    CONFIG --> CONFIRM{"사용자 확인?"}
+    CONFIRM -->|취소| ABORT[중단]
+    CONFIRM -->|승인| CREATE["TeamCreate + TaskCreate"]
+    CREATE --> SPAWN["Agent 도구로 팀원 생성"]
+    SPAWN --> ASSIGN["팀원에게 작업 할당"]
+    ASSIGN --> RUNNING["팀 실행 중 — 메시지가 자동으로 도착"]
+
+    RUNNING --> STATUS["/team-status"]
+    RUNNING --> STOP["/team-stop"]
+
+    style START fill:#7C3AED,color:#fff
+    style CONFIRM fill:#f59e0b,color:#000
+```
+
+| 템플릿 | 구성원 | 적합한 용도 |
+|--------|--------|------------|
+| `fullstack` | frontend + backend + tester (모두 sonnet) | 풀스택 기능 개발 |
+| `review` | reviewer (opus) + tester (sonnet) | 코드 리뷰 |
+| `research` | researcher (haiku) + implementer (sonnet) + architect (opus) | 연구 기반 개발 |
 
 ---
 

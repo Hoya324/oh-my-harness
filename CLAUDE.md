@@ -53,4 +53,25 @@ When the user requests parallel work with `/agent-spawn`:
 3. Use `/agent-status` to check progress, `/agent-apply` to merge, `/agent-stop` to cleanup
 4. NEVER auto-merge agent work — always show diffs and get user confirmation
 5. Warn about unmerged changes before stopping agents
+
+### Native Team
+When the user requests team-based work with `/team-spawn`:
+1. Always confirm with the user before creating a team
+2. Use TeamCreate, TaskCreate, and Agent tools for native team management
+3. Teammates communicate via SendMessage — messages arrive automatically
+4. Use `/team-status` to check progress, `/team-stop` to shutdown
+5. NEVER shut down teammates without checking for incomplete tasks
+6. Announce model routing for each teammate: `[omh:model-routing -> {model}]`
+
+### Post-Plan Team Suggestion
+After a plan is approved (ExitPlanMode), evaluate whether the plan contains parallelizable tasks:
+- If the plan has 2+ independent tasks that can be worked on simultaneously → suggest using `/team-spawn` with an appropriate template
+- Recommend a template based on task types:
+  - Frontend + Backend + Tests → `fullstack`
+  - Code changes + Review/Testing → `review`
+  - Research/exploration + Implementation → `research`
+  - Other combinations → suggest custom count (e.g., `/team-spawn 3 [task]`)
+- Present the suggestion concisely: "이 계획은 병렬 작업이 가능합니다. `/team-spawn {template} {task}`로 팀을 구성할까요?"
+- If the plan is sequential or simple (single stream of work) → proceed normally without suggesting a team
+- NEVER auto-create a team — always suggest and wait for user confirmation
 <!-- HARNESS:END -->

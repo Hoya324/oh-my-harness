@@ -256,3 +256,45 @@ Plan 모드를 제안합니다 — 강제하지 않습니다.
   }
 }
 ```
+
+### 11. 네이티브 팀
+
+Claude Code의 내장 팀 시스템을 사용하여 병렬 작업을 오케스트레이션합니다 — tmux나 worktree 의존성이 필요 없습니다.
+
+**템플릿:**
+
+| 템플릿 | 구성원 | 모델 라우팅 |
+|--------|--------|------------|
+| `fullstack` | frontend + backend + tester | 모두 sonnet |
+| `review` | reviewer + tester | opus + sonnet |
+| `research` | researcher + implementer + architect | haiku + sonnet + opus |
+
+**명령어:**
+
+| 명령어 | 설명 |
+|--------|------|
+| `/team-spawn [template\|N] [task]` | 팀 생성, 작업 분해, 팀원 생성 |
+| `/team-status` | 팀원 상태 및 작업 진행률 표시 |
+| `/team-stop` | 미완료 작업 경고와 함께 팀 종료 |
+
+**동작 방식:**
+
+1. `/team-spawn fullstack 인증 시스템 구축` 실행
+2. OMH가 TeamCreate로 네이티브 팀 생성
+3. 작업이 분해되어 팀원에게 할당
+4. 팀원이 SendMessage로 소통하며 병렬 작업
+5. `/team-status`로 진행률 확인
+6. 완료 후 `/team-stop`으로 종료
+
+**설정:**
+```json
+{
+  "features": { "nativeTeam": true },
+  "nativeTeam": {
+    "maxTeammates": 4,
+    "defaultTeamName": "omh-team"
+  }
+}
+```
+
+> 커스텀 템플릿은 설정의 `nativeTeam.templates`로 추가할 수 있습니다.

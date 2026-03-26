@@ -125,7 +125,8 @@ oh-my-harness init
 | 10 | Usage Tracking | `PostToolUse` | ON | Records tool usage per session |
 | 11 | Auto .gitignore | CLI init | ON | Adds `.claude/.omh/` to `.gitignore` |
 | 12 | Multi-Agent | `/agent-spawn` | — | Parallel Claude agents in tmux with git worktrees |
-| 13 | Skill Scaffolding | `/init-project` | ON | Auto-generates project-specific skills based on detected stack |
+| 13 | Native Team | `/team-spawn` | ON | Native Claude Code team orchestration with templates |
+| 14 | Skill Scaffolding | `/init-project` | ON | Auto-generates project-specific skills based on detected stack |
 
 > See [Feature Details](docs/features.md) for full descriptions of each feature.
 
@@ -159,6 +160,8 @@ graph TB
         SKILLS --> S2["/set-harness"]
         SKILLS --> S3["/agent-spawn"]
         SKILLS --> S4["/agent-status"]
+        SKILLS --> S5["/team-spawn"]
+        SKILLS --> S6["/team-status"]
 
         AGENTS --> A1["harness:quick (haiku)"]
         AGENTS --> A2["harness:standard (sonnet)"]
@@ -263,6 +266,35 @@ gitGraph
     merge omh/agent-2 id: "/agent-apply 2"
     merge omh/agent-3 id: "/agent-apply 3"
 ```
+
+## Native Team
+
+> Full details: [docs/multi-agent.md](docs/multi-agent.md#native-team-system)
+
+No tmux, no worktrees — use Claude Code's built-in team orchestration.
+
+```mermaid
+graph TD
+    START["/team-spawn fullstack 'build auth system'"] --> CONFIG[Read nativeTeam config]
+    CONFIG --> CONFIRM{"User confirms?"}
+    CONFIRM -->|Cancel| ABORT[Abort]
+    CONFIRM -->|Yes| CREATE[TeamCreate + TaskCreate]
+    CREATE --> SPAWN["Spawn teammates via Agent tool"]
+    SPAWN --> ASSIGN[Assign tasks to teammates]
+    ASSIGN --> RUNNING[Team running — messages arrive automatically]
+
+    RUNNING --> STATUS["/team-status"]
+    RUNNING --> STOP["/team-stop"]
+
+    style START fill:#7C3AED,color:#fff
+    style CONFIRM fill:#f59e0b,color:#000
+```
+
+| Template | Members | Best For |
+|----------|---------|----------|
+| `fullstack` | frontend + backend + tester (all sonnet) | Full-stack features |
+| `review` | reviewer (opus) + tester (sonnet) | Code review |
+| `research` | researcher (haiku) + implementer (sonnet) + architect (opus) | Research-driven work |
 
 ---
 

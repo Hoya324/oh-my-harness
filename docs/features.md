@@ -305,3 +305,45 @@ If no project skills are detected, OMH shows a hint on session start:
 ```
 
 Set to `false` to disable scaffold hints and skip skill generation during init.
+
+### 12. Native Team
+
+Orchestrate parallel work using Claude Code's built-in team system — no tmux or worktree dependencies.
+
+**Templates:**
+
+| Template | Members | Model Routing |
+|----------|---------|---------------|
+| `fullstack` | frontend + backend + tester | All sonnet |
+| `review` | reviewer + tester | opus + sonnet |
+| `research` | researcher + implementer + architect | haiku + sonnet + opus |
+
+**Commands:**
+
+| Command | What it does |
+|---------|-------------|
+| `/team-spawn [template\|N] [task]` | Create team, decompose tasks, spawn teammates |
+| `/team-status` | Show teammate status and task progress |
+| `/team-stop` | Shutdown team with incomplete task warnings |
+
+**How it works:**
+
+1. Run `/team-spawn fullstack build auth system`
+2. OMH creates a native team via TeamCreate
+3. Tasks are decomposed and assigned to teammates
+4. Teammates work in parallel, communicating via SendMessage
+5. Check progress with `/team-status`
+6. Shutdown with `/team-stop` when done
+
+**Configuration:**
+```json
+{
+  "features": { "nativeTeam": true },
+  "nativeTeam": {
+    "maxTeammates": 4,
+    "defaultTeamName": "omh-team"
+  }
+}
+```
+
+> Custom templates can be added via `nativeTeam.templates` in the config.

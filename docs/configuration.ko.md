@@ -18,7 +18,8 @@
     "commitConvention": true,
     "scopeGuard": false,
     "usageTracking": true,
-    "autoGitignore": true
+    "autoGitignore": true,
+    "nativeTeam": true
   },
   "testEnforcement": { "minCases": 2, "promptOnMissing": true },
   "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
@@ -26,7 +27,8 @@
   "ambiguityDetection": { "threshold": 2, "language": "auto" },
   "commitConvention": { "style": "auto" },
   "scopeGuard": { "allowedPaths": [] },
-  "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" }
+  "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" },
+  "nativeTeam": { "maxTeammates": 4, "defaultTeamName": "omh-team" }
 }
 ```
 
@@ -39,6 +41,7 @@
 /set-harness modelRouting.standard opus     # 구현에 opus 사용
 /set-harness commitConvention.style gitmoji # gitmoji로 전환
 /set-harness multiAgent.maxAgents 6         # 최대 6개 에이전트 허용
+/set-harness nativeTeam.maxTeammates 6        # 최대 6명의 팀원 허용
 ```
 
 ## 설정 레퍼런스
@@ -68,6 +71,9 @@
 | `multiAgent.maxAgents` | number | `4` | 최대 병렬 에이전트 수 |
 | `multiAgent.useWorktree` | bool | `true` | 격리를 위한 git worktree 사용 |
 | `multiAgent.tmuxSession` | string | `omh-agents` | tmux 세션 이름 |
+| `features.nativeTeam` | bool | `true` | 네이티브 팀 스킬 활성화 |
+| `nativeTeam.maxTeammates` | number | `4` | 팀당 최대 팀원 수 |
+| `nativeTeam.defaultTeamName` | string | `omh-team` | 기본 팀 이름 |
 
 ---
 
@@ -91,6 +97,9 @@ oh-my-harness reset     # 모든 하네스 파일 제거 (완전 삭제)
 | `/agent-status` | 실행 중인 에이전트 상태 확인 |
 | `/agent-apply [id\|all]` | 에이전트 worktree 변경사항 머지 |
 | `/agent-stop [id\|all]` | 에이전트 중지 및 정리 |
+| `/team-spawn [template\|N] [작업]` | 팀원과 함께 네이티브 팀 생성 |
+| `/team-status` | 팀 및 작업 진행률 확인 |
+| `/team-stop` | 팀 종료 및 정리 |
 
 ---
 

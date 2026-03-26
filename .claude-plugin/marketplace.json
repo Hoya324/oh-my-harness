@@ -6,13 +6,13 @@
   "plugins": [
     {
       "name": "oh-my-harness",
-      "description": "Zero-config harness: convention detection, test enforcement, model routing, ambiguity guard, dangerous guard, multi-agent with git worktrees",
+      "description": "Zero-config harness: convention detection, test enforcement, model routing, ambiguity guard, dangerous guard, multi-agent with git worktrees, native team orchestration",
       "version": "0.1.0",
       "author": { "name": "Hoya324" },
       "source": "./",
       "category": "productivity",
       "homepage": "https://github.com/Hoya324/oh-my-harness",
-      "tags": ["harness", "hooks", "multi-agent", "worktree", "test-enforcement"]
+      "tags": ["harness", "hooks", "multi-agent", "worktree", "native-team", "test-enforcement"]
     }
   ],
   "version": "0.1.0"

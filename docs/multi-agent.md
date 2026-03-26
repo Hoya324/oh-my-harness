@@ -98,3 +98,70 @@ gitGraph
 - **Never silently discard** — `/agent-stop` with unmerged commits requires explicit choice
 - **`--dangerously-skip-permissions`** — agents bypass tool prompts; user is always told this upfront
 - **Max agents** — capped by `multiAgent.maxAgents` (default: 4)
+
+---
+
+# Native Team System
+
+Use Claude Code's built-in team orchestration — no tmux or worktree dependencies required.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/team-spawn [template\|N] [task]` | Create a team with teammates from a template or custom count |
+| `/team-status` | Check teammate status and task progress |
+| `/team-stop` | Shutdown teammates, warn about incomplete tasks, cleanup |
+
+## Templates
+
+| Template | Members | Use For |
+|----------|---------|---------|
+| `fullstack` | frontend (sonnet) + backend (sonnet) + tester (sonnet) | Full-stack feature development |
+| `review` | reviewer (opus) + tester (sonnet) | Code review and testing |
+| `research` | researcher (haiku) + implementer (sonnet) + architect (opus) | Research-driven development |
+
+## Workflow
+
+```mermaid
+graph TD
+    START["/team-spawn fullstack 'build auth system'"] --> CONFIG[Read nativeTeam config]
+    CONFIG --> CONFIRM{"User confirms?"}
+    CONFIRM -->|Cancel| ABORT[Abort]
+    CONFIRM -->|Yes| CREATE[TeamCreate: create team + task list]
+    CREATE --> TASKS[TaskCreate: decompose into subtasks]
+    TASKS --> SPAWN["Spawn teammates via Agent tool<br/>(with team_name + name)"]
+    SPAWN --> ASSIGN[TaskUpdate: assign tasks to teammates]
+    ASSIGN --> RUNNING[Team running — messages arrive automatically]
+
+    RUNNING --> STATUS["/team-status"]
+    RUNNING --> STOP["/team-stop"]
+
+    STOP --> CHECK{"Incomplete tasks?"}
+    CHECK -->|Yes| WARN["Warn user:<br/>continue / stop / cancel"]
+    CHECK -->|No| SHUTDOWN[SendMessage shutdown + TeamDelete]
+    WARN -->|stop| SHUTDOWN
+
+    style START fill:#7C3AED,color:#fff
+    style CONFIRM fill:#f59e0b,color:#000
+    style CHECK fill:#f59e0b,color:#000
+```
+
+## Multi-Agent vs Native Team
+
+| | Multi-Agent (`/agent-spawn`) | Native Team (`/team-spawn`) |
+|---|---|---|
+| **Infrastructure** | tmux + git worktrees | Claude Code built-in tools |
+| **Prerequisites** | tmux, git, claude CLI | None (built-in) |
+| **Isolation** | Git branches per agent | Shared repo (or Agent tool isolation) |
+| **Communication** | Observe tmux panes | SendMessage between teammates |
+| **Task Management** | TASK.md files | TaskCreate / TaskList / TaskUpdate |
+| **Merge Strategy** | `/agent-apply` (manual merge) | Not needed — no branches |
+| **Best for** | Parallel code changes needing isolation | Coordinated team workflows |
+
+## Safety Policies
+
+- **Always ask first** — never create a team without explicit user confirmation
+- **Never silently discard** — `/team-stop` with incomplete tasks requires explicit choice
+- **Max teammates** — capped by `nativeTeam.maxTeammates` (default: 4)
+- **One team at a time** — must stop existing team before creating a new one

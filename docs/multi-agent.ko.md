@@ -98,3 +98,70 @@ gitGraph
 - **조용한 폐기 금지** — 미머지 커밋이 있는 `/agent-stop`은 명시적 선택 필요
 - **`--dangerously-skip-permissions`** — 에이전트가 도구 확인을 건너뜀; 사용자에게 항상 사전 고지
 - **최대 에이전트 수** — `multiAgent.maxAgents`로 제한 (기본값: 4)
+
+---
+
+# 네이티브 팀 시스템
+
+Claude Code의 내장 팀 오케스트레이션을 사용합니다 — tmux나 worktree 의존성이 필요 없습니다.
+
+## 명령어
+
+| 명령어 | 설명 |
+|--------|------|
+| `/team-spawn [template\|N] [task]` | 템플릿 또는 커스텀 인원으로 팀 생성 |
+| `/team-status` | 팀원 상태 및 작업 진행률 확인 |
+| `/team-stop` | 팀원 종료, 미완료 작업 경고, 정리 |
+
+## 템플릿
+
+| 템플릿 | 구성원 | 용도 |
+|--------|--------|------|
+| `fullstack` | frontend (sonnet) + backend (sonnet) + tester (sonnet) | 풀스택 기능 개발 |
+| `review` | reviewer (opus) + tester (sonnet) | 코드 리뷰 및 테스트 |
+| `research` | researcher (haiku) + implementer (sonnet) + architect (opus) | 연구 기반 개발 |
+
+## 워크플로우
+
+```mermaid
+graph TD
+    START["/team-spawn fullstack '인증 시스템 구축'"] --> CONFIG[nativeTeam 설정 읽기]
+    CONFIG --> CONFIRM{"사용자 확인?"}
+    CONFIRM -->|취소| ABORT[중단]
+    CONFIRM -->|승인| CREATE["TeamCreate: 팀 + 작업 목록 생성"]
+    CREATE --> TASKS["TaskCreate: 하위 작업으로 분해"]
+    TASKS --> SPAWN["Agent 도구로 팀원 생성<br/>(team_name + name)"]
+    SPAWN --> ASSIGN["TaskUpdate: 팀원에게 작업 할당"]
+    ASSIGN --> RUNNING["팀 실행 중 — 메시지가 자동으로 도착"]
+
+    RUNNING --> STATUS["/team-status"]
+    RUNNING --> STOP["/team-stop"]
+
+    STOP --> CHECK{"미완료 작업?"}
+    CHECK -->|있음| WARN["사용자에게 경고:<br/>계속 / 중지 / 취소"]
+    CHECK -->|없음| SHUTDOWN["SendMessage 종료 + TeamDelete"]
+    WARN -->|중지| SHUTDOWN
+
+    style START fill:#7C3AED,color:#fff
+    style CONFIRM fill:#f59e0b,color:#000
+    style CHECK fill:#f59e0b,color:#000
+```
+
+## 멀티 에이전트 vs 네이티브 팀
+
+| | 멀티 에이전트 (`/agent-spawn`) | 네이티브 팀 (`/team-spawn`) |
+|---|---|---|
+| **인프라** | tmux + git worktree | Claude Code 내장 도구 |
+| **전제조건** | tmux, git, claude CLI | 없음 (내장) |
+| **격리** | 에이전트별 Git 브랜치 | 공유 저장소 (또는 Agent 도구 격리) |
+| **통신** | tmux 팬 관찰 | 팀원 간 SendMessage |
+| **작업 관리** | TASK.md 파일 | TaskCreate / TaskList / TaskUpdate |
+| **머지 전략** | `/agent-apply` (수동 머지) | 불필요 — 브랜치 없음 |
+| **적합한 용도** | 격리가 필요한 병렬 코드 변경 | 조율된 팀 워크플로우 |
+
+## 안전 정책
+
+- **항상 먼저 묻기** — 사용자 확인 없이 절대 팀을 생성하지 않음
+- **조용한 폐기 금지** — 미완료 작업이 있는 `/team-stop`은 명시적 선택 필요
+- **최대 팀원 수** — `nativeTeam.maxTeammates`로 제한 (기본값: 4)
+- **한 번에 하나의 팀** — 새 팀 생성 전 기존 팀을 먼저 중지해야 함

@@ -30,5 +30,11 @@ Only modify within `scopeGuard.allowedPaths`. Confirm before out-of-scope edits.
 ### Multi-Agent
 On `/agent-spawn`: confirm → worktree `omh/agent-{N}` → never auto-merge → show diffs → warn on unmerged before stop.
 
+### Native Team
+On `/team-spawn`: confirm → TeamCreate → TaskCreate → spawn teammates → assign tasks. Use `/team-status` for progress, `/team-stop` to shutdown. Never stop without checking incomplete tasks.
+
+### Post-Plan Team Suggestion
+After plan approval (ExitPlanMode), if plan has 2+ parallelizable tasks → suggest `/team-spawn {template} {task}`. Match template to task types (fullstack/review/research). Never auto-create — always suggest and wait for confirmation.
+
 {{conventionsBlock}}
 <!-- HARNESS:END -->
