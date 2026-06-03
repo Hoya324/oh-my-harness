@@ -29,7 +29,7 @@ try {
   if (input.summary) { lines.push(`## Session Summary`, input.summary, ''); }
   if (input.active_tasks) { lines.push(`## Active Tasks`, input.active_tasks, ''); }
   lines.push(`## Reminder`);
-  lines.push(`Context was compacted. Review .claude/.omh/context-snapshot.md and .claude/.omh/conventions.json to restore working context.`);
+  lines.push(`Context was compacted. Review .claude/.omh/STATE.md, .claude/.omh/context-snapshot.md, and .claude/.omh/conventions.json to restore working context.`);
 
   mkdirSync(dirname(snapshotPath), { recursive: true });
   writeFileSync(snapshotPath, lines.join('\n'));
