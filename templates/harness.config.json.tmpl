@@ -13,7 +13,8 @@
     "usageTracking": true,
     "autoGitignore": true,
     "skillScaffolding": true,
-    "nativeTeam": true
+    "nativeTeam": true,
+    "weightRouting": true
   },
   "testEnforcement": {
     "minCases": 2,
@@ -70,6 +71,21 @@
         ]
       }
     }
+  },
+  "tier3": {
+    "taskThreshold": 5,
+    "fileThreshold": 5,
+    "domainKeywords": []
+  },
+  "verify": {
+    "rounds": 3,
+    "stopWhenClean": true,
+    "autoFix": false,
+    "lenses": [
+      { "model": "claude", "via": "native-subagent", "focus": "correctness" },
+      { "model": "gpt", "via": "codex", "cmd": "codex exec", "focus": "convention" },
+      { "model": "gemini", "via": "gemini", "cmd": "gemini -p --approval-mode plan", "focus": "regression" }
+    ]
   },
   "conventions": {
     "autoDetect": true,
