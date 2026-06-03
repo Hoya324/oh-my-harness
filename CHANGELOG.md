@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-06-03
+
+### Added
+- Weight Routing: prompt 무게(Tier 1/2/3) 자동 분류(`hooks/lib/tier.mjs`) + 한/영 무게 표현 사전 + 도메인 키워드. Tier 3은 완료 전 검증 강제.
+- `/omh-verify`: N-라운드 독립 검증+수정 루프. Claude/GPT(codex)/Gemini 모델 로테이션, 외부 검증자 읽기 전용, CLI 미설치 시 graceful degrade.
+- 모델 어댑터: `lib/adapters/codex.mjs`, `lib/adapters/gemini.mjs`.
+- Living State: 디스크 앵커 `STATE.md`(`lib/state.mjs`) — SessionStart 재주입 + PreCompact 통합으로 context rot 방어.
+- `harness-setup` 위저드: 무게 라우팅/verify 질문 + codex/gemini 자동 감지 후 검증 렌즈 제안.
+- 설정 스키마 `tier3`/`verify` + `features.weightRouting`, 기본 템플릿 out-of-box 반영.
+
 ## [0.1.0] - 2026-03-23
 
 ### Added

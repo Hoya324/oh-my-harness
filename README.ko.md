@@ -112,6 +112,10 @@ oh-my-harness init
 | 11 | 자동 .gitignore | CLI init | ON | `.claude/.omh/`를 `.gitignore`에 추가 |
 | 12 | 멀티 에이전트 | `/agent-spawn` | — | tmux + git worktree를 활용한 병렬 Claude 에이전트 |
 | 13 | 네이티브 팀 | `/team-spawn` | ON | Claude Code 내장 팀 오케스트레이션 (템플릿 지원) |
+| 14 | 스킬 스캐폴딩 | `/init-project` | ON | 감지된 스택 기반으로 프로젝트별 스킬 자동 생성 |
+| 15 | 무게 라우팅 | `UserPromptSubmit` | ON | 작업 무게(Tier 1/2/3) 자동 분류 후 가드 강도 조절; Tier 3은 완료 전 검증 강제 |
+| 16 | N-라운드 검증 | `/omh-verify` | — | 모델 로테이션(Claude → GPT/codex → Gemini)으로 N회 독립 검증+수정; 외부 검증자는 읽기 전용 |
+| 17 | Living State | `SessionStart` / `PreCompact` | ON | 디스크 앵커 `STATE.md`(목표/phase/결정/진행)를 세션 넘어 재주입해 context rot 방어 |
 
 > 각 기능의 상세 설명은 [기능 문서](docs/features.ko.md)를 참고하세요.
 

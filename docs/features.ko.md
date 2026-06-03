@@ -298,3 +298,42 @@ Claude Code의 내장 팀 시스템을 사용하여 병렬 작업을 오케스�
 ```
 
 > 커스텀 템플릿은 설정의 `nativeTeam.templates`로 추가할 수 있습니다.
+
+---
+
+## 15. 무게 라우팅 (Tier 1/2/3)
+
+**훅:** `UserPromptSubmit` · **기본값:** ON (`features.weightRouting`)
+
+각 프롬프트를 무게 Tier로 분류해 가드 강도를 비례 적용합니다. 작은 작업은 가볍게, 무거운 작업은 빠짐없이.
+
+- **신호:** 태스크 수 휴리스틱 + 한/영 무게 암시 표현(`dictionary.mjs` `weightUp`/`weightDown`) + 설정형 도메인 키워드. 상향 신호가 하나라도 있으면 상향(보수적, 놓치지 않기 우선).
+- **Tier 1(가벼움):** 컨벤션 리마인더만.
+- **Tier 2(보통):** 컨벤션 체크리스트 + 테스트 + 셀프리뷰.
+- **Tier 3(무거움):** 완료 선언 전 `/omh-verify` 실행을 강제 주입.
+
+**설정:**
+```json
+{
+  "features": { "weightRouting": true },
+  "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": ["결제", "매출"] }
+}
+```
+
+## 16. N-라운드 독립 검증 (`/omh-verify`)
+
+**커맨드:** `/omh-verify` · **기본값:** Tier 3에서 트리거
+
+현재 `git diff`를 N회 독립 검증+수정하며, 매 라운드 모델을 로테이션해 자기 판단 셀프 도장을 방지합니다.
+
+- **모델 로테이션:** Claude(네이티브 서브에이전트) → GPT(`codex exec`) → Gemini(`gemini -p --approval-mode plan`).
+- **독립성:** 매 라운드 fresh 컨텍스트, 이전 결론을 다음 검증자에 주입하지 않음.
+- **외부 읽기 전용:** 외부 검증자는 진단만, 수정은 메인 루프가 적용.
+- **Graceful degrade:** 미설치 CLI는 자동 제외(Claude 단독 폴백).
+- **합의 신호:** 2개 이상 모델이 지적하면 high-confidence.
+
+## 17. Living State (STATE.md)
+
+**훅:** `SessionStart`(주입) / `PreCompact`(통합) · **기본값:** ON
+
+`.claude/.omh/STATE.md`에 목표·현재 phase·핵심 결정·진행을 보관합니다. 세션 시작 시 재주입되고 압축 전 스냅샷에서 참조되어, 세션 경계와 compaction을 넘어 작업 컨텍스트가 유지됩니다 — context rot 직접 방어.

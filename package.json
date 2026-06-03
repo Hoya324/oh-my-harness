@@ -1,6 +1,6 @@
 {
   "name": "oh-my-harness",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lightweight Claude Code harness — smart defaults, test enforcement, model routing",
   "type": "module",
   "bin": {
