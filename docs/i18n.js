@@ -16,7 +16,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.1.0 \u00b7 MIT License',
+    'index.hero.badge': 'v0.2.1 \u00b7 MIT License',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>',
     'index.hero.subtitle': 'Smart Defaults for Claude Code',
     'index.hero.desc': 'A lightweight harness that adds safety guards, intelligent model routing, and multi-agent orchestration \u2014 all through native hooks. Zero config, instant boost.',
@@ -48,7 +48,7 @@ const translations = {
     // ── Index: Features ──
     'index.features.tag': 'Features',
     'index.features.title': 'Everything OMH does for you',
-    'index.features.desc': '13 features that activate automatically. No manual intervention needed.',
+    'index.features.desc': '17 features that activate automatically. No manual intervention needed.',
     'index.features.f1.title': 'Safety Guards',
     'index.features.f1.desc': 'Ambiguity detection, dangerous operation warnings, scope restrictions. Guide with warnings, never block.',
     'index.features.f2.title': 'Intelligent Model Routing',
@@ -59,6 +59,8 @@ const translations = {
     'index.features.f4.desc': "Scans your project at session start \u2014 detects language, test runner, linter, and formatter. Supports Node, Python, Go, Rust, Java, Kotlin.",
     'index.features.f5.title': 'Test Enforcement & Skill Scaffolding',
     'index.features.f5.desc': 'Verifies tests exist after every code change. Auto-generates project-specific skills for code review, test writing, and linting.',
+    'index.features.f6.title': 'Weight-Aware Verification',
+    'index.features.f6.desc': 'Classifies task weight (Tier 1/2/3); heavy work runs N independent verify+fix rounds rotating Claude, GPT, and Gemini. Plus disk-anchored STATE.md to survive context compaction.',
 
     // ── Index: Agents ──
     'index.agents.tag': 'Model Routing',
@@ -370,7 +372,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.1.0 \u00b7 MIT \ub77c\uc774\uc120\uc2a4',
+    'index.hero.badge': 'v0.2.1 \u00b7 MIT \ub77c\uc774\uc120\uc2a4',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12</span>',
     'index.hero.subtitle': 'Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12',
     'index.hero.desc': '\uc548\uc804 \uac00\ub4dc, \uc9c0\ub2a5\ud615 \ubaa8\ub378 \ub77c\uc6b0\ud305, \uba40\ud2f0 \uc5d0\uc774\uc804\ud2b8 \uc624\ucf00\uc2a4\ud2b8\ub808\uc774\uc158\uc744 \ucd94\uac00\ud558\ub294 \uacbd\ub7c9 \ud558\ub124\uc2a4 \u2014 \ubaa8\ub450 \ub124\uc774\ud2f0\ube0c \ud6c5\uc744 \ud1b5\ud574. \uc124\uc815 \uc5c6\uc774, \uc989\uc2dc \ud5a5\uc0c1.',
@@ -402,7 +404,7 @@ const translations = {
     // ── Index: Features ──
     'index.features.tag': '\uae30\ub2a5',
     'index.features.title': 'OMH\uac00 \uc5ec\ub7ec\ubd84\uc744 \uc704\ud574 \ud558\ub294 \ubaa8\ub4e0 \uac83',
-    'index.features.desc': '\uc790\ub3d9\uc73c\ub85c \ud65c\uc131\ud654\ub418\ub294 13\uac00\uc9c0 \uae30\ub2a5. \uc218\ub3d9 \uac1c\uc785\uc774 \ud544\uc694 \uc5c6\uc2b5\ub2c8\ub2e4.',
+    'index.features.desc': '\uc790\ub3d9\uc73c\ub85c \ud65c\uc131\ud654\ub418\ub294 17\uac00\uc9c0 \uae30\ub2a5. \uc218\ub3d9 \uac1c\uc785\uc774 \ud544\uc694 \uc5c6\uc2b5\ub2c8\ub2e4.',
     'index.features.f1.title': '\uc548\uc804 \uac00\ub4dc',
     'index.features.f1.desc': '\ubaa8\ud638\uc131 \uac10\uc9c0, \uc704\ud5d8 \uc791\uc5c5 \uacbd\uace0, \ubc94\uc704 \uc81c\ud55c. \uacbd\uace0\ub85c \uc548\ub0b4\ud558\uace0, \uc808\ub300 \ucc28\ub2e8\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.',
     'index.features.f2.title': '\uc9c0\ub2a5\ud615 \ubaa8\ub378 \ub77c\uc6b0\ud305',
@@ -413,6 +415,8 @@ const translations = {
     'index.features.f4.desc': '\uc138\uc158 \uc2dc\uc791 \uc2dc \ud504\ub85c\uc81d\ud2b8\ub97c \uc2a4\uce94 \u2014 \uc5b8\uc5b4, \ud14c\uc2a4\ud2b8 \ub7ec\ub108, \ub9b0\ud130, \ud3ec\ub9e4\ud130\ub97c \uac10\uc9c0. Node, Python, Go, Rust, Java, Kotlin \uc9c0\uc6d0.',
     'index.features.f5.title': '\ud14c\uc2a4\ud2b8 \uac15\uc81c \ubc0f \uc2a4\ud0ac \uc2a4\uce90\ud3f4\ub529',
     'index.features.f5.desc': '\ubaa8\ub4e0 \ucf54\ub4dc \ubcc0\uacbd \ud6c4 \ud14c\uc2a4\ud2b8 \uc874\uc7ac\ub97c \ud655\uc778. \ucf54\ub4dc \ub9ac\ubdf0, \ud14c\uc2a4\ud2b8 \uc791\uc131, \ub9b0\ud305\uc744 \uc704\ud55c \ud504\ub85c\uc81d\ud2b8\ubcc4 \uc2a4\ud0ac\uc744 \uc790\ub3d9 \uc0dd\uc131.',
+    'index.features.f6.title': '\ubb34\uac8c \ube44\ub840 \uac80\uc99d',
+    'index.features.f6.desc': '\uc791\uc5c5 \ubb34\uac8c(Tier 1/2/3)\ub97c \ud310\uc815 \u2014 \ubb34\uac70\uc6b4 \uc791\uc5c5\uc740 Claude\u00b7GPT\u00b7Gemini\ub97c \ub85c\ud14c\uc774\uc158\ud558\uba70 N\ud68c \ub3c5\ub9bd \uac80\uc99d+\uc218\uc815. \ucef4\ud328\ud2b8\ub97c \uacac\ub514\ub294 \ub514\uc2a4\ud06c \uc575\ucee4 STATE.md \ud3ec\ud568.',
 
     // ── Index: Agents ──
     'index.agents.tag': '\ubaa8\ub378 \ub77c\uc6b0\ud305',

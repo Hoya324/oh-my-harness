@@ -25,25 +25,31 @@ graph TB
         HOOKS --> H8[post-task.mjs]
 
         SKILLS --> S1["/harness-setup"]
-        SKILLS --> S2["/set-harness"]
+        SKILLS --> S2["/omh-verify"]
         SKILLS --> S3["/agent-spawn"]
-        SKILLS --> S4["/agent-status"]
+        SKILLS --> S4["/team-spawn"]
 
         AGENTS --> A1["harness:quick (haiku)"]
         AGENTS --> A2["harness:standard (sonnet)"]
         AGENTS --> A3["harness:architect (opus)"]
     end
 
-    subgraph "Project Data (.claude/.omh/)"
+    subgraph "Config (project → ~/.claude global fallback)"
         CONFIG[harness.config.json]
+    end
+
+    subgraph "Project Data (.claude/.omh/)"
         CONV[conventions.json]
         USAGE[usage.json]
         SNAP[context-snapshot.md]
+        STATE[STATE.md]
     end
 
     H1 --> CONV
     H6 --> USAGE
     H7 --> SNAP
+    H1 --> STATE
+    H7 --> STATE
     H1 --> CONFIG
     H2 --> CONFIG
     H3 --> CONFIG
@@ -95,8 +101,11 @@ oh-my-harness/                    <- plugin root ($CLAUDE_PLUGIN_ROOT)
 ├── hooks/
 │   ├── hooks.json                <- hook registration (uses $CLAUDE_PLUGIN_ROOT)
 │   ├── lib/output.mjs            <- shared output helpers
-│   ├── session-start.mjs         <- convention detection
-│   ├── pre-prompt.mjs            <- ambiguity + auto-plan
+│   ├── lib/dictionary.mjs        <- ko/en patterns + weight expressions
+│   ├── lib/tier.mjs              <- task-weight classifier (Tier 1/2/3)
+│   ├── lib/hook-config.mjs       <- config loader (project → ~/.claude global fallback)
+│   ├── session-start.mjs         <- convention detection + STATE.md injection
+│   ├── pre-prompt.mjs            <- ambiguity + auto-plan + weight routing
 │   ├── dangerous-guard.mjs       <- destructive command warning
 │   ├── commit-convention.mjs     <- commit format reminder
 │   ├── scope-guard.mjs           <- path restriction warning
@@ -110,7 +119,18 @@ oh-my-harness/                    <- plugin root ($CLAUDE_PLUGIN_ROOT)
 │   ├── agent-spawn/SKILL.md      <- /agent-spawn
 │   ├── agent-status/SKILL.md     <- /agent-status
 │   ├── agent-apply/SKILL.md      <- /agent-apply
-│   └── agent-stop/SKILL.md       <- /agent-stop
+│   ├── agent-stop/SKILL.md       <- /agent-stop
+│   ├── omh-verify/SKILL.md       <- /omh-verify (N-round independent verify)
+│   ├── team-spawn/SKILL.md       <- /team-spawn
+│   ├── team-status/SKILL.md      <- /team-status
+│   └── team-stop/SKILL.md        <- /team-stop
+├── lib/                          <- core modules (CLI + verify engine)
+│   ├── config.mjs                <- config schema + deep-merge
+│   ├── verify.mjs                <- /omh-verify helpers (diff, lens rotation)
+│   ├── state.mjs                 <- STATE.md read/write/render
+│   └── adapters/
+│       ├── codex.mjs             <- GPT verifier (codex exec -s read-only)
+│       └── gemini.mjs            <- Gemini verifier (gemini -p --approval-mode plan)
 └── agents/                       <- model-routed agents
     ├── quick.md                   <- haiku
     ├── standard.md                <- sonnet
@@ -137,5 +157,6 @@ your-project/
         ├── harness.config.json
         ├── conventions.json
         ├── usage.json
-        └── context-snapshot.md
+        ├── context-snapshot.md
+        └── STATE.md
 ```
