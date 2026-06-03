@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { hookSilent } from './lib/output.mjs';
+import { loadConfig } from './lib/hook-config.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
@@ -16,7 +17,7 @@ try {
   if (process.env.DISABLE_HARNESS) process.exit(0);
 
   let config;
-  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { process.exit(0); }
+  config = loadConfig(projectRoot); if (!config) { process.exit(0); }
   if (!config.features?.usageTracking) process.exit(0);
 
   const input = readStdin();

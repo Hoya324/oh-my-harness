@@ -15,6 +15,7 @@ import { join, dirname, basename, extname } from 'path';
 import { execSync } from 'child_process';
 import { hookOutput, hookSilent } from './lib/output.mjs';
 import { getLang } from './lib/dictionary.mjs';
+import { loadConfig } from './lib/hook-config.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
@@ -80,7 +81,7 @@ try {
   if (process.env.DISABLE_HARNESS) { console.log(hookSilent()); process.exit(0); }
 
   let config;
-  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { console.log(hookSilent()); process.exit(0); }
+  config = loadConfig(projectRoot); if (!config) { console.log(hookSilent()); process.exit(0); }
   if (!config.features?.testEnforcement) { console.log(hookSilent()); process.exit(0); }
 
   const input = readStdin();

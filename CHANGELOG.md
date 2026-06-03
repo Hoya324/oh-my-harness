@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-06-03
+
+### Added
+- 전역 config fallback: 훅이 프로젝트 로컬(`<project>/.claude/.omh/`) 다음으로 `~/.claude/.omh/harness.config.json`을 읽음(`hooks/lib/hook-config.mjs`). "User (Global)" 설정이 실제로 모든 프로젝트에 적용됨.
+
+### Fixed
+- `/omh-verify` codex 어댑터가 `codex exec -s read-only`로 동작 — 외부 검증자가 워크스페이스를 수정하지 못하도록 강제.
+- 렌즈 실패 시 CLI output을 버리지 않고 표면화해 진단 가능.
+
 ## [0.2.0] - 2026-06-03
 
 ### Added

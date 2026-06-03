@@ -4,6 +4,7 @@ import { join, dirname } from 'path';
 import { hookOutput, hookSilent } from './lib/output.mjs';
 import { detectConventions } from './lib/detect.mjs';
 import { stateSummary } from '../lib/state.mjs';
+import { loadConfig } from './lib/hook-config.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configDir = join(projectRoot, '.claude', '.omh');
@@ -20,7 +21,7 @@ try {
 
   readStdin();
   let config;
-  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { console.log(hookSilent()); process.exit(0); }
+  config = loadConfig(projectRoot); if (!config) { console.log(hookSilent()); process.exit(0); }
   if (!config.features?.conventionSetup) { console.log(hookSilent()); process.exit(0); }
 
   // Use cache if fresh (< 1 hour)
