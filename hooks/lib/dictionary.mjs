@@ -26,6 +26,12 @@ const dictionary = {
       // Ambiguity: open-ended scope markers ("등", "기타")
       // Note: \b doesn't work with Korean chars — use \s or $ instead
       openEndedScope: /(?:,?\s*등을?\s|,?\s*등$|등등|기타)/,
+      // Weight: phrases that imply a heavy / high-stakes task (Tier↑)
+      weightUp:
+        /(프로덕션|운영\s*환경|배포|릴리스|릴리즈|결제|인증|로그인|보안|매출|정산|마이그레이션|마이그레이트|대규모\s*리팩토링|아키텍처|스키마\s*변경|신중히|꼼꼼히|critical|중대|장애)/,
+      // Weight: phrases that imply a trivial / low-stakes task (Tier↓)
+      weightDown:
+        /(오타|간단히|간단한|사소한|사소|그냥\s*빠르게|빠르게\s*만|대충|살짝|미세|quick\s*fix|typo)/,
     },
     messages: {
       autoPlan: (count) =>
@@ -47,6 +53,10 @@ const dictionary = {
         `최소 ${minCases}개 테스트 케이스(happy, edge, error) 추가를 제안하세요. 테스트 없이 완료 선언 금지.`,
       antiRatVerified: (count) =>
         `[omh:test-enforcement] ✓ ${count}개 파일 테스트 확인됨. 실행으로 통과 여부 확인하세요.`,
+      tierNotice: (tier, reasons) =>
+        `[omh:tier] Tier ${tier} — ${reasons.join(', ') || '기본'}`,
+      tier3Reminder:
+        '[omh:tier-3] 무거운 작업으로 판정되었습니다. 완료를 선언하기 전에 반드시 (1) 컨벤션 체크리스트 통과 (2) `/omh-verify`로 N-라운드 독립검증을 수행하세요. 생략 금지.',
     },
   },
 
@@ -59,6 +69,10 @@ const dictionary = {
       targetNouns: /\b(?:file|function|class|method|component|module)\s/i,
       vagueExpressions: /\b(?:or something|whatever|anything|stuff|things)\b/i,
       openEndedScope: /\b(?:etc\.?|and so on|and more|and such)\b/i,
+      weightUp:
+        /\b(production|deploy|release|payment|auth|login|security|revenue|billing|migration|migrate|large\s*refactor|architecture|schema\s*change|carefully|thoroughly|critical|outage|incident)\b/i,
+      weightDown:
+        /\b(typo|just\s*a?\s*quick\s*fix|quick\s*fix|simple\s*tweak|just\s*tweak|trivial|minor|small\s*change)\b/i,
     },
     messages: {
       autoPlan: (count) =>
@@ -80,6 +94,10 @@ const dictionary = {
         `Suggest adding at least ${minCases} test cases (happy, edge, error). Do NOT declare task complete without tests.`,
       antiRatVerified: (count) =>
         `[omh:test-enforcement] ✓ ${count} file(s) have tests. Run tests to verify they pass.`,
+      tierNotice: (tier, reasons) =>
+        `[omh:tier] Tier ${tier} — ${reasons.join(', ') || 'default'}`,
+      tier3Reminder:
+        '[omh:tier-3] Heavy task detected. Before declaring complete, you MUST (1) pass the convention checklist and (2) run `/omh-verify` for N-round independent verification. Do not skip.',
     },
   },
 };
