@@ -1,6 +1,15 @@
 # 설정
 
-모든 설정은 `.claude/.omh/harness.config.json`에 있습니다.
+설정은 `.claude/.omh/harness.config.json`에 있습니다.
+
+## 설정 탐색 순서 (프로젝트 → 전역)
+
+훅은 다음 순서로 config를 찾아 **먼저 존재하는 것**을 사용합니다:
+
+1. `<프로젝트>/.claude/.omh/harness.config.json` — 프로젝트 로컬 (우선)
+2. `~/.claude/.omh/harness.config.json` — 사용자 전역 fallback
+
+전역 기본값(User 스코프)을 한 번 설정해 모든 프로젝트에 적용하면서, 프로젝트별로 덮어쓸 수 있습니다. 둘 다 없으면 훅은 아무 동작도 하지 않습니다.
 
 ## 기본 설정
 
@@ -74,6 +83,14 @@
 | `features.nativeTeam` | bool | `true` | 네이티브 팀 스킬 활성화 |
 | `nativeTeam.maxTeammates` | number | `4` | 팀당 최대 팀원 수 |
 | `nativeTeam.defaultTeamName` | string | `omh-team` | 기본 팀 이름 |
+| `features.weightRouting` | bool | `true` | 작업 무게(Tier 1/2/3) 판정 후 가드 비례 적용 |
+| `tier3.taskThreshold` | number | `5` | Tier 3 강제 태스크 수 |
+| `tier3.fileThreshold` | number | `5` | Tier 3 강제 변경 파일 수 |
+| `tier3.domainKeywords` | string[] | `[]` | Tier 3 강제 도메인 용어 (예: `["결제","매출"]`) |
+| `verify.rounds` | number | `3` | `/omh-verify` 독립 검증 라운드 수 |
+| `verify.stopWhenClean` | bool | `true` | 발견 없는 라운드에서 조기 종료 |
+| `verify.autoFix` | bool | `false` | 자동 수정 (false면 확인 후) |
+| `verify.lenses` | object[] | claude/gpt/gemini | 검증자 모델+초점, 라운드마다 로테이션; 미설치 CLI 자동 제외 |
 
 ---
 

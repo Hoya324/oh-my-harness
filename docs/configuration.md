@@ -1,6 +1,15 @@
 # Configuration
 
-All settings live in `.claude/.omh/harness.config.json`.
+Settings live in `.claude/.omh/harness.config.json`.
+
+## Config Resolution (project → global)
+
+Hooks resolve config in this order, using the first that exists:
+
+1. `<project>/.claude/.omh/harness.config.json` — project-local (wins)
+2. `~/.claude/.omh/harness.config.json` — user-global fallback
+
+This lets you set a global default once (User scope) that applies to every project, while still overriding per-project. If neither file exists, hooks stay silent (no-op).
 
 ## Default Config
 
@@ -74,6 +83,14 @@ All settings live in `.claude/.omh/harness.config.json`.
 | `features.nativeTeam` | bool | `true` | Enable native team skills |
 | `nativeTeam.maxTeammates` | number | `4` | Max teammates per team |
 | `nativeTeam.defaultTeamName` | string | `omh-team` | Default team name |
+| `features.weightRouting` | bool | `true` | Classify task weight (Tier 1/2/3) and route guardrails proportionally |
+| `tier3.taskThreshold` | number | `5` | Task count that forces Tier 3 |
+| `tier3.fileThreshold` | number | `5` | Changed-file count that forces Tier 3 |
+| `tier3.domainKeywords` | string[] | `[]` | Project terms that force Tier 3 (e.g. `["payment","결제"]`) |
+| `verify.rounds` | number | `3` | `/omh-verify` independent verify rounds |
+| `verify.stopWhenClean` | bool | `true` | Stop early when a round finds nothing |
+| `verify.autoFix` | bool | `false` | Auto-apply fixes (vs. confirm first) |
+| `verify.lenses` | object[] | claude/gpt/gemini | Verifier models + focus, rotated per round; missing CLIs auto-excluded |
 
 ---
 
