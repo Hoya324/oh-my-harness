@@ -347,3 +347,58 @@ Orchestrate parallel work using Claude Code's built-in team system — no tmux o
 ```
 
 > Custom templates can be added via `nativeTeam.templates` in the config.
+
+---
+
+## 15. Weight Routing (Tier 1/2/3)
+
+**Hook:** `UserPromptSubmit` · **Default:** ON (`features.weightRouting`)
+
+Classifies each prompt into a weight tier and routes guardrails proportionally, so small tasks stay light while heavy tasks get full treatment.
+
+- **Signals:** task count heuristics + Korean/English weight-implying expressions (`dictionary.mjs` `weightUp`/`weightDown`) + configurable domain keywords. Any up-signal wins (conservative — don't-miss-it priority).
+- **Tier 1 (light):** convention reminder only.
+- **Tier 2 (standard):** convention checklist + tests + self-review.
+- **Tier 3 (heavy):** injects a mandatory reminder to run `/omh-verify` before declaring complete.
+
+**Configuration:**
+```json
+{
+  "features": { "weightRouting": true },
+  "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": ["payment", "결제"] }
+}
+```
+
+## 16. N-Round Independent Verify (`/omh-verify`)
+
+**Command:** `/omh-verify` · **Default:** triggered by Tier 3
+
+Runs N independent verify+fix rounds over the current `git diff`, rotating models each round so no model rubber-stamps its own prior reasoning.
+
+- **Model rotation:** Claude (native subagent) → GPT (`codex exec`) → Gemini (`gemini -p --approval-mode plan`).
+- **Independence:** fresh context each round; previous round's conclusions are NOT fed to the next verifier.
+- **Read-only externals:** external verifiers only diagnose; fixes are applied by the main loop.
+- **Graceful degrade:** missing CLIs are auto-excluded (Claude-only fallback).
+- **Agreement signal:** issues flagged by 2+ models are high-confidence.
+
+**Configuration:**
+```json
+{
+  "verify": {
+    "rounds": 3,
+    "stopWhenClean": true,
+    "autoFix": false,
+    "lenses": [
+      { "model": "claude", "via": "native-subagent", "focus": "correctness" },
+      { "model": "gpt", "via": "codex", "cmd": "codex exec", "focus": "convention" },
+      { "model": "gemini", "via": "gemini", "cmd": "gemini -p --approval-mode plan", "focus": "regression" }
+    ]
+  }
+}
+```
+
+## 17. Living State (STATE.md)
+
+**Hook:** `SessionStart` (inject) / `PreCompact` (integrate) · **Default:** ON
+
+A disk-anchored `STATE.md` under `.claude/.omh/` holds goal, current phase, key decisions, and progress. It is re-injected at session start and referenced in the pre-compaction snapshot, so working context survives session boundaries and compaction — directly mitigating context rot.

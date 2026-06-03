@@ -127,6 +127,9 @@ oh-my-harness init
 | 12 | Multi-Agent | `/agent-spawn` | — | Parallel Claude agents in tmux with git worktrees |
 | 13 | Native Team | `/team-spawn` | ON | Native Claude Code team orchestration with templates |
 | 14 | Skill Scaffolding | `/init-project` | ON | Auto-generates project-specific skills based on detected stack |
+| 15 | Weight Routing | `UserPromptSubmit` | ON | Classifies task weight (Tier 1/2/3) and routes guardrails proportionally; Tier 3 enforces verification before completion |
+| 16 | N-Round Verify | `/omh-verify` | — | N independent verify+fix rounds with model rotation (Claude → GPT/codex → Gemini); external verifiers run read-only |
+| 17 | Living State | `SessionStart` / `PreCompact` | ON | Disk-anchored `STATE.md` (goal/phase/decisions/progress) re-injected across sessions to fight context rot |
 
 > See [Feature Details](docs/features.md) for full descriptions of each feature.
 
