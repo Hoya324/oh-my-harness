@@ -353,7 +353,7 @@ Orchestrate parallel work using Claude Code's built-in team system — no tmux o
 
 ### 13. Autonomous Loop
 
-The headline feature of 0.2.0. Define a goal once in a `SPEC.md`, then OMH *loops* — implementing, self-verifying, and cross-verifying — until the spec is objectively met. The philosophy here is the opposite of OMH's usual "warnings instead of walls": the **harness owns when to continue and when to stop**, never the model's self-assessment.
+The headline feature of 0.3.0. Define a goal once in a `SPEC.md`, then OMH *loops* — implementing, self-verifying, and cross-verifying — until the spec is objectively met. The philosophy here is the opposite of OMH's usual "warnings instead of walls": the **harness owns when to continue and when to stop**, never the model's self-assessment — autonomy with real walls.
 
 **Trigger:** the Stop hook `hooks/loop-guard.mjs` *is* the loop engine and safety enforcer. Once `/omh-loop` writes an active state, every Stop event re-enters the hook. To continue it prints a **top-level** `{"decision":"block","reason":...}` on stdout and exits 0 (never exit 2, never nested under `hookSpecificOutput`); when the goal is met or a guardrail fires, it lets the session stop. The pure, unit-tested core lives in `lib/loop.mjs` (`evaluateLoop`, `classifyTier`, `buildLadder`, `detectPlateau`, `detectOscillation`).
 
@@ -432,3 +432,58 @@ If a request is vague, `/omh-spec` inserts `[NEEDS CLARIFICATION]` markers and *
 ```
 
 > Emits `[omh:spec]`. See [the Autonomous Loop guide](loop.md) for the EARS template and authoring workflow.
+
+---
+
+## 15. Weight Routing (Tier 1/2/3)
+
+**Hook:** `UserPromptSubmit` · **Default:** ON (`features.weightRouting`)
+
+Classifies each prompt into a weight tier and routes guardrails proportionally, so small tasks stay light while heavy tasks get full treatment.
+
+- **Signals:** task count heuristics + Korean/English weight-implying expressions (`dictionary.mjs` `weightUp`/`weightDown`) + configurable domain keywords. Any up-signal wins (conservative — don't-miss-it priority).
+- **Tier 1 (light):** convention reminder only.
+- **Tier 2 (standard):** convention checklist + tests + self-review.
+- **Tier 3 (heavy):** injects a mandatory reminder to run `/omh-verify` before declaring complete.
+
+**Configuration:**
+```json
+{
+  "features": { "weightRouting": true },
+  "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": ["payment", "결제"] }
+}
+```
+
+## 16. N-Round Independent Verify (`/omh-verify`)
+
+**Command:** `/omh-verify` · **Default:** triggered by Tier 3
+
+Runs N independent verify+fix rounds over the current `git diff`, rotating models each round so no model rubber-stamps its own prior reasoning.
+
+- **Model rotation:** Claude (native subagent) → GPT (`codex exec`) → Gemini (`gemini -p --approval-mode plan`).
+- **Independence:** fresh context each round; previous round's conclusions are NOT fed to the next verifier.
+- **Read-only externals:** external verifiers only diagnose; fixes are applied by the main loop.
+- **Graceful degrade:** missing CLIs are auto-excluded (Claude-only fallback).
+- **Agreement signal:** issues flagged by 2+ models are high-confidence.
+
+**Configuration:**
+```json
+{
+  "verify": {
+    "rounds": 3,
+    "stopWhenClean": true,
+    "autoFix": false,
+    "lenses": [
+      { "model": "claude", "via": "native-subagent", "focus": "correctness" },
+      { "model": "gpt", "via": "codex", "cmd": "codex exec", "focus": "convention" },
+      { "model": "gemini", "via": "gemini", "cmd": "gemini -p --approval-mode plan", "focus": "regression" }
+    ]
+  }
+}
+```
+
+## 17. Living State (STATE.md)
+
+**Hook:** `SessionStart` (inject) / `PreCompact` (integrate) · **Default:** ON
+
+A disk-anchored `STATE.md` under `.claude/.omh/` holds goal, current phase, key decisions, and progress. It is re-injected at session start and referenced in the pre-compaction snapshot, so working context survives session boundaries and compaction — directly mitigating context rot.

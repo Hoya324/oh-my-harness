@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { hookOutput, hookSilent } from './lib/output.mjs';
 import { detectConventions } from './lib/detect.mjs';
+import { stateSummary } from '../lib/state.mjs';
+import { loadConfig } from './lib/hook-config.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configDir = join(projectRoot, '.claude', '.omh');
@@ -19,7 +21,7 @@ try {
 
   readStdin();
   let config;
-  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { console.log(hookSilent()); process.exit(0); }
+  config = loadConfig(projectRoot); if (!config) { console.log(hookSilent()); process.exit(0); }
   if (!config.features?.conventionSetup) { console.log(hookSilent()); process.exit(0); }
 
   // Use cache if fresh (< 1 hour)
@@ -50,6 +52,12 @@ try {
     if (conventions.formatter) parts.push(`fmt: ${conventions.formatter}`);
     if (conventions.buildTool) parts.push(`build: ${conventions.buildTool}`);
     console.log(hookOutput('SessionStart', parts.join(' | ')));
+  }
+
+  // Inject living project state if present
+  const summary = stateSummary(projectRoot);
+  if (summary) {
+    console.log(hookOutput('SessionStart', `[omh:state] 이전 세션 상태:\n${summary}`));
   }
 
   // Skill scaffold hint

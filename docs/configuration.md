@@ -1,6 +1,15 @@
 # Configuration
 
-All settings live in `.claude/.omh/harness.config.json`.
+Settings live in `.claude/.omh/harness.config.json`.
+
+## Config Resolution (project → global)
+
+Hooks resolve config in this order, using the first that exists:
+
+1. `<project>/.claude/.omh/harness.config.json` — project-local (wins)
+2. `~/.claude/.omh/harness.config.json` — user-global fallback
+
+This lets you set a global default once (User scope) that applies to every project, while still overriding per-project. If neither file exists, hooks stay silent (no-op).
 
 ## Default Config
 
@@ -20,7 +29,8 @@ All settings live in `.claude/.omh/harness.config.json`.
     "usageTracking": true,
     "autoGitignore": true,
     "nativeTeam": true,
-    "autonomousLoop": true
+    "autonomousLoop": true,
+    "weightRouting": true
   },
   "testEnforcement": { "minCases": 2, "promptOnMissing": true },
   "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
@@ -55,6 +65,17 @@ All settings live in `.claude/.omh/harness.config.json`.
       "standard": { "model": "standard",  "maxIterations": 8,  "maxWallClockMinutes": 15, "plateauWindow": 2, "crossVerify": true,  "crossVerifyEvery": 0, "marginalGainEpsilon": 0.03 },
       "deep":     { "model": "architect", "maxIterations": 20, "maxWallClockMinutes": 45, "plateauWindow": 3, "crossVerify": true,  "crossVerifyEvery": 5, "marginalGainEpsilon": 0.02 }
     }
+  },
+  "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": [] },
+  "verify": {
+    "rounds": 3,
+    "stopWhenClean": true,
+    "autoFix": false,
+    "lenses": [
+      { "model": "claude", "focus": "logic" },
+      { "model": "gpt",    "focus": "edge-cases" },
+      { "model": "gemini", "focus": "security" }
+    ]
   }
 }
 ```
@@ -69,6 +90,8 @@ All settings live in `.claude/.omh/harness.config.json`.
 /set-harness commitConvention.style gitmoji # Switch to gitmoji
 /set-harness multiAgent.maxAgents 6         # Allow up to 6 agents
 /set-harness nativeTeam.maxTeammates 6        # Allow up to 6 teammates
+/set-harness features.weightRouting false   # Disable prompt-weight classification
+/set-harness verify.rounds 5                 # Run 5 independent verify rounds
 ```
 
 ## Settings Reference
@@ -102,8 +125,18 @@ All settings live in `.claude/.omh/harness.config.json`.
 | `nativeTeam.maxTeammates` | number | `4` | Max teammates per team |
 | `nativeTeam.defaultTeamName` | string | `omh-team` | Default team name |
 | `features.autonomousLoop` | bool | `true` | Enable the spec-driven autonomous loop (`/omh-loop`) |
+| `features.weightRouting` | bool | `true` | Classify task weight (Tier 1/2/3) and route guardrails proportionally |
+| `tier3.taskThreshold` | number | `5` | Task count that forces Tier 3 |
+| `tier3.fileThreshold` | number | `5` | Changed-file count that forces Tier 3 |
+| `tier3.domainKeywords` | string[] | `[]` | Project terms that force Tier 3 (e.g. `["payment","결제"]`) |
+| `verify.rounds` | number | `3` | `/omh-verify` independent verify rounds |
+| `verify.stopWhenClean` | bool | `true` | Stop early when a round finds nothing |
+| `verify.autoFix` | bool | `false` | Auto-apply fixes (vs. confirm first) |
+| `verify.lenses` | object[] | claude/gpt/gemini | Verifier models + focus, rotated per round; missing CLIs auto-excluded |
 
 > `features.autonomousLoop` defaults ON but stays inert until `/omh-loop` writes an active loop state — there is zero overhead for non-loop sessions (the Stop hook returns immediately when no loop is active).
+
+> `features.weightRouting` defaults ON: every prompt is auto-classified into Tier 1/2/3 by weight, and Tier 3 (heavy/risky work) forces verification. The `tier3.*` thresholds control when a task is forced to Tier 3, and the `verify.*` block configures the `/omh-verify` independent multi-model verify+fix rounds.
 
 ---
 
@@ -161,6 +194,32 @@ Each tier sets its own iteration and wall-clock budgets and verification depth. 
 
 ---
 
+## Weight Routing (`tier3` + `verify` blocks)
+
+The weight-aware harness classifies every prompt by weight into **Tier 1** (light), **Tier 2** (medium), and **Tier 3** (heavy/risky). Tier 3 forces verification before completion. The `tier3.*` thresholds decide when a task is escalated to Tier 3, and the `verify.*` block configures the `/omh-verify` skill — N rounds of independent, multi-model verification and fix, using Claude / GPT-codex / Gemini lenses (external verifiers run read-only). See **[Weight Routing](verify.md)** for the full design.
+
+Settings are deep-merged into defaults, so you only need to override the fields you care about.
+
+| Path | Type | Default | Description |
+|------|------|---------|-------------|
+| `tier3.taskThreshold` | number | `5` | Task count that forces Tier 3 |
+| `tier3.fileThreshold` | number | `5` | Changed-file count that forces Tier 3 |
+| `tier3.domainKeywords` | string[] | `[]` | Project terms that force Tier 3 (e.g. `["payment","결제"]`) |
+| `verify.rounds` | number | `3` | `/omh-verify` independent verify rounds |
+| `verify.stopWhenClean` | bool | `true` | Stop early when a round finds nothing |
+| `verify.autoFix` | bool | `false` | Auto-apply fixes (vs. confirm first) |
+| `verify.lenses` | object[] | claude/gpt/gemini | Verifier models + focus, rotated per round; missing CLIs auto-excluded |
+
+```bash
+/set-harness features.weightRouting false        # Disable prompt-weight classification
+/set-harness tier3.taskThreshold 3               # Force Tier 3 at 3+ tasks
+/set-harness tier3.domainKeywords '["payment","결제"]' # Force Tier 3 on domain-sensitive work
+/set-harness verify.rounds 5                      # Run 5 independent verify rounds
+/set-harness verify.autoFix true                 # Auto-apply fixes instead of confirming
+```
+
+---
+
 ## CLI Commands
 
 ```bash
@@ -187,6 +246,7 @@ oh-my-harness reset     # Remove all harness files (clean uninstall)
 | `/omh-spec [goal]` | Author a machine-checkable `SPEC.md` (EARS acceptance criteria) |
 | `/omh-loop [goal\|SPEC.md]` | Run the spec-driven autonomous loop |
 | `/omh-loop stop` | Abort the running loop (kill switch) |
+| `/omh-verify [N]` | Run N rounds of independent multi-model verify+fix (Claude/GPT-codex/Gemini lenses) |
 
 ---
 

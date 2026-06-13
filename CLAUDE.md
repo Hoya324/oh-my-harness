@@ -1,5 +1,5 @@
 <!-- HARNESS:START -->
-<!-- HARNESS:VERSION:0.2.0 -->
+<!-- HARNESS:VERSION:0.3.0 -->
 ## oh-my-harness: Smart Defaults
 
 ### Hook Output Visibility
@@ -83,4 +83,20 @@ After a plan is approved (ExitPlanMode), evaluate whether the plan contains para
 - Present the suggestion concisely: "이 계획은 병렬 작업이 가능합니다. `/team-spawn {template} {task}`로 팀을 구성할까요?"
 - If the plan is sequential or simple (single stream of work) → proceed normally without suggesting a team
 - NEVER auto-create a team — always suggest and wait for user confirmation
+
+### Weight Routing (Tier 1/2/3)
+The pre-prompt hook classifies each request by weight and emits `[omh:tier]`. Relay the tag.
+- **Tier 1 (light)** — trivial change (typo, quick fix): proceed with minimal overhead.
+- **Tier 2 (standard)** — feature/bugfix: follow conventions + tests + self-review.
+- **Tier 3 (heavy)** — high-stakes (production, payment/auth, migration, 5+ tasks, or configured `tier3.domainKeywords`): you MUST pass the convention checklist AND run `/omh-verify` BEFORE declaring the task complete. Relay the `[omh:tier-3]` reminder; do not skip verification.
+
+### N-Round Independent Verify (/omh-verify)
+On Tier 3 (or when asked), run `/omh-verify` before completion:
+1. Reviews the current `git diff` over N independent rounds (config `verify.rounds`).
+2. Each round rotates the verifier model (Claude → GPT/codex → Gemini) for independence; missing CLIs are auto-skipped (graceful degrade).
+3. External verifiers are read-only — apply fixes yourself (or automatically when `verify.autoFix`).
+4. Issues flagged by 2+ models are high-confidence. Report agreements/disagreements; never inject a prior round's conclusions into the next verifier.
+
+### Living State (STATE.md)
+For Tier 2/3 work, maintain `.claude/.omh/STATE.md` (goal, current phase, key decisions, progress). It is re-injected at session start as `[omh:state]` and referenced on compaction, so context survives session boundaries. Update it at major milestones.
 <!-- HARNESS:END -->

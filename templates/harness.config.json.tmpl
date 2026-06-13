@@ -14,7 +14,8 @@
     "autoGitignore": true,
     "skillScaffolding": true,
     "nativeTeam": true,
-    "autonomousLoop": true
+    "autonomousLoop": true,
+    "weightRouting": true
   },
   "testEnforcement": {
     "minCases": 2,
@@ -97,6 +98,21 @@
       "standard": { "model": "standard", "maxIterations": 8, "maxWallClockMinutes": 15, "plateauWindow": 2, "crossVerify": true, "crossVerifyEvery": 0, "marginalGainEpsilon": 0.03 },
       "deep": { "model": "architect", "maxIterations": 20, "maxWallClockMinutes": 45, "plateauWindow": 3, "crossVerify": true, "crossVerifyEvery": 5, "marginalGainEpsilon": 0.02 }
     }
+  },
+  "tier3": {
+    "taskThreshold": 5,
+    "fileThreshold": 5,
+    "domainKeywords": []
+  },
+  "verify": {
+    "rounds": 3,
+    "stopWhenClean": true,
+    "autoFix": false,
+    "lenses": [
+      { "model": "claude", "via": "native-subagent", "focus": "correctness" },
+      { "model": "gpt", "via": "codex", "cmd": "codex exec", "focus": "convention" },
+      { "model": "gemini", "via": "gemini", "cmd": "gemini -p --approval-mode plan", "focus": "regression" }
+    ]
   },
   "conventions": {
     "autoDetect": true,

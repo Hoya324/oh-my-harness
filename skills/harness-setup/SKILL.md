@@ -74,6 +74,28 @@ Ask the user the following questions using AskUserQuestion (ask all at once):
 - Conventional Commits: `type(scope): description`
 - Gitmoji: `🎨 description`
 
+**Question 5 — Weight Routing & 검증 (무게 비례 하네스)**
+> "작업 무게(Tier)에 따라 검증 강도를 자동 조절할까요? Tier 3(무거운 작업)은 완료 전 `/omh-verify` N-라운드 독립검증을 강제합니다."
+- Enable (Recommended): weightRouting ON, verify.rounds=3, autoFix=false (검증만, 수정은 확인 후)
+- Enable + autoFix: weightRouting ON, 발견된 문제를 자동 수정
+- Disable: 무게 판정/검증 강제를 끔
+
+### 3-A. 모델 CLI 자동 감지 (Multi-model 교차검증)
+
+`/omh-verify`는 Claude 외에 GPT(codex)·Gemini를 독립 검증자로 로테이션할 수 있습니다. 설치 여부를 감지:
+
+```bash
+which codex >/dev/null 2>&1 && echo "codex: ✓" || echo "codex: ✗"
+which gemini >/dev/null 2>&1 && echo "gemini: ✓" || echo "gemini: ✗"
+```
+
+감지된 CLI가 있으면 AskUserQuestion으로 제안:
+> "GPT/Gemini도 독립 검증에 넣을까요? (감지됨: {codex, gemini 중 설치된 것})"
+- 전부 사용 (Recommended): 감지된 모델을 verify.lenses에 포함
+- Claude만: 외부 모델 미사용
+
+선택에 따라 `verify.lenses` 배열을 구성한다(미설치 모델은 제외). 둘 다 없으면 이 질문은 건너뛰고 Claude 단독으로 동작한다(graceful degrade).
+
 ### 4. Apply Choices
 
 Based on the user's answers:
@@ -114,7 +136,8 @@ Write the config to `.claude/.omh/harness.config.json` with the user's choices m
     "commitConvention": true,
     "scopeGuard": false,
     "usageTracking": true,
-    "autoGitignore": true
+    "autoGitignore": true,
+    "weightRouting": true
   },
   "testEnforcement": { "minCases": 2, "promptOnMissing": true },
   "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
@@ -122,9 +145,22 @@ Write the config to `.claude/.omh/harness.config.json` with the user's choices m
   "ambiguityDetection": { "threshold": 2, "language": "auto" },
   "commitConvention": { "style": "auto" },
   "scopeGuard": { "allowedPaths": [] },
-  "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" }
+  "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" },
+  "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": [] },
+  "verify": {
+    "rounds": 3,
+    "stopWhenClean": true,
+    "autoFix": false,
+    "lenses": [
+      { "model": "claude", "via": "native-subagent", "focus": "correctness" },
+      { "model": "gpt", "via": "codex", "cmd": "codex exec", "focus": "convention" },
+      { "model": "gemini", "via": "gemini", "cmd": "gemini -p --approval-mode plan", "focus": "regression" }
+    ]
+  }
 }
 ```
+
+> `weightRouting` 선택에 따라 `features.weightRouting`를 토글하고, Question 5 / 모델 감지 결과로 `verify.rounds`, `verify.autoFix`, `verify.lenses`를 구성한다. Tier3의 `domainKeywords`에 프로젝트 핵심 도메인(예: 결제·매출 관련 용어)을 넣으면 해당 작업이 자동으로 Tier 3로 분류된다.
 
 - For **Minimal profile**, set all features to `false` except: `testEnforcement`, `dangerousGuard`, `commitConvention`, `autoGitignore`
 - For **Custom profile**, toggle individual features based on user selection
@@ -168,6 +204,8 @@ Project  : {language} | test: {testFramework} | lint: {linter} | fmt: {formatter
 Config   : .claude/.omh/harness.config.json
 Features : {N} active ({disabled features list})
 Commit   : {commitStyle}
+Weight   : {weightRouting on/off} | verify {rounds}라운드, autoFix {on/off}
+Verifiers: {claude (+gpt) (+gemini) — 감지·선택된 모델}
 HUD      : enabled (restart Claude Code to see status line)
 
 Hooks are provided automatically by the plugin.

@@ -17,11 +17,11 @@ import { readFileSync, writeFileSync, existsSync, renameSync, unlinkSync, mkdirS
 import { join, dirname } from 'path';
 import { execSync, execFileSync } from 'child_process';
 import { hookStopContinue, hookOutput, hookSilent, hookDebug } from './lib/output.mjs';
+import { loadConfig } from './lib/hook-config.mjs';
 import { evaluateLoop, resolveTier, buildLadder } from '../lib/loop.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const omhDir = join(projectRoot, '.claude', '.omh');
-const configPath = join(omhDir, 'harness.config.json');
 const statePath = join(omhDir, 'loop-state.json');
 const stopSentinel = join(omhDir, 'STOP');
 
@@ -76,9 +76,10 @@ function runQuickCheck(loopCfg, conventions) {
 try {
   if (process.env.DISABLE_HARNESS) { console.log(hookSilent()); process.exit(0); }
 
-  let config;
-  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { console.log(hookSilent()); process.exit(0); }
-  if (!config.features?.autonomousLoop) { console.log(hookSilent()); process.exit(0); }
+  // Project-local config wins, with a ~/.claude/.omh global fallback (same as
+  // the other OMH hooks via hook-config.mjs).
+  const config = loadConfig(projectRoot);
+  if (!config || !config.features?.autonomousLoop) { console.log(hookSilent()); process.exit(0); }
 
   // No active loop -> stay out of the way (post-task hook still runs separately).
   if (!existsSync(statePath)) { console.log(hookSilent()); process.exit(0); }

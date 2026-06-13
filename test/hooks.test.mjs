@@ -17,7 +17,9 @@ function runHook(hookFile, stdinData, env = {}) {
   const input = typeof stdinData === 'string' ? stdinData : JSON.stringify(stdinData);
   const result = execFileSync('node', [join(HOOKS_DIR, hookFile)], {
     input,
-    env: { ...process.env, PROJECT_PATH: TMP, ...env },
+    // Isolate HOME so the global config fallback (~/.claude/.omh) can't leak
+    // the developer's real config into tests. Points at an empty path.
+    env: { ...process.env, PROJECT_PATH: TMP, HOME: join(TMP, '__home'), USERPROFILE: join(TMP, '__home'), ...env },
     encoding: 'utf8',
     timeout: 10000,
   });

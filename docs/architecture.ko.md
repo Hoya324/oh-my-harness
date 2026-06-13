@@ -26,11 +26,12 @@ graph TB
         HOOKS --> H8[post-task.mjs]
 
         SKILLS --> S1["/harness-setup"]
-        SKILLS --> S2["/set-harness"]
+        SKILLS --> S2["/omh-verify"]
         SKILLS --> S3["/agent-spawn"]
         SKILLS --> S4["/agent-status"]
         SKILLS --> S5["/omh-spec"]
         SKILLS --> S6["/omh-loop"]
+        SKILLS --> S7["/team-spawn"]
 
         AGENTS --> A1["harness:quick (haiku)"]
         AGENTS --> A2["harness:standard (sonnet)"]
@@ -39,11 +40,15 @@ graph TB
         H9 --> LOOPLIB["lib/loop.mjs (순수 결정 로직)"]
     end
 
-    subgraph "프로젝트 데이터 (.claude/.omh/)"
+    subgraph "설정 (프로젝트 → ~/.claude 전역 fallback)"
         CONFIG[harness.config.json]
+    end
+
+    subgraph "프로젝트 데이터 (.claude/.omh/)"
         CONV[conventions.json]
         USAGE[usage.json]
         SNAP[context-snapshot.md]
+        STATE[STATE.md]
         LSTATE[loop-state.json]
         LEARN[loop-learnings.md]
     end
@@ -53,6 +58,8 @@ graph TB
     H1 --> CONV
     H6 --> USAGE
     H7 --> SNAP
+    H1 --> STATE
+    H7 --> STATE
     H1 --> CONFIG
     H2 --> CONFIG
     H3 --> CONFIG
@@ -140,8 +147,11 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 ├── hooks/
 │   ├── hooks.json                <- 훅 등록 ($CLAUDE_PLUGIN_ROOT 사용)
 │   ├── lib/output.mjs            <- 공유 출력 헬퍼 (hookStopContinue 포함)
-│   ├── session-start.mjs         <- 컨벤션 감지
-│   ├── pre-prompt.mjs            <- 모호성 + 자동 Plan
+│   ├── lib/dictionary.mjs        <- 한/영 패턴 + 무게 표현
+│   ├── lib/tier.mjs              <- 작업 무게 분류기 (Tier 1/2/3)
+│   ├── lib/hook-config.mjs       <- config 로더 (프로젝트 → ~/.claude 전역 fallback)
+│   ├── session-start.mjs         <- 컨벤션 감지 + STATE.md 주입
+│   ├── pre-prompt.mjs            <- 모호성 + 자동 Plan + 무게 라우팅
 │   ├── dangerous-guard.mjs       <- 위험 명령 경고
 │   ├── commit-convention.mjs     <- 커밋 형식 안내
 │   ├── scope-guard.mjs           <- 경로 제한 경고
@@ -158,7 +168,18 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 │   ├── agent-spawn/SKILL.md      <- /agent-spawn
 │   ├── agent-status/SKILL.md     <- /agent-status
 │   ├── agent-apply/SKILL.md      <- /agent-apply
-│   └── agent-stop/SKILL.md       <- /agent-stop
+│   ├── agent-stop/SKILL.md       <- /agent-stop
+│   ├── omh-verify/SKILL.md       <- /omh-verify (N-라운드 독립 검증)
+│   ├── team-spawn/SKILL.md       <- /team-spawn
+│   ├── team-status/SKILL.md      <- /team-status
+│   └── team-stop/SKILL.md        <- /team-stop
+├── lib/                          <- 코어 모듈 (CLI + 검증 엔진)
+│   ├── config.mjs                <- config 스키마 + deep-merge
+│   ├── verify.mjs                <- /omh-verify 헬퍼 (diff, 렌즈 로테이션)
+│   ├── state.mjs                 <- STATE.md 읽기/쓰기/렌더
+│   └── adapters/
+│       ├── codex.mjs             <- GPT 검증자 (codex exec -s read-only)
+│       └── gemini.mjs            <- Gemini 검증자 (gemini -p --approval-mode plan)
 └── agents/                       <- 모델 라우팅 에이전트
     ├── quick.md                   <- haiku
     ├── standard.md                <- sonnet
@@ -189,6 +210,7 @@ your-project/
         ├── conventions.json
         ├── usage.json
         ├── context-snapshot.md
+        ├── STATE.md              <- 살아있는 앵커 (SessionStart 재주입, PreCompact)
         ├── loop-state.json       <- 루프 엔진 상태 (원자적 쓰기, fail-open)
         ├── loop-learnings.md     <- 캐시된 빌드/테스트 호출
         └── STOP                  <- 킬 스위치 (존재할 때)

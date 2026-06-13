@@ -304,7 +304,7 @@ Claude Code의 내장 팀 시스템을 사용하여 병렬 작업을 오케스�
 
 ### 13. 자율 루프 (Autonomous Loop)
 
-0.2.0의 핵심 기능입니다. `SPEC.md`에 목표를 한 번 정의하면, OMH가 스펙이 객관적으로 충족될 때까지 *루프*를 돕니다 — 구현하고, 스스로 검증하고, 교차 검증하면서. 여기서의 철학은 OMH의 평소 "벽 대신 경고"와 정반대입니다: **계속할지 멈출지를 하네스가 소유**하며, 모델의 자기 평가에 맡기지 않습니다.
+0.3.0의 핵심 기능입니다. `SPEC.md`에 목표를 한 번 정의하면, OMH가 스펙이 객관적으로 충족될 때까지 *루프*를 돕니다 — 구현하고, 스스로 검증하고, 교차 검증하면서. 여기서의 철학은 OMH의 평소 "벽 대신 경고"와 정반대입니다: **계속할지 멈출지를 하네스가 소유**하며, 모델의 자기 평가에 맡기지 않습니다.
 
 **트리거:** Stop 훅 `hooks/loop-guard.mjs`가 곧 루프 엔진이자 안전 집행자입니다. `/omh-loop`이 활성 상태를 기록하면, 모든 Stop 이벤트마다 훅이 다시 진입합니다. 계속하려면 stdout에 **최상위** `{"decision":"block","reason":...}`를 출력하고 exit 0으로 종료합니다(exit 2 사용 금지, `hookSpecificOutput` 아래 중첩 금지). 목표가 충족되거나 가드레일이 발동하면 세션이 멈추도록 둡니다. 순수하고 단위 테스트된 코어는 `lib/loop.mjs`에 있습니다(`evaluateLoop`, `classifyTier`, `buildLadder`, `detectPlateau`, `detectOscillation`).
 
@@ -383,3 +383,42 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 ```
 
 > `[omh:spec]`를 출력합니다. EARS 템플릿과 작성 워크플로우는 [자율 루프 가이드](loop.ko.md)를 참고하세요.
+
+---
+
+## 15. 무게 라우팅 (Tier 1/2/3)
+
+**훅:** `UserPromptSubmit` · **기본값:** ON (`features.weightRouting`)
+
+각 프롬프트를 무게 Tier로 분류해 가드 강도를 비례 적용합니다. 작은 작업은 가볍게, 무거운 작업은 빠짐없이.
+
+- **신호:** 태스크 수 휴리스틱 + 한/영 무게 암시 표현(`dictionary.mjs` `weightUp`/`weightDown`) + 설정형 도메인 키워드. 상향 신호가 하나라도 있으면 상향(보수적, 놓치지 않기 우선).
+- **Tier 1(가벼움):** 컨벤션 리마인더만.
+- **Tier 2(보통):** 컨벤션 체크리스트 + 테스트 + 셀프리뷰.
+- **Tier 3(무거움):** 완료 선언 전 `/omh-verify` 실행을 강제 주입.
+
+**설정:**
+```json
+{
+  "features": { "weightRouting": true },
+  "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": ["결제", "매출"] }
+}
+```
+
+## 16. N-라운드 독립 검증 (`/omh-verify`)
+
+**커맨드:** `/omh-verify` · **기본값:** Tier 3에서 트리거
+
+현재 `git diff`를 N회 독립 검증+수정하며, 매 라운드 모델을 로테이션해 자기 판단 셀프 도장을 방지합니다.
+
+- **모델 로테이션:** Claude(네이티브 서브에이전트) → GPT(`codex exec`) → Gemini(`gemini -p --approval-mode plan`).
+- **독립성:** 매 라운드 fresh 컨텍스트, 이전 결론을 다음 검증자에 주입하지 않음.
+- **외부 읽기 전용:** 외부 검증자는 진단만, 수정은 메인 루프가 적용.
+- **Graceful degrade:** 미설치 CLI는 자동 제외(Claude 단독 폴백).
+- **합의 신호:** 2개 이상 모델이 지적하면 high-confidence.
+
+## 17. Living State (STATE.md)
+
+**훅:** `SessionStart`(주입) / `PreCompact`(통합) · **기본값:** ON
+
+`.claude/.omh/STATE.md`에 목표·현재 phase·핵심 결정·진행을 보관합니다. 세션 시작 시 재주입되고 압축 전 스냅샷에서 참조되어, 세션 경계와 compaction을 넘어 작업 컨텍스트가 유지됩니다 — context rot 직접 방어.

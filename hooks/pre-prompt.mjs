@@ -3,6 +3,8 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { hookOutput, hookSilent } from './lib/output.mjs';
 import { getDictionary } from './lib/dictionary.mjs';
+import { classifyTier, countTasks } from './lib/tier.mjs';
+import { loadConfig } from './lib/hook-config.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
@@ -16,7 +18,7 @@ try {
   if (process.env.DISABLE_HARNESS) { console.log(hookSilent()); process.exit(0); }
 
   let config;
-  try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { console.log(hookSilent()); process.exit(0); }
+  config = loadConfig(projectRoot); if (!config) { console.log(hookSilent()); process.exit(0); }
 
   const input = readStdin();
   const prompt = input.prompt || input.message || '';
@@ -29,19 +31,7 @@ try {
   // 4-A: Multi-task detection → Auto-Plan
   if (config.features?.autoPlanMode) {
     const threshold = config.autoPlan?.threshold || 3;
-    let taskCount = 0;
-    const numbered = prompt.match(/^\s*\d+[\.\)]/gm);
-    if (numbered) taskCount = Math.max(taskCount, numbered.length);
-    const bullets = prompt.match(/^\s*[-*]\s+\S/gm);
-    if (bullets) taskCount = Math.max(taskCount, bullets.length);
-    const conjunctions = prompt.match(patterns.conjunctions);
-    if (conjunctions) taskCount = Math.max(taskCount, conjunctions.length + 1);
-    // Comma-separated noun phrases: "기능, 성능, 컨벤션" or "features, performance, conventions"
-    const commaItems = prompt.match(/[\w가-힣]+(?:\s*,\s*[\w가-힣]+){2,}/g);
-    if (commaItems) {
-      const maxItems = Math.max(...commaItems.map(m => m.split(',').length));
-      taskCount = Math.max(taskCount, maxItems);
-    }
+    const taskCount = countTasks(prompt, patterns);
     if (taskCount >= threshold) {
       result.push(messages.autoPlan(taskCount));
     }
@@ -58,6 +48,15 @@ try {
     if (prompt.trim().length <= 15 && !/[A-Za-z_]\w*[\./]/.test(prompt)) ambiguityScore++;
     if (ambiguityScore >= ambThreshold) {
       result.push(messages.ambiguityGuard);
+    }
+  }
+
+  // 4-C: Tier classification → weight-proportional routing
+  if (config.features?.weightRouting) {
+    const { tier, reasons } = classifyTier(prompt, config);
+    result.push(messages.tierNotice(tier, reasons));
+    if (tier === 3) {
+      result.push(messages.tier3Reminder);
     }
   }
 

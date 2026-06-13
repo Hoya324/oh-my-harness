@@ -1,6 +1,6 @@
 # Autonomous Loop
 
-> **New in 0.2.0** — the headline feature. Define the goal once in a `SPEC.md`, and OMH loops — implementing, self-verifying, and cross-verifying — until the spec is objectively met, with enforceable guardrails so autonomy never becomes runaway.
+> **New in 0.3.0** — the headline feature. Define the goal once in a `SPEC.md`, and OMH loops — implementing, self-verifying, and cross-verifying — until the spec is objectively met, with enforceable guardrails so autonomy never becomes runaway.
 
 The Autonomous Loop is a **spec-driven, tiered, self- and cross-verifying** loop that runs entirely on Claude Code's native hooks. Two skills drive it (`/omh-spec`, `/omh-loop`); the Stop hook `hooks/loop-guard.mjs` is the loop engine *and* the safety enforcer.
 
@@ -12,7 +12,7 @@ Claude Code stops at the end of a turn even when the job isn't finished, and it 
 
 This is a deliberate identity shift for OMH:
 
-| Before (0.1.x) | Now (0.2.0) |
+| Before (0.1.x) | Now (0.3.0) |
 |----------------|-------------|
 | "Minimal guards — warnings instead of walls." | **"Autonomy with real walls."** |
 | The model decides when it's done. | **The harness decides** — against machine-checkable acceptance criteria. |

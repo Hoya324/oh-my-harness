@@ -16,7 +16,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.2.0 \u00b7 MIT License',
+    'index.hero.badge': 'v0.3.0 \u00b7 MIT License',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>',
     'index.hero.subtitle': 'Smart Defaults for Claude Code',
     'index.hero.desc': 'A spec-driven autonomous loop with real walls \u2014 plus safety guards, intelligent model routing, and multi-agent orchestration, all through native hooks. Define a goal once; the harness implements, self-verifies, and cross-verifies until the spec is met. Zero config, instant boost.',
@@ -48,7 +48,7 @@ const translations = {
     // ── Index: Features ──
     'index.features.tag': 'Features',
     'index.features.title': 'Everything OMH does for you',
-    'index.features.desc': '14 features that activate automatically. No manual intervention needed.',
+    'index.features.desc': '17 features that activate automatically. No manual intervention needed.',
     'index.features.f0.title': 'Autonomous Loop',
     'index.features.f0.desc': 'Spec-driven, tiered, self- and cross-verifying. Author a machine-checkable SPEC.md, then /omh-loop implements, verifies, and cross-verifies until every acceptance criterion passes — or a guardrail fires. The Stop hook owns continuation and termination; the model never decides when to stop.',
     'index.features.f1.title': 'Safety Guards',
@@ -61,6 +61,8 @@ const translations = {
     'index.features.f4.desc': "Scans your project at session start \u2014 detects language, test runner, linter, and formatter. Supports Node, Python, Go, Rust, Java, Kotlin.",
     'index.features.f5.title': 'Test Enforcement & Skill Scaffolding',
     'index.features.f5.desc': 'Verifies tests exist after every code change. Auto-generates project-specific skills for code review, test writing, and linting.',
+    'index.features.f6.title': 'Weight-Aware Verification',
+    'index.features.f6.desc': 'Classifies task weight (Tier 1/2/3); heavy work runs N independent verify+fix rounds rotating Claude, GPT, and Gemini. Plus disk-anchored STATE.md to survive context compaction.',
 
     // ── Index: Agents ──
     'index.agents.tag': 'Model Routing',
@@ -150,7 +152,7 @@ const translations = {
     'docs.config.defaultConfig': 'Default Config',
     'docs.config.modifySettings': 'Modify Settings',
     'docs.loop.title': 'Autonomous Loop',
-    'docs.loop.intro': 'The headline feature of 0.2.0. Define a goal once in a machine-checkable spec, then OMH loops \u2014 implementing, self-verifying, and cross-verifying \u2014 until every acceptance criterion is objectively met or a guardrail fires. This is a deliberate identity shift: from "warnings instead of walls" to <strong>autonomy with real walls</strong>. The harness owns when to continue and when to stop; the model never decides termination from its own self-assessment.',
+    'docs.loop.intro': 'The headline feature of 0.3.0. Define a goal once in a machine-checkable spec, then OMH loops \u2014 implementing, self-verifying, and cross-verifying \u2014 until every acceptance criterion is objectively met or a guardrail fires. This is a deliberate identity shift: from "warnings instead of walls" to <strong>autonomy with real walls</strong>. The harness owns when to continue and when to stop; the model never decides termination from its own self-assessment.',
     'docs.loop.engineNote': 'The Stop hook <code>hooks/loop-guard.mjs</code> <em>is</em> the loop engine and safety enforcer. It forces continuation by printing a top-level <code>{"decision":"block","reason":...}</code> and exiting 0, and allows the session to stop when the spec is met or a guardrail fires. The pure core <code>lib/loop.mjs</code> is unit-tested in isolation.',
     'docs.loop.spec.title': 'Spec Authoring (SPEC.md)',
     'docs.loop.spec.intro': '<code>/omh-spec</code> authors a <code>SPEC.md</code> with <strong>EARS</strong> acceptance criteria \u2014 <em>WHEN &lt;trigger&gt; THE SYSTEM SHALL &lt;response&gt;</em> \u2014 each mapped to a verify command. The loop may stop only when every criterion\u2019s command exits 0. <code>/omh-spec</code> refuses to start a loop while any <code>[NEEDS CLARIFICATION]</code> markers remain, falling back to the Ambiguity Guard.',
@@ -418,7 +420,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.2.0 \u00b7 MIT \ub77c\uc774\uc120\uc2a4',
+    'index.hero.badge': 'v0.3.0 \u00b7 MIT \ub77c\uc774\uc120\uc2a4',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12</span>',
     'index.hero.subtitle': 'Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12',
     'index.hero.desc': '\uc9c4\uc9dc \ubcbd\uc744 \uac16\ucd98 \uc2a4\ud399 \uae30\ubc18 \uc790\uc728 \ub8e8\ud504 \u2014 \uc5ec\uae30\uc5d0 \uc548\uc804 \uac00\ub4dc, \uc9c0\ub2a5\ud615 \ubaa8\ub378 \ub77c\uc6b0\ud305, \uba40\ud2f0 \uc5d0\uc774\uc804\ud2b8 \uc624\ucf00\uc2a4\ud2b8\ub808\uc774\uc158\uae4c\uc9c0 \ubaa8\ub450 \ub124\uc774\ud2f0\ube0c \ud6c5\uc744 \ud1b5\ud574. \ubaa9\ud45c\ub97c \ud55c \ubc88 \uc815\uc758\ud558\uba74 \ud558\ub124\uc2a4\uac00 \uad6c\ud604\ud558\uace0 \uc790\uccb4 \uac80\uc99d\ud558\uace0 \uad50\ucc28 \uac80\uc99d\ud558\uc5ec \uc2a4\ud399\uc774 \ucda9\uc871\ub420 \ub54c\uae4c\uc9c0 \ubc18\ubcf5\ud569\ub2c8\ub2e4. \uc124\uc815 \uc5c6\uc774, \uc989\uc2dc \ud5a5\uc0c1.',
@@ -450,7 +452,7 @@ const translations = {
     // ── Index: Features ──
     'index.features.tag': '\uae30\ub2a5',
     'index.features.title': 'OMH\uac00 \uc5ec\ub7ec\ubd84\uc744 \uc704\ud574 \ud558\ub294 \ubaa8\ub4e0 \uac83',
-    'index.features.desc': '\uc790\ub3d9\uc73c\ub85c \ud65c\uc131\ud654\ub418\ub294 14\uac00\uc9c0 \uae30\ub2a5. \uc218\ub3d9 \uac1c\uc785\uc774 \ud544\uc694 \uc5c6\uc2b5\ub2c8\ub2e4.',
+    'index.features.desc': '\uc790\ub3d9\uc73c\ub85c \ud65c\uc131\ud654\ub418\ub294 17\uac00\uc9c0 \uae30\ub2a5. \uc218\ub3d9 \uac1c\uc785\uc774 \ud544\uc694 \uc5c6\uc2b5\ub2c8\ub2e4.',
     'index.features.f0.title': '\uc790\uc728 \ub8e8\ud504',
     'index.features.f0.desc': '\uc2a4\ud399 \uae30\ubc18, \ud2f0\uc5b4\ubcc4, \uc790\uccb4 \ubc0f \uad50\ucc28 \uac80\uc99d. \uae30\uacc4\uac00 \uac80\uc99d \uac00\ub2a5\ud55c SPEC.md\ub97c \uc791\uc131\ud55c \ub4a4, /omh-loop\uac00 \ubaa8\ub4e0 \uc778\uc218 \uae30\uc900\uc774 \ud1b5\uacfc\ud558\uac70\ub098 \uac00\ub4dc\ub808\uc77c\uc774 \uc791\ub3d9\ud560 \ub54c\uae4c\uc9c0 \uad6c\ud604\ud558\uace0 \uac80\uc99d\ud558\uace0 \uad50\ucc28 \uac80\uc99d\ud569\ub2c8\ub2e4. Stop \ud6c5\uc774 \uacc4\uc18d\uacfc \uc885\ub8cc\ub97c \uacb0\uc815\ud558\uba70, \ubaa8\ub378\uc740 \uc5b8\uc81c \uba48\ucd9c\uc9c0 \uacb0\uc815\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.',
     'index.features.f1.title': '\uc548\uc804 \uac00\ub4dc',
@@ -463,6 +465,8 @@ const translations = {
     'index.features.f4.desc': '\uc138\uc158 \uc2dc\uc791 \uc2dc \ud504\ub85c\uc81d\ud2b8\ub97c \uc2a4\uce94 \u2014 \uc5b8\uc5b4, \ud14c\uc2a4\ud2b8 \ub7ec\ub108, \ub9b0\ud130, \ud3ec\ub9e4\ud130\ub97c \uac10\uc9c0. Node, Python, Go, Rust, Java, Kotlin \uc9c0\uc6d0.',
     'index.features.f5.title': '\ud14c\uc2a4\ud2b8 \uac15\uc81c \ubc0f \uc2a4\ud0ac \uc2a4\uce90\ud3f4\ub529',
     'index.features.f5.desc': '\ubaa8\ub4e0 \ucf54\ub4dc \ubcc0\uacbd \ud6c4 \ud14c\uc2a4\ud2b8 \uc874\uc7ac\ub97c \ud655\uc778. \ucf54\ub4dc \ub9ac\ubdf0, \ud14c\uc2a4\ud2b8 \uc791\uc131, \ub9b0\ud305\uc744 \uc704\ud55c \ud504\ub85c\uc81d\ud2b8\ubcc4 \uc2a4\ud0ac\uc744 \uc790\ub3d9 \uc0dd\uc131.',
+    'index.features.f6.title': '\ubb34\uac8c \ube44\ub840 \uac80\uc99d',
+    'index.features.f6.desc': '\uc791\uc5c5 \ubb34\uac8c(Tier 1/2/3)\ub97c \ud310\uc815 \u2014 \ubb34\uac70\uc6b4 \uc791\uc5c5\uc740 Claude\u00b7GPT\u00b7Gemini\ub97c \ub85c\ud14c\uc774\uc158\ud558\uba70 N\ud68c \ub3c5\ub9bd \uac80\uc99d+\uc218\uc815. \ucef4\ud328\ud2b8\ub97c \uacac\ub514\ub294 \ub514\uc2a4\ud06c \uc575\ucee4 STATE.md \ud3ec\ud568.',
 
     // ── Index: Agents ──
     'index.agents.tag': '\ubaa8\ub378 \ub77c\uc6b0\ud305',
@@ -552,7 +556,7 @@ const translations = {
     'docs.config.defaultConfig': '\uae30\ubcf8 \uc124\uc815',
     'docs.config.modifySettings': '\uc124\uc815 \ubcc0\uacbd',
     'docs.loop.title': '\uc790\uc728 \ub8e8\ud504',
-    'docs.loop.intro': '0.2.0\uc758 \ub300\ud45c \uae30\ub2a5\uc785\ub2c8\ub2e4. \uae30\uacc4\uac00 \uac80\uc99d \uac00\ub2a5\ud55c \uc2a4\ud399\uc5d0 \ubaa9\ud45c\ub97c \ud55c \ubc88 \uc815\uc758\ud558\uba74, OMH\uac00 \ubaa8\ub4e0 \uc778\uc218 \uae30\uc900\uc774 \uac1d\uad00\uc801\uc73c\ub85c \ucda9\uc871\ub418\uac70\ub098 \uac00\ub4dc\ub808\uc77c\uc774 \uc791\ub3d9\ud560 \ub54c\uae4c\uc9c0 \uad6c\ud604\ud558\uace0 \uc790\uccb4 \uac80\uc99d\ud558\uace0 \uad50\ucc28 \uac80\uc99d\ud558\uba70 \ubc18\ubcf5\ud569\ub2c8\ub2e4. \uc774\ub294 \uc758\ub3c4\uc801\uc778 \uc815\uccb4\uc131 \uc804\ud658\uc785\ub2c8\ub2e4: "\ubcbd \ub300\uc2e0 \uacbd\uace0"\uc5d0\uc11c <strong>\uc9c4\uc9dc \ubcbd\uc744 \uac16\ucd98 \uc790\uc728\uc131</strong>\uc73c\ub85c. \ud558\ub124\uc2a4\uac00 \uc5b8\uc81c \uacc4\uc18d\ud558\uace0 \uc5b8\uc81c \uba48\ucd9c\uc9c0\ub97c \uacb0\uc815\ud558\uba70, \ubaa8\ub378\uc740 \uc790\uccb4 \ud310\ub2e8\uc73c\ub85c \uc885\ub8cc\ub97c \uacb0\uc815\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.',
+    'docs.loop.intro': '0.3.0\uc758 \ub300\ud45c \uae30\ub2a5\uc785\ub2c8\ub2e4. \uae30\uacc4\uac00 \uac80\uc99d \uac00\ub2a5\ud55c \uc2a4\ud399\uc5d0 \ubaa9\ud45c\ub97c \ud55c \ubc88 \uc815\uc758\ud558\uba74, OMH\uac00 \ubaa8\ub4e0 \uc778\uc218 \uae30\uc900\uc774 \uac1d\uad00\uc801\uc73c\ub85c \ucda9\uc871\ub418\uac70\ub098 \uac00\ub4dc\ub808\uc77c\uc774 \uc791\ub3d9\ud560 \ub54c\uae4c\uc9c0 \uad6c\ud604\ud558\uace0 \uc790\uccb4 \uac80\uc99d\ud558\uace0 \uad50\ucc28 \uac80\uc99d\ud558\uba70 \ubc18\ubcf5\ud569\ub2c8\ub2e4. \uc774\ub294 \uc758\ub3c4\uc801\uc778 \uc815\uccb4\uc131 \uc804\ud658\uc785\ub2c8\ub2e4: "\ubcbd \ub300\uc2e0 \uacbd\uace0"\uc5d0\uc11c <strong>\uc9c4\uc9dc \ubcbd\uc744 \uac16\ucd98 \uc790\uc728\uc131</strong>\uc73c\ub85c. \ud558\ub124\uc2a4\uac00 \uc5b8\uc81c \uacc4\uc18d\ud558\uace0 \uc5b8\uc81c \uba48\ucd9c\uc9c0\ub97c \uacb0\uc815\ud558\uba70, \ubaa8\ub378\uc740 \uc790\uccb4 \ud310\ub2e8\uc73c\ub85c \uc885\ub8cc\ub97c \uacb0\uc815\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.',
     'docs.loop.engineNote': 'Stop \ud6c5 <code>hooks/loop-guard.mjs</code>\uac00 <em>\uace7</em> \ub8e8\ud504 \uc5d4\uc9c4\uc774\uc790 \uc548\uc804 \uc9d1\ud589\uae30\uc785\ub2c8\ub2e4. \ucd5c\uc0c1\uc704 <code>{"decision":"block","reason":...}</code>\ub97c \ucd9c\ub825\ud558\uace0 0\uc73c\ub85c \uc885\ub8cc\ud558\uc5ec \uacc4\uc18d\uc744 \uac15\uc81c\ud558\uba70, \uc2a4\ud399\uc774 \ucda9\uc871\ub418\uac70\ub098 \uac00\ub4dc\ub808\uc77c\uc774 \uc791\ub3d9\ud558\uba74 \uc138\uc158\uc774 \uba48\ucd94\ub3c4\ub85d \ud5c8\uc6a9\ud569\ub2c8\ub2e4. \uc21c\uc218 \ucf54\uc5b4 <code>lib/loop.mjs</code>\ub294 \ub3c5\ub9bd\uc801\uc73c\ub85c \ub2e8\uc704 \ud14c\uc2a4\ud2b8\ub429\ub2c8\ub2e4.',
     'docs.loop.spec.title': '\uc2a4\ud399 \uc791\uc131 (SPEC.md)',
     'docs.loop.spec.intro': '<code>/omh-spec</code>\ub294 <strong>EARS</strong> \uc778\uc218 \uae30\uc900 \u2014 <em>WHEN &lt;\ud2b8\ub9ac\uac70&gt; THE SYSTEM SHALL &lt;\uc751\ub2f5&gt;</em> \u2014 \uc744 \ub2f4\uc740 <code>SPEC.md</code>\ub97c \uc791\uc131\ud558\uba70, \uac01 \uae30\uc900\uc740 \uac80\uc99d \uba85\ub839\uc5d0 \ub9e4\ud551\ub429\ub2c8\ub2e4. \ubaa8\ub4e0 \uae30\uc900\uc758 \uba85\ub839\uc774 0\uc73c\ub85c \uc885\ub8cc\ub420 \ub54c\ub9cc \ub8e8\ud504\uac00 \uba48\ucd9c \uc218 \uc788\uc2b5\ub2c8\ub2e4. <code>[NEEDS CLARIFICATION]</code> \ub9c8\ucee4\uac00 \ub0a8\uc544 \uc788\ub294 \ub3d9\uc548\uc5d0\ub294 <code>/omh-spec</code>\uc774 \ub8e8\ud504 \uc2dc\uc791\uc744 \uac70\ubd80\ud558\uace0 \ubaa8\ud638\uc131 \uac00\ub4dc\ub85c \ud3f4\ubc31\ud569\ub2c8\ub2e4.',

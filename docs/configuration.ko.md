@@ -1,6 +1,15 @@
 # 설정
 
-모든 설정은 `.claude/.omh/harness.config.json`에 있습니다.
+설정은 `.claude/.omh/harness.config.json`에 있습니다.
+
+## 설정 탐색 순서 (프로젝트 → 전역)
+
+훅은 다음 순서로 config를 찾아 **먼저 존재하는 것**을 사용합니다:
+
+1. `<프로젝트>/.claude/.omh/harness.config.json` — 프로젝트 로컬 (우선)
+2. `~/.claude/.omh/harness.config.json` — 사용자 전역 fallback
+
+전역 기본값(User 스코프)을 한 번 설정해 모든 프로젝트에 적용하면서, 프로젝트별로 덮어쓸 수 있습니다. 둘 다 없으면 훅은 아무 동작도 하지 않습니다.
 
 ## 기본 설정
 
@@ -102,6 +111,7 @@
 | `nativeTeam.maxTeammates` | number | `4` | 팀당 최대 팀원 수 |
 | `nativeTeam.defaultTeamName` | string | `omh-team` | 기본 팀 이름 |
 | `features.autonomousLoop` | bool | `true` | 스펙 기반 자율 루프(`/omh-loop`) 활성화 |
+| `features.weightRouting` | bool | `true` | 작업 무게(Tier 1/2/3) 판정 후 가드 비례 적용 |
 
 > `features.autonomousLoop`는 기본값이 ON이지만 `/omh-loop`가 활성 루프 상태를 기록하기 전까지는 동작하지 않습니다 — 루프를 사용하지 않는 세션에는 오버헤드가 전혀 없습니다(활성 루프가 없으면 Stop 훅이 즉시 반환).
 
@@ -157,6 +167,38 @@
 /set-harness loop.defaultTier standard           # 루프를 standard 티어에서 시작
 /set-harness loop.tiers.standard.maxIterations 5 # 보수적인 3/5/8 예산 적용
 /set-harness loop.crossVerify false              # 교차 검증 완전히 끄기
+```
+
+---
+
+## 무게 인식 라우팅 (`tier3` 블록)
+
+`features.weightRouting`가 켜져 있으면 하네스는 모든 프롬프트의 무게를 Tier 1/2/3으로 자동 분류하고, 가드를 무게에 비례해 적용합니다. Tier 3(고위험·대규모)으로 판정되면 검증이 강제됩니다. 전체 설계는 **[검증 & 무게 인식 하네스](verify.ko.md)** 를 참고하세요.
+
+설정은 기본값에 deep-merge되므로 변경하려는 필드만 덮어쓰면 됩니다.
+
+| 경로 | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `tier3.taskThreshold` | number | `5` | Tier 3 강제 태스크 수 |
+| `tier3.fileThreshold` | number | `5` | Tier 3 강제 변경 파일 수 |
+| `tier3.domainKeywords` | string[] | `[]` | Tier 3 강제 도메인 용어 (예: `["결제","매출"]`) |
+
+## 독립 검증 (`verify` 블록)
+
+`verify` 블록은 `/omh-verify`로 실행되는 N회 독립 멀티모델 검증+수정 루프를 설정합니다. 각 라운드는 Claude / GPT-codex / Gemini 렌즈를 로테이션하며, 외부 검증자는 읽기 전용으로 동작합니다.
+
+| 경로 | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `verify.rounds` | number | `3` | `/omh-verify` 독립 검증 라운드 수 |
+| `verify.stopWhenClean` | bool | `true` | 발견 없는 라운드에서 조기 종료 |
+| `verify.autoFix` | bool | `false` | 자동 수정 (false면 확인 후) |
+| `verify.lenses` | object[] | claude/gpt/gemini | 검증자 모델+초점, 라운드마다 로테이션; 미설치 CLI 자동 제외 |
+
+```bash
+/set-harness features.weightRouting false        # 무게 인식 라우팅 비활성화
+/set-harness tier3.taskThreshold 3               # 더 빨리 Tier 3로 상향
+/set-harness verify.rounds 2                      # 독립 검증 2라운드로
+/set-harness verify.autoFix true                  # 검증 결과 자동 수정
 ```
 
 ---
