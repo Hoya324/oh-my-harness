@@ -77,6 +77,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/hooks/loop-guard.mjs",
+            "timeout": 600
+          },
+          {
+            "type": "command",
             "command": "node \"$CLAUDE_PLUGIN_ROOT\"/hooks/post-task.mjs",
             "timeout": 5
           }

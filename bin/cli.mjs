@@ -419,6 +419,12 @@ function buildClaudeMdContent(root, config) {
   s.push('### Multi-Agent');
   s.push('On `/agent-spawn`: confirm → worktree `omh/agent-{N}` → never auto-merge → show diffs → warn on unmerged before stop.');
 
+  if (f.autonomousLoop) {
+    s.push('');
+    s.push('### Autonomous Loop');
+    s.push('Spec-driven loop. `/omh-spec` writes a machine-checkable SPEC.md; `/omh-loop` runs it. The Stop hook (`loop-guard`) IS the loop engine — it forces continuation until the verify ladder + cross-verify confirm done, or a guardrail fires (budget/timeout/no-progress/oscillation). Confirm before starting; one task per iteration; ripgrep before implementing; NO PLACEHOLDERS; commit each iteration; never self-declare "done" (the harness decides). `/omh-loop stop` halts.');
+  }
+
   // --- Dynamic section (conventions — changes per project, placed last for cache) ---
   const cachePath = join(omhDir(root), 'conventions.json');
   let conventionsBlock = '';

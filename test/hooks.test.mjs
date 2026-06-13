@@ -4,9 +4,13 @@ import { execFileSync } from 'child_process';
 import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { tmpdir } from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const TMP = join(__dirname, '__tmp_hooks');
+// Sandbox must live OUTSIDE the repo working tree: post-task.mjs runs `git diff`
+// in PROJECT_PATH, and a TMP nested under the repo would leak the repo's own
+// uncommitted code files into the hook (these tests assert the no-git fallback).
+const TMP = join(tmpdir(), `omh_hooks_test_${process.pid}`);
 const HOOKS_DIR = join(__dirname, '..', 'hooks');
 
 function runHook(hookFile, stdinData, env = {}) {

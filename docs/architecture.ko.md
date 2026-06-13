@@ -22,16 +22,21 @@ graph TB
         HOOKS --> H5[scope-guard.mjs]
         HOOKS --> H6[usage-tracker.mjs]
         HOOKS --> H7[pre-compact.mjs]
+        HOOKS --> H9["loop-guard.mjs (Stop · 루프 엔진)"]
         HOOKS --> H8[post-task.mjs]
 
         SKILLS --> S1["/harness-setup"]
         SKILLS --> S2["/set-harness"]
         SKILLS --> S3["/agent-spawn"]
         SKILLS --> S4["/agent-status"]
+        SKILLS --> S5["/omh-spec"]
+        SKILLS --> S6["/omh-loop"]
 
         AGENTS --> A1["harness:quick (haiku)"]
         AGENTS --> A2["harness:standard (sonnet)"]
         AGENTS --> A3["harness:architect (opus)"]
+
+        H9 --> LOOPLIB["lib/loop.mjs (순수 결정 로직)"]
     end
 
     subgraph "프로젝트 데이터 (.claude/.omh/)"
@@ -39,7 +44,11 @@ graph TB
         CONV[conventions.json]
         USAGE[usage.json]
         SNAP[context-snapshot.md]
+        LSTATE[loop-state.json]
+        LEARN[loop-learnings.md]
     end
+
+    PROGRESS["PROGRESS.md (프로젝트 루트 · 사람용 로그)"]
 
     H1 --> CONV
     H6 --> USAGE
@@ -47,9 +56,15 @@ graph TB
     H1 --> CONFIG
     H2 --> CONFIG
     H3 --> CONFIG
+    H9 --> CONFIG
+    H9 --> LSTATE
+    H9 --> LEARN
+    S6 --> PROGRESS
 
     style CC fill:#7C3AED,color:#fff
     style CONFIG fill:#f59e0b,color:#000
+    style H9 fill:#10b981,color:#fff
+    style LSTATE fill:#f59e0b,color:#000
 ```
 
 ## 훅 파이프라인
@@ -82,6 +97,34 @@ sequenceDiagram
     OMH-->>CC: 코드 변경 감지. 테스트 존재 여부 확인.
 ```
 
+## 자율 루프 (Stop 훅)
+
+`/omh-loop`은 **Stop** 이벤트를 스펙 기반 자율 루프로 바꿉니다. Stop 훅 `loop-guard.mjs`가 **루프 엔진 그 자체**입니다 — 매 Stop마다 계속 진행을 강제할지, 세션을 멈추게 둘지 결정합니다. 계속 진행은 stdout에 **최상위(top-level)** `{"decision":"block","reason":...}`를 출력하고 `0`으로 종료해서 강제합니다(exit 2 사용 금지, `hookSpecificOutput` 아래 중첩 금지). 루프가 완료됐거나 가드레일이 발동하면 조용히 통과(passthrough)시켜 정지를 허용합니다.
+
+결정 로직은 순수하고 단위 테스트된 `lib/loop.mjs`에 있습니다(`evaluateLoop`, `classifyTier`, `buildLadder`, `detectPlateau`, `detectOscillation`). 훅은 **얇은 fail-open 래퍼**입니다: 신호(git HEAD/diff, 사다리 단계 결과, `stop_hook_active`, `session_id`, STOP 센티널)를 모아 `evaluateLoop`를 호출하고 결과를 내보냅니다. 오류나 상태 손상 시 상태를 삭제하고 `0`으로 종료하여 사용자를 절대 가두지 않습니다. 언제 계속하고 언제 멈출지는 모델의 자기 평가가 아니라 **하니스가** 소유합니다.
+
+```mermaid
+flowchart TD
+    STOP([Stop 이벤트]) --> GUARD["loop-guard.mjs<br/>(얇은 fail-open 래퍼)"]
+    GUARD --> SIG["신호 수집:<br/>stop_hook_active, session_id,<br/>STOP 센티널, git HEAD/diff,<br/>사다리 단계 결과"]
+    SIG --> EVAL["lib/loop.mjs :: evaluateLoop()<br/>(순수, 단위 테스트)"]
+    EVAL --> CHK{계층화된 체크리스트}
+
+    CHK -->|stop_hook_active / 세션 불일치 / 비활성| IGN[exit 0 · 통과]
+    CHK -->|STOP 스위치 · 예산 · 타임아웃<br/>· 정체 · 진동 · 완료| STOPLOOP["정지 허용<br/>+ [omh:loop] 요약"]
+    CHK -->|예산 내 & 미완료| CONT["hookStopContinue(reason)<br/>최상위 decision:block · exit 0"]
+
+    CONT --> LADDER["다음 반복:<br/>SPEC 다이제스트 + 직전 실패<br/>+ 회고 + 다음 단계"]
+    STOPLOOP -->|완료 경로| XV["교차 검증 (다른 모델)<br/>각 SPEC 기준 채점"]
+
+    style GUARD fill:#10b981,color:#fff
+    style EVAL fill:#7C3AED,color:#fff
+    style CONT fill:#10b981,color:#fff
+    style STOPLOOP fill:#f59e0b,color:#000
+```
+
+루프는 **계층(tier)** 구조이며(`quick` / `standard` / `deep`가 반복 횟수·벽시계 시간 예산과 검증 깊이를 정하고, 계층을 가로지르는 `maxTotalIterations` 상한이 있음), **저비용 우선 검증 사다리**(quickCheck → verify → self-review → cross-verify)를 실행합니다. 이 사다리는 빠르게 실패하고 *실제* 실패 출력을 다음 반복의 지시문으로 되먹입니다. 상태는 `.claude/.omh/loop-state.json`에 저장되며(원자적 쓰기, fail-open), 프로젝트 루트의 `PROGRESS.md`가 사람이 읽는 계획 + 로그이고, `.claude/.omh/loop-learnings.md`는 빌드/테스트 호출을 캐시합니다. 전체 `loop` 설정 블록은 [docs/loop](./loop.ko.md)과 [docs/configuration](./configuration.ko.md)을 참고하세요.
+
 ## 플러그인 모드 (권장)
 
 플러그인 시스템이 훅 등록과 스킬 로딩을 자동으로 처리합니다:
@@ -92,9 +135,11 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 │   ├── plugin.json               <- 플러그인 매니페스트
 │   └── marketplace.json          <- 마켓플레이스 목록
 ├── CLAUDE.md                     <- 시스템 프롬프트 (자동 주입)
+├── lib/                          <- 순수 코어 라이브러리
+│   └── loop.mjs                  <- 루프 결정 로직 (단위 테스트)
 ├── hooks/
 │   ├── hooks.json                <- 훅 등록 ($CLAUDE_PLUGIN_ROOT 사용)
-│   ├── lib/output.mjs            <- 공유 출력 헬퍼
+│   ├── lib/output.mjs            <- 공유 출력 헬퍼 (hookStopContinue 포함)
 │   ├── session-start.mjs         <- 컨벤션 감지
 │   ├── pre-prompt.mjs            <- 모호성 + 자동 Plan
 │   ├── dangerous-guard.mjs       <- 위험 명령 경고
@@ -102,11 +147,14 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 │   ├── scope-guard.mjs           <- 경로 제한 경고
 │   ├── usage-tracker.mjs         <- 도구 사용량 기록
 │   ├── pre-compact.mjs           <- 컨텍스트 스냅샷
+│   ├── loop-guard.mjs            <- Stop 훅: 루프 엔진 + 안전장치 (lib/loop.mjs의 얇은 래퍼)
 │   └── post-task.mjs             <- 테스트 강제
 ├── skills/                       <- 슬래시 명령어 (자동 등록)
 │   ├── harness-setup/SKILL.md    <- /harness-setup
 │   ├── set-harness/SKILL.md      <- /set-harness
 │   ├── init-project/SKILL.md     <- /init-project
+│   ├── omh-spec/SKILL.md         <- /omh-spec (SPEC.md 작성)
+│   ├── omh-loop/SKILL.md         <- /omh-loop (루프 실행/중단)
 │   ├── agent-spawn/SKILL.md      <- /agent-spawn
 │   ├── agent-status/SKILL.md     <- /agent-status
 │   ├── agent-apply/SKILL.md      <- /agent-apply
@@ -129,13 +177,21 @@ your-project/
     ├── commands/                 <- 슬래시 명령어
     │   ├── set-harness.md
     │   ├── init-project.md
+    │   ├── omh-spec.md
+    │   ├── omh-loop.md
     │   ├── agent-spawn.md
     │   ├── agent-status.md
     │   ├── agent-apply.md
     │   └── agent-stop.md
+    ├── PROGRESS.md               <- 루프 계획 + 사람용 로그 (프로젝트 루트)
     └── .omh/                     <- 프로젝트 데이터 (gitignored)
         ├── harness.config.json
         ├── conventions.json
         ├── usage.json
-        └── context-snapshot.md
+        ├── context-snapshot.md
+        ├── loop-state.json       <- 루프 엔진 상태 (원자적 쓰기, fail-open)
+        ├── loop-learnings.md     <- 캐시된 빌드/테스트 호출
+        └── STOP                  <- 킬 스위치 (존재할 때)
 ```
+
+> 참고: `PROGRESS.md`는 `.claude/` 아래가 아니라 **프로젝트 루트**에 위치합니다. 여기서는 루프 데이터와의 근접성을 위해 CLI 레이아웃 옆에 표시했습니다.

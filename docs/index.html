@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oh My Harness — Smart Defaults for Claude Code</title>
-  <meta name="description" content="Lightweight Claude Code harness with smart defaults, safety guards, model routing, and multi-agent orchestration.">
+  <meta name="description" content="Claude Code harness with a spec-driven autonomous loop, smart defaults, safety guards, model routing, and multi-agent orchestration. The harness owns when to continue and when to stop.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -45,13 +45,13 @@
 
   <!-- Hero -->
   <section class="hero">
-    <div class="hero-badge" data-i18n="index.hero.badge">v0.1.0 &middot; MIT License</div>
+    <div class="hero-badge" data-i18n="index.hero.badge">v0.2.0 &middot; MIT License</div>
     <h1 class="hero-title" data-i18n-html="index.hero.title">
       Oh My<br><span class="gradient-text">Harness</span>
       <span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>
     </h1>
     <p class="hero-desc" data-i18n="index.hero.desc">
-      A lightweight harness that adds safety guards, intelligent model routing, and multi-agent orchestration — all through native hooks. Zero config, instant boost.
+      A spec-driven autonomous loop with real walls — plus safety guards, intelligent model routing, and multi-agent orchestration, all through native hooks. Define a goal once; the harness implements, self-verifies, and cross-verifies until the spec is met. Zero config, instant boost.
     </p>
     <div class="hero-install">
       <div class="install-box">
@@ -67,13 +67,13 @@
       <a href="docs.html#features" class="btn btn-outline" data-i18n="index.hero.explore">Explore Features</a>
     </div>
     <div class="hero-stats">
-      <div class="stat"><span class="stat-num">8</span><span class="stat-label" data-i18n="index.hero.stat.hooks">Hooks</span></div>
+      <div class="stat"><span class="stat-num">9</span><span class="stat-label" data-i18n="index.hero.stat.hooks">Hooks</span></div>
       <div class="stat-divider"></div>
-      <div class="stat"><span class="stat-num">7</span><span class="stat-label" data-i18n="index.hero.stat.skills">Skills</span></div>
+      <div class="stat"><span class="stat-num">12</span><span class="stat-label" data-i18n="index.hero.stat.skills">Skills</span></div>
       <div class="stat-divider"></div>
       <div class="stat"><span class="stat-num">3</span><span class="stat-label" data-i18n="index.hero.stat.agents">Agents</span></div>
       <div class="stat-divider"></div>
-      <div class="stat"><span class="stat-num">13</span><span class="stat-label" data-i18n="index.hero.stat.features">Features</span></div>
+      <div class="stat"><span class="stat-num">16</span><span class="stat-label" data-i18n="index.hero.stat.features">Features</span></div>
     </div>
   </section>
 
@@ -82,8 +82,8 @@
     <div class="container">
       <div class="philosophy-content">
         <span class="label-tag" data-i18n="index.philosophy.tag">Philosophy</span>
-        <h2 data-i18n-html="index.philosophy.title">Minimal guards.<br>Maximum customization.</h2>
-        <p data-i18n="index.philosophy.desc">OMH believes the best harness is one you barely notice. Warnings instead of walls, reminders instead of restrictions. Install once — it works everywhere.</p>
+        <h2 data-i18n-html="index.philosophy.title">Autonomy with<br>real walls.</h2>
+        <p data-i18n="index.philosophy.desc">For everyday work OMH stays light — warnings, not walls. But when you run the autonomous loop, the harness owns when to continue and when to stop, never the model's self-assessment. Define a goal once; it loops until the spec is objectively met or a guardrail fires.</p>
       </div>
     </div>
   </section>
@@ -142,11 +142,23 @@
     <div class="container">
       <span class="label-tag" data-i18n="index.features.tag">Features</span>
       <h2 class="section-title" data-i18n="index.features.title">Everything OMH does for you</h2>
-      <p class="section-desc" data-i18n="index.features.desc">13 features that activate automatically. No manual intervention needed.</p>
+      <p class="section-desc" data-i18n="index.features.desc">14 features that activate automatically. No manual intervention needed.</p>
 
       <div class="feature-rows">
         <div class="feature-row">
           <div class="feature-icon-col"><div class="feature-num">01</div></div>
+          <div class="feature-detail">
+            <h3 data-i18n="index.features.f0.title">Autonomous Loop</h3>
+            <p data-i18n="index.features.f0.desc">Spec-driven, tiered, self- and cross-verifying. Author a machine-checkable SPEC.md, then <code>/omh-loop</code> implements, verifies, and cross-verifies until every acceptance criterion passes — or a guardrail fires. The Stop hook owns continuation and termination; the model never decides when to stop.</p>
+          </div>
+          <div class="feature-tags">
+            <span>/omh-spec</span>
+            <span>/omh-loop</span>
+            <span>Cross-Verify</span>
+          </div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-icon-col"><div class="feature-num">02</div></div>
           <div class="feature-detail">
             <h3 data-i18n="index.features.f1.title">Safety Guards</h3>
             <p data-i18n="index.features.f1.desc">Ambiguity detection, dangerous operation warnings, scope restrictions. Guide with warnings, never block.</p>
@@ -158,7 +170,7 @@
           </div>
         </div>
         <div class="feature-row">
-          <div class="feature-icon-col"><div class="feature-num">02</div></div>
+          <div class="feature-icon-col"><div class="feature-num">03</div></div>
           <div class="feature-detail">
             <h3 data-i18n="index.features.f2.title">Intelligent Model Routing</h3>
             <p data-i18n="index.features.f2.desc">Automatically delegates tasks to the right model tier — Haiku for lookups, Sonnet for implementation, Opus for architecture.</p>
@@ -170,7 +182,7 @@
           </div>
         </div>
         <div class="feature-row">
-          <div class="feature-icon-col"><div class="feature-num">03</div></div>
+          <div class="feature-icon-col"><div class="feature-num">04</div></div>
           <div class="feature-detail">
             <h3 data-i18n="index.features.f3.title">Multi-Agent Orchestration</h3>
             <p data-i18n="index.features.f3.desc">Spawn parallel Claude agents in tmux panes with git worktree isolation. Preview diffs, merge when ready.</p>
@@ -182,7 +194,7 @@
           </div>
         </div>
         <div class="feature-row">
-          <div class="feature-icon-col"><div class="feature-num">04</div></div>
+          <div class="feature-icon-col"><div class="feature-num">05</div></div>
           <div class="feature-detail">
             <h3 data-i18n="index.features.f4.title">Convention Auto-Detect</h3>
             <p data-i18n="index.features.f4.desc">Scans your project at session start — detects language, test runner, linter, and formatter. Supports Node, Python, Go, Rust, Java, Kotlin.</p>
@@ -193,7 +205,7 @@
           </div>
         </div>
         <div class="feature-row">
-          <div class="feature-icon-col"><div class="feature-num">05</div></div>
+          <div class="feature-icon-col"><div class="feature-num">06</div></div>
           <div class="feature-detail">
             <h3 data-i18n="index.features.f5.title">Test Enforcement &amp; Skill Scaffolding</h3>
             <p data-i18n="index.features.f5.desc">Verifies tests exist after every code change. Auto-generates project-specific skills for code review, test writing, and linting.</p>

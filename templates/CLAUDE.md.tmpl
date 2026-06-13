@@ -33,6 +33,9 @@ On `/agent-spawn`: confirm → worktree `omh/agent-{N}` → never auto-merge →
 ### Native Team
 On `/team-spawn`: confirm → TeamCreate → TaskCreate → spawn teammates → assign tasks. Use `/team-status` for progress, `/team-stop` to shutdown. Never stop without checking incomplete tasks.
 
+### Autonomous Loop
+On `/omh-loop` (or "until it's right"): require machine-checkable `SPEC.md` first (`/omh-spec` if vague) → classify tier (quick/standard/deep) → confirm budget → start. The Stop hook (`loop-guard`) owns termination (forces continue until verify ladder + cross-verify pass, or a guardrail fires: budget/timeout/no-progress/oscillation). One task per iteration; ripgrep first; NO PLACEHOLDERS; Reflexion note on failure; commit each iteration. Never self-declare done — cross-verify with a different model (`[omh:model-routing → opus]`). `/omh-loop stop` halts.
+
 ### Post-Plan Team Suggestion
 After plan approval (ExitPlanMode), if plan has 2+ parallelizable tasks → suggest `/team-spawn {template} {task}`. Match template to task types (fullstack/review/research). Never auto-create — always suggest and wait for confirmation.
 
