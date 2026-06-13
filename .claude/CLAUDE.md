@@ -62,6 +62,15 @@ When the user requests team-based work with `/team-spawn`:
 5. NEVER shut down teammates without checking for incomplete tasks
 6. Announce model routing for each teammate: `[omh:model-routing -> {model}]`
 
+### Autonomous Loop (Spec-driven)
+When the user requests an autonomous loop with `/omh-loop` (or wants work done "until it's right"):
+1. Require a machine-checkable `SPEC.md` first — use `/omh-spec` if it is missing or vague. Never start a loop on a vague goal or one with `[NEEDS CLARIFICATION]` markers.
+2. Classify the tier (`quick`/`standard`/`deep`) and confirm the budget with the user before starting — never auto-start.
+3. The Stop hook (`loop-guard`) owns termination: it forces continuation until the verify ladder + cross-verify confirm done, or a guardrail fires (budget, timeout, no-progress, oscillation). Never self-declare "done" — the harness decides via objective checks.
+4. One unit of work per iteration; ripgrep before implementing; NO PLACEHOLDERS; on failure write a Reflexion note to `PROGRESS.md`; commit each iteration (one task = one commit).
+5. Cross-verify with a different model than the generator (`[omh:model-routing → opus]`): score each acceptance criterion with evidence, verify independently against repo state, run a revert-and-rerun mutation check. `INCONCLUSIVE` fails safe to stop-and-report.
+6. Honor human gates: halt for confirmation before anything outside `scopeGuard.allowedPaths`, deletions, force-push, or merging. `/omh-loop stop` (or creating `.claude/.omh/STOP`) halts the loop.
+
 ### Post-Plan Team Suggestion
 After a plan is approved (ExitPlanMode), evaluate whether the plan contains parallelizable tasks:
 - If the plan has 2+ independent tasks that can be worked on simultaneously → suggest using `/team-spawn` with an appropriate template

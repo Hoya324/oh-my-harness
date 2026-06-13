@@ -1,7 +1,7 @@
 {
   "name": "oh-my-harness",
-  "version": "0.2.1",
-  "description": "Lightweight Claude Code harness — smart defaults, test enforcement, model routing",
+  "version": "0.3.0",
+  "description": "Spec-driven autonomous Claude Code harness — autonomous loop with self/cross-verification, weight-aware routing & multi-model independent verify, smart defaults, test enforcement, model routing",
   "type": "module",
   "bin": {
     "oh-my-harness": "./bin/cli.mjs"

@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-7C3AED?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6TTIgMTJsMTAgNSAxMC01LTEwLTUtMTAgNXoiIGZpbGw9IndoaXRlIi8+PC9zdmc+" alt="Claude Code Plugin" />
-  <img src="https://img.shields.io/badge/version-0.2.1-blue?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.3.0-blue?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=for-the-badge&logo=node.js" alt="Node >= 18" />
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge" alt="MIT License" />
   <img src="https://img.shields.io/github/actions/workflow/status/Hoya324/oh-my-harness/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI" />
@@ -9,8 +9,8 @@
 <h1 align="center">Oh My Harness</h1>
 
 <p align="center">
-  <strong>Lightweight Claude Code harness. Zero config, instant boost.</strong><br/>
-  Smart defaults, test enforcement, model routing, and multi-agent orchestration — all through native hooks.
+  <strong>Spec-driven, weight-aware autonomous Claude Code harness. Define the goal — it loops until done.</strong><br/>
+  An autonomous loop that self-verifies and cross-verifies, weight-aware routing with multi-model verification, a living on-disk state anchor, plus smart defaults, test enforcement, model routing, and multi-agent orchestration — all through native hooks.
 </p>
 
 <p align="center">
@@ -26,9 +26,9 @@
 
 ## Why Oh My Harness?
 
-Claude Code is powerful out of the box — but it doesn't enforce testing, doesn't warn before `rm -rf`, and treats every request the same regardless of complexity.
+Claude Code is powerful out of the box — but it stops at the end of a turn even when the job isn't done, it doesn't verify its own work against the goal, and it treats every request the same regardless of complexity.
 
-**Oh My Harness (OMH)** adds a thin layer of smart defaults using Claude Code's native hook system. No heavy plugins, no runtime overhead — just hooks, skills, and CLAUDE.md instructions that make every session safer and more productive.
+**Oh My Harness (OMH)** turns Claude Code into a **spec-driven autonomous harness**: you define the goal once in a `SPEC.md`, and OMH *loops* — implementing, self-verifying, and cross-verifying — until the spec is objectively met. The loop runs on Claude Code's native hooks, so the **harness owns when to keep going and when to stop** — never the model's self-assessment. Around the loop sit the same lightweight smart defaults (test enforcement, dangerous-op guard, model routing, multi-agent) that make every session safer.
 
 ```mermaid
 graph LR
@@ -45,11 +45,11 @@ graph LR
 
 ## Philosophy
 
-**Minimal guards, maximum customization.**
+**Autonomy with real walls.**
 
-OMH believes the best harness is one you barely notice. Instead of blocking and enforcing, OMH guides with smart defaults — warnings instead of walls, reminders instead of restrictions.
+Earlier OMH was "warnings instead of walls." The autonomous loop changes that where it counts: a loop that can't be stopped is dangerous, and a loop that stops too early is useless — so the loop has **real walls**. The harness *forces continuation* while the goal is unmet and under budget, and *forces termination* on objective signals (verify ladder green + cross-verify, or a guardrail: iteration/wall-clock budget, no-progress, oscillation). The model never decides it's "done"; the harness does, against machine-checkable acceptance criteria.
 
-Where OMH truly shines is helping you build and use **project-specific skills**. Every codebase is different: your test conventions, review checklists, and lint workflows are unique. OMH auto-scaffolds per-project skills based on your detected stack, then gets out of the way so you can customize them.
+Everywhere else, OMH stays the harness you barely notice — smart defaults that guide with warnings, and **project-specific skills** auto-scaffolded from your detected stack (test conventions, review checklists, lint workflows) that you own and customize.
 
 - **Built-in skills** (agent management, setup) stay in the plugin
 - **Project skills** (code-review, test-write, lint-fix) live in `.claude/skills/` — your project, your rules
@@ -62,22 +62,23 @@ Where OMH truly shines is helping you build and use **project-specific skills**.
 ### Option A: Claude Code Plugin (recommended)
 
 ```bash
-# 1. Install plugin (user scope by default)
+# 1. Add the marketplace, then install — one copy-paste:
+claude plugin marketplace add Hoya324/oh-my-harness
 claude plugin install oh-my-harness@oh-my-harness
-
-# 2. Restart Claude Code, then initialize your project config:
-/harness-setup
 ```
 
-### Option B: npm CLI
+That's it. **Zero setup required** — OMH works on sensible defaults the moment it's installed. `/harness-setup` is optional and only needed if you want to tune `harness.config.json`.
+
+### Option B: npm CLI (no global install)
 
 ```bash
-npm install -g oh-my-harness
 cd your-project
-oh-my-harness init
+npx oh-my-harness@latest init
 ```
 
-Either way, start Claude Code as usual — harness features activate automatically.
+Or install globally if you prefer: `npm install -g oh-my-harness && oh-my-harness init`.
+
+Either way, start Claude Code as usual — harness features (including the autonomous loop) activate automatically.
 
 ---
 
@@ -127,11 +128,66 @@ oh-my-harness init
 | 12 | Multi-Agent | `/agent-spawn` | — | Parallel Claude agents in tmux with git worktrees |
 | 13 | Native Team | `/team-spawn` | ON | Native Claude Code team orchestration with templates |
 | 14 | Skill Scaffolding | `/init-project` | ON | Auto-generates project-specific skills based on detected stack |
-| 15 | Weight Routing | `UserPromptSubmit` | ON | Classifies task weight (Tier 1/2/3) and routes guardrails proportionally; Tier 3 enforces verification before completion |
-| 16 | N-Round Verify | `/omh-verify` | — | N independent verify+fix rounds with model rotation (Claude → GPT/codex → Gemini); external verifiers run read-only |
-| 17 | Living State | `SessionStart` / `PreCompact` | ON | Disk-anchored `STATE.md` (goal/phase/decisions/progress) re-injected across sessions to fight context rot |
+| 15 | **Autonomous Loop** | `Stop` (loop-guard) + `/omh-loop` | ON | Spec-driven loop: forces continuation until the verify ladder + cross-verify confirm done, with tiered guardrails (budget, timeout, no-progress, oscillation) |
+| 16 | Spec Authoring | `/omh-spec` | ON | Writes a machine-checkable `SPEC.md` (EARS acceptance criteria → verify commands) to anchor the loop |
+| 17 | Weight Routing | `UserPromptSubmit` | ON | Classifies task weight (Tier 1/2/3) and routes guardrails proportionally; Tier 3 enforces verification before completion |
+| 18 | N-Round Verify | `/omh-verify` | — | N independent verify+fix rounds with model rotation (Claude → GPT/codex → Gemini); external verifiers run read-only |
+| 19 | Living State | `SessionStart` / `PreCompact` | ON | Disk-anchored `STATE.md` (goal/phase/decisions/progress) re-injected across sessions to fight context rot |
 
-> See [Feature Details](docs/features.md) for full descriptions of each feature.
+> See [Feature Details](docs/features.md), the [Autonomous Loop guide](docs/loop.md), and the [Verification guide](docs/verify.md) for full descriptions.
+
+---
+
+## Autonomous Loop
+
+Define the goal once; OMH loops until it's objectively met.
+
+```bash
+/omh-spec add JWT auth with refresh tokens   # writes a machine-checkable SPEC.md
+/omh-loop SPEC.md                             # runs it autonomously
+/omh-loop stop                                # kill switch (or create .claude/.omh/STOP)
+```
+
+**How it works** — the Stop hook (`loop-guard`) is the loop engine *and* the safety enforcer:
+
+```mermaid
+graph TD
+    SPEC["SPEC.md<br/>(EARS acceptance criteria → verify cmds)"] --> START["/omh-loop"]
+    START --> TIER{"classify tier<br/>quick · standard · deep"}
+    TIER --> ITER["iterate: ONE task<br/>ripgrep → implement → ladder → commit"]
+    ITER --> STOP{{"Stop hook: loop-guard"}}
+    STOP -->|"goal unmet & under budget"| CONT["decision: block<br/>(force continue, re-inject spec digest)"]
+    CONT --> ITER
+    STOP -->|"verify ladder green + cross-verify PASS"| DONE["✅ done"]
+    STOP -->|"budget / timeout / no-progress / oscillation"| GUARD["⛔ stop + escalate"]
+    style STOP fill:#7C3AED,color:#fff
+    style DONE fill:#16a34a,color:#fff
+    style GUARD fill:#f59e0b,color:#000
+```
+
+- **Cheap-first verify ladder** — deterministic checks (lint/typecheck → tests/build) run first and fail fast, feeding the *actual* failing output back; the expensive model judge only runs on green.
+- **Cross-verification** — a *different* model (opus) scores each acceptance criterion against repo state (not the agent's self-report), runs a revert-and-rerun mutation check, and returns `PASS | FAIL | INCONCLUSIVE` (INCONCLUSIVE fails safe to stop).
+- **Tiered budgets** — `quick` (≤3 iters) · `standard` (≤8) · `deep` (≤20), each with a wall-clock cap and cross-verify policy.
+- **Real guardrails** — per-tier & cross-tier iteration caps, wall-clock timeout, no-progress/plateau and oscillation detection, `stop_hook_active` self-loop guard, concurrent-session/worktree isolation, atomic state, fail-open, and a `STOP` kill switch.
+
+The design and the research behind it (Ralph Wiggum loop, Reflexion, Chain-of-Verification, FrugalGPT-style cascades, EARS) are documented in [docs/loop.md](docs/loop.md).
+
+---
+
+## Weight-Aware Harness
+
+Not every prompt deserves the same scrutiny. OMH classifies each request by **prompt weight** and routes guardrails proportionally — light requests stay frictionless, heavy ones get the full treatment.
+
+```bash
+/omh-verify add JWT auth with refresh tokens   # N-round independent multi-model verify + fix
+```
+
+- **Weight routing** — a `UserPromptSubmit` hook scores each prompt into **Tier 1** (trivial), **Tier 2** (standard), or **Tier 3** (heavy/risky). Higher tiers tighten guardrails automatically; **Tier 3 forces verification before completion**.
+- **N-round verification** — `/omh-verify` runs N independent verify-and-fix rounds, **rotating the model lens each round** (Claude → GPT/codex → Gemini) so blind spots in one model are caught by another. External verifiers (codex, gemini) run **read-only** — they critique, they don't write.
+- **Living state anchor** — a disk-anchored `STATE.md` (goal, phase, decisions, progress) is re-injected on `SessionStart` and refreshed before `PreCompact`, so the working context survives compaction and new sessions instead of rotting away.
+- **Global config fallback** — settings resolve from the project's `harness.config.json` first, then fall back to a global `~/.claude/.omh`, so your defaults follow you across repos.
+
+Full details, the verifier lenses, and the tier policy live in [docs/verify.md](docs/verify.md).
 
 ---
 
@@ -158,13 +214,15 @@ graph TB
         HOOKS --> H6[usage-tracker.mjs]
         HOOKS --> H7[pre-compact.mjs]
         HOOKS --> H8[post-task.mjs]
+        HOOKS --> H9[loop-guard.mjs]
 
         SKILLS --> S1["/harness-setup"]
         SKILLS --> S2["/set-harness"]
         SKILLS --> S3["/agent-spawn"]
-        SKILLS --> S4["/agent-status"]
-        SKILLS --> S5["/team-spawn"]
-        SKILLS --> S6["/team-status"]
+        SKILLS --> S4["/team-spawn"]
+        SKILLS --> S5["/omh-spec"]
+        SKILLS --> S6["/omh-loop"]
+        SKILLS --> S7["/omh-verify"]
 
         AGENTS --> A1["harness:quick (haiku)"]
         AGENTS --> A2["harness:standard (sonnet)"]
@@ -176,11 +234,16 @@ graph TB
         CONV[conventions.json]
         USAGE[usage.json]
         SNAP[context-snapshot.md]
+        LOOP[loop-state.json]
+        STATE[STATE.md]
     end
 
     H1 --> CONV
     H6 --> USAGE
     H7 --> SNAP
+    H9 --> LOOP
+    H1 --> STATE
+    H7 --> STATE
     H1 --> CONFIG
     H2 --> CONFIG
     H3 --> CONFIG
@@ -305,7 +368,9 @@ graph TD
 
 | Document | Contents |
 |----------|----------|
-| **[Features](docs/features.md)** | HUD status line, smart defaults, feature tags, detailed feature descriptions (1–10) |
+| **[Autonomous Loop](docs/loop.md)** | Spec-driven loop, verify ladder, cross-verification, tiers, guardrails, and the research behind the design |
+| **[Verification](docs/verify.md)** | Weight routing (Tier 1/2/3), N-round multi-model verify+fix, read-only external verifiers, living `STATE.md` anchor |
+| **[Features](docs/features.md)** | HUD status line, smart defaults, feature tags, detailed feature descriptions |
 | **[Architecture](docs/architecture.md)** | System diagram, hook pipeline, plugin mode vs npm CLI directory structure |
 | **[Multi-Agent](docs/multi-agent.md)** | Spawn commands, workflow, worktree branching model, safety policies |
 | **[Configuration](docs/configuration.md)** | Settings reference, CLI commands, slash commands, OMC compatibility, uninstall |

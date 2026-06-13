@@ -17,3 +17,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# oh-my-harness
+.claude/.omh/

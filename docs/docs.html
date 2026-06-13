@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Docs — Oh My Harness</title>
-  <meta name="description" content="Documentation for Oh My Harness — smart defaults for Claude Code.">
+  <meta name="description" content="Documentation for Oh My Harness — a spec-driven autonomous loop and smart defaults for Claude Code.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -48,7 +48,7 @@
     <aside class="docs-sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title">Oh My Harness</div>
-        <div class="sidebar-version">v0.2.1</div>
+        <div class="sidebar-version">v0.3.0</div>
       </div>
 
       <div class="sidebar-external">
@@ -67,6 +67,21 @@
           <a href="#installation" class="sidebar-link active" data-i18n="docs.sidebar.installation">Installation</a>
           <a href="#quick-start" class="sidebar-link" data-i18n="docs.sidebar.quickStart">Quick Start</a>
           <a href="#configuration" class="sidebar-link" data-i18n="docs.sidebar.configuration">Configuration</a>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">
+          <span data-i18n="docs.sidebar.autonomousLoop">Autonomous Loop</span>
+          <span class="chevron">&#9662;</span>
+        </div>
+        <div class="sidebar-links">
+          <a href="#autonomous-loop" class="sidebar-link" data-i18n="docs.sidebar.overview">Overview</a>
+          <a href="#loop-spec" class="sidebar-link" data-i18n="docs.sidebar.specAuthoring">Spec Authoring</a>
+          <a href="#loop-tiers" class="sidebar-link" data-i18n="docs.sidebar.tiersLadder">Tiers &amp; Ladder</a>
+          <a href="#loop-crossverify" class="sidebar-link" data-i18n="docs.sidebar.crossVerify">Cross-Verification</a>
+          <a href="#loop-guardrails" class="sidebar-link" data-i18n="docs.sidebar.guardrails">Guardrails</a>
+          <a href="#loop-config" class="sidebar-link" data-i18n="docs.sidebar.loopConfig">Loop Config</a>
         </div>
       </div>
 
@@ -199,7 +214,8 @@ oh-my-harness init</code></pre>
     "scopeGuard": false,
     "usageTracking": true,
     "autoGitignore": true,
-    "skillScaffolding": true
+    "skillScaffolding": true,
+    "autonomousLoop": true
   },
   "testEnforcement": { "minCases": 2, "promptOnMissing": true },
   "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
@@ -218,6 +234,82 @@ oh-my-harness init</code></pre>
 /set-harness modelRouting.standard opus     # Use opus for implementation
 /set-harness commitConvention.style gitmoji # Switch to gitmoji</code></pre>
 
+      <!-- Autonomous Loop -->
+      <h2 id="autonomous-loop" data-i18n="docs.loop.title">Autonomous Loop</h2>
+      <p data-i18n="docs.loop.intro">The headline feature of 0.3.0. Define a goal once in a machine-checkable spec, then OMH loops — implementing, self-verifying, and cross-verifying — until every acceptance criterion is objectively met or a guardrail fires. This is a deliberate identity shift: from "warnings instead of walls" to <strong>autonomy with real walls</strong>. The harness owns when to continue and when to stop; the model never decides termination from its own self-assessment.</p>
+      <pre><code># 1. Author a machine-checkable spec (refuses vague specs)
+/omh-spec "Add rate limiting to the public API"
+
+# 2. Run the loop (classifies a tier, gates on the spec, then iterates)
+/omh-loop SPEC.md
+
+# 3. Abort any time
+/omh-loop stop</code></pre>
+      <blockquote><p data-i18n-html="docs.loop.engineNote">The Stop hook <code>hooks/loop-guard.mjs</code> <em>is</em> the loop engine and safety enforcer. It forces continuation by printing a top-level <code>{"decision":"block","reason":...}</code> and exiting 0, and allows the session to stop when the spec is met or a guardrail fires. The pure core <code>lib/loop.mjs</code> is unit-tested in isolation.</p></blockquote>
+
+      <h3 id="loop-spec" data-i18n="docs.loop.spec.title">Spec Authoring (SPEC.md)</h3>
+      <p data-i18n-html="docs.loop.spec.intro"><code>/omh-spec</code> authors a <code>SPEC.md</code> with <strong>EARS</strong> acceptance criteria — <em>WHEN &lt;trigger&gt; THE SYSTEM SHALL &lt;response&gt;</em> — each mapped to a verify command. The loop may stop only when every criterion's command exits 0. <code>/omh-spec</code> refuses to start a loop while any <code>[NEEDS CLARIFICATION]</code> markers remain, falling back to the Ambiguity Guard.</p>
+
+      <h3 id="loop-tiers" data-i18n="docs.loop.tiers.title">Tiers &amp; Verify Ladder</h3>
+      <p data-i18n="docs.loop.tiers.intro">Effort is tiered. The loop starts on the cheapest tier and escalates only on observed signals (verify failure, large diff, repeated failure signature). A cross-tier cap of 30 total iterations applies regardless of tier.</p>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.loop.tiers.th.tier">Tier</th><th data-i18n="docs.loop.tiers.th.budget">Budget</th><th data-i18n="docs.loop.tiers.th.crossVerify">Cross-Verify</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>quick</code></td><td data-i18n="docs.loop.tiers.r1.budget">&le; 3 iterations / 5 min</td><td data-i18n="docs.loop.tiers.r1.cv">None</td></tr>
+          <tr><td><code>standard</code></td><td data-i18n="docs.loop.tiers.r2.budget">&le; 8 iterations / 15 min</td><td data-i18n="docs.loop.tiers.r2.cv">At done</td></tr>
+          <tr><td><code>deep</code></td><td data-i18n="docs.loop.tiers.r3.budget">&le; 20 iterations / 45 min</td><td data-i18n="docs.loop.tiers.r3.cv">Every 5 + at done</td></tr>
+        </tbody>
+      </table>
+      <p data-i18n-html="docs.loop.ladder.intro">Each iteration runs a <strong>cheap-first verify ladder</strong> that fails fast and feeds the <em>actual</em> failing output back as the next iteration's instruction:</p>
+      <pre><code>quickCheck (lint / typecheck)  →  verify (tests / build)  →  self-review  →  cross-verify</code></pre>
+      <p data-i18n="docs.loop.ladder.note">The cheapest rung runs first with its own subprocess timeout. On the first non-zero exit the loop blocks with the real failing output piped into the next instruction — it never spends a model judge on structurally broken code.</p>
+
+      <h3 id="loop-crossverify" data-i18n="docs.loop.crossVerify.title">Cross-Verification</h3>
+      <p data-i18n-html="docs.loop.crossVerify.intro">Cross-verification uses a <strong>different model than the generator</strong> (opus via model routing) to kill self-enhancement bias. It scores <strong>each SPEC acceptance criterion PASS/FAIL with evidence</strong>, verifies <strong>independently against repo state</strong> (runs the tests, greps the diff — not the agent's self-report), and runs a revert-and-rerun mutation check so vacuous tests can't satisfy the gate. The verdict is typed <code>PASS | FAIL | INCONCLUSIVE</code>; INCONCLUSIVE fails safe to stop-and-report. Results emit as <code>[omh:cross-verify]</code> with a rubric table.</p>
+
+      <h3 id="loop-guardrails" data-i18n="docs.loop.guardrails.title">Guardrails</h3>
+      <p data-i18n="docs.loop.guardrails.intro">Termination is a layered checklist owned by the hook — autonomy never becomes runaway:</p>
+      <ul>
+        <li data-i18n-html="docs.loop.guardrails.li1"><strong>Self-trigger guard</strong> — <code>stop_hook_active</code> is checked first, preventing the hook's own respond→block→respond infinite loop</li>
+        <li data-i18n-html="docs.loop.guardrails.li2"><strong>Isolation</strong> — concurrent-session / worktree safety via <code>sessionId</code> matching</li>
+        <li data-i18n-html="docs.loop.guardrails.li3"><strong>Kill switch</strong> — <code>.claude/.omh/STOP</code> or <code>/omh-loop stop</code> halts immediately</li>
+        <li data-i18n-html="docs.loop.guardrails.li4"><strong>Budgets</strong> — per-tier and cross-tier iteration caps plus an independent wall-clock timeout</li>
+        <li data-i18n-html="docs.loop.guardrails.li5"><strong>No-progress / plateau</strong> — an empty or cosmetic commit diff over the plateau window stops the loop</li>
+        <li data-i18n-html="docs.loop.guardrails.li6"><strong>Oscillation</strong> — a repeated failure signature or A-B-A-B pattern stops and escalates ("architectural, not iterative")</li>
+        <li data-i18n-html="docs.loop.guardrails.li7"><strong>Fail-open state</strong> — atomic state writes; corruption deletes state and exits cleanly, never trapping the user</li>
+      </ul>
+
+      <h3 id="loop-config" data-i18n="docs.loop.config.title">Loop Config</h3>
+      <p data-i18n-html="docs.loop.config.intro">The loop is enabled by <code>features.autonomousLoop</code> (default ON, inert until <code>/omh-loop</code> writes an active state) plus a <code>loop</code> block. State lives in <code>.claude/.omh/loop-state.json</code>; the human-readable plan and log is <code>PROGRESS.md</code>.</p>
+      <pre><code>"features": { "autonomousLoop": true },
+"loop": {
+  "classify": "auto",              // auto | quick | standard | deep
+  "defaultTier": "quick",          // start cheap, escalate on signals
+  "requireSpec": true,
+  "specPath": "SPEC.md",
+  "logFile": "PROGRESS.md",
+  "learningsFile": ".claude/.omh/loop-learnings.md",
+  "requireCommit": true,
+  "oneTaskPerIteration": true,
+  "maxDiffFilesPerIteration": 20,
+  "maxTotalIterations": 30,
+  "stopOnNoProgress": true,
+  "verifyInHook": true,
+  "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },
+  "crossVerify": true,
+  "crossVerifyModel": "architect", // different model than generator
+  "maxDeepVerifiesPerTask": 3,
+  "reflectionWindow": 3,
+  "tiers": {
+    "quick":    { "maxIterations": 3,  "maxWallClockMinutes": 5,  "crossVerify": false },
+    "standard": { "maxIterations": 8,  "maxWallClockMinutes": 15, "crossVerify": true  },
+    "deep":     { "maxIterations": 20, "maxWallClockMinutes": 45, "crossVerify": true, "crossVerifyEvery": 5 }
+  }
+}</code></pre>
+      <blockquote><p data-i18n="docs.loop.config.techniques">Techniques drawn on: the Ralph Wiggum loop, Reflexion, Self-Refine, Chain-of-Verification (CoVe), LLM-as-judge, FrugalGPT cascade, Agreement-Based Cascading, EARS notation, and Spec-Driven Development.</p></blockquote>
+
       <!-- Hooks -->
       <h2 id="hooks" data-i18n="docs.hooks.title">Hooks</h2>
       <p data-i18n="docs.hooks.intro">OMH hooks into Claude Code's lifecycle at every stage. All hooks run automatically — no manual intervention needed.</p>
@@ -234,6 +326,7 @@ oh-my-harness init</code></pre>
           <tr><td><code>scope-guard.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r5.desc">Warns about out-of-scope edits</td></tr>
           <tr><td><code>usage-tracker.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r6.desc">Records tool usage</td></tr>
           <tr><td><code>pre-compact.mjs</code></td><td>PreCompact</td><td data-i18n="docs.hooks.r7.desc">Saves context snapshot</td></tr>
+          <tr><td><code>loop-guard.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r9.desc">Autonomous loop engine + safety enforcer</td></tr>
           <tr><td><code>post-task.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r8.desc">Test enforcement reminder</td></tr>
         </tbody>
       </table>
@@ -252,13 +345,15 @@ oh-my-harness init</code></pre>
 
       <!-- Skills -->
       <h2 id="skills" data-i18n="docs.skills.title">Skills</h2>
-      <p data-i18n="docs.skills.intro">OMH provides 10 built-in slash commands:</p>
+      <p data-i18n="docs.skills.intro">OMH provides 12 built-in slash commands:</p>
 
       <table>
         <thead>
           <tr><th data-i18n="docs.skills.th.command">Command</th><th data-i18n="docs.skills.th.description">Description</th></tr>
         </thead>
         <tbody>
+          <tr><td><code>/omh-spec [goal]</code></td><td data-i18n="docs.skills.r11">Author a machine-checkable SPEC.md with EARS acceptance criteria</td></tr>
+          <tr><td><code>/omh-loop [SPEC.md] | stop</code></td><td data-i18n="docs.skills.r12">Run the autonomous loop until the spec is met; <code>stop</code> aborts</td></tr>
           <tr><td><code>/harness-setup</code></td><td data-i18n="docs.skills.r1">Initialize oh-my-harness with interactive onboarding</td></tr>
           <tr><td><code>/set-harness [path] [value]</code></td><td data-i18n="docs.skills.r2">View or modify harness settings</td></tr>
           <tr><td><code>/init-project</code></td><td data-i18n="docs.skills.r3">Detect conventions and scaffold project skills</td></tr>
@@ -318,6 +413,7 @@ oh-my-harness init</code></pre>
           <tr><td>12</td><td>Multi-Agent</td><td>/agent-spawn</td><td>—</td></tr>
           <tr><td>13</td><td data-i18n="docs.features.nativeTeam">Native Team</td><td>/team-spawn</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>14</td><td>Skill Scaffolding</td><td>/init-project</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>15</td><td data-i18n="docs.features.autonomousLoop">Autonomous Loop</td><td>Stop / /omh-loop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
         </tbody>
       </table>
 
@@ -559,6 +655,10 @@ oh-my-harness init</code></pre>
           <tr><td><code>features.nativeTeam</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r15">Enable native team skills</td></tr>
           <tr><td><code>nativeTeam.maxTeammates</code></td><td>number</td><td>4</td><td data-i18n="docs.settingsRef.r16">Max teammates per team</td></tr>
           <tr><td><code>nativeTeam.defaultTeamName</code></td><td>string</td><td>omh-team</td><td data-i18n="docs.settingsRef.r17">Default team name</td></tr>
+          <tr><td><code>features.autonomousLoop</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r18">Enable the spec-driven autonomous loop</td></tr>
+          <tr><td><code>loop.defaultTier</code></td><td>string</td><td>quick</td><td data-i18n="docs.settingsRef.r19">Starting tier (escalates on signals)</td></tr>
+          <tr><td><code>loop.maxTotalIterations</code></td><td>number</td><td>30</td><td data-i18n="docs.settingsRef.r20">Cross-tier iteration cap</td></tr>
+          <tr><td><code>loop.crossVerifyModel</code></td><td>string</td><td>architect</td><td data-i18n="docs.settingsRef.r21">Different model for cross-verification</td></tr>
         </tbody>
       </table>
 

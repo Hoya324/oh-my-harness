@@ -35,6 +35,26 @@ describe('config', () => {
     assert.equal(config.modelRouting.quick, 'haiku'); // default preserved
   });
 
+  it('includes autonomous-loop defaults', () => {
+    const config = readConfig(TMP);
+    assert.equal(config.features.autonomousLoop, true);
+    assert.equal(config.loop.classify, 'auto');
+    assert.equal(config.loop.maxTotalIterations, 30);
+    assert.equal(config.loop.tiers.quick.maxIterations, 3);
+    assert.equal(config.loop.tiers.standard.maxIterations, 8);
+    assert.equal(config.loop.tiers.deep.maxIterations, 20);
+    assert.equal(config.loop.tiers.deep.model, 'architect');
+  });
+
+  it('deep-merges partial loop config with defaults', () => {
+    writeFileSync(configPath(TMP), JSON.stringify({ loop: { tiers: { deep: { maxIterations: 50 } } } }));
+    const config = readConfig(TMP);
+    assert.equal(config.loop.tiers.deep.maxIterations, 50); // override
+    assert.equal(config.loop.tiers.deep.crossVerify, true); // default preserved
+    assert.equal(config.loop.tiers.quick.maxIterations, 3); // sibling default preserved
+    assert.equal(config.loop.classify, 'auto'); // default preserved
+  });
+
   it('handles corrupt config gracefully', () => {
     writeFileSync(configPath(TMP), 'not json!!!');
     const config = readConfig(TMP);

@@ -87,6 +87,9 @@ Claude가 서브에이전트에 작업을 위임할 때, OMH가 자동으로 적
 [omh:scope-guard]        → 허용 경로 밖 수정 경고
 [omh:convention-detect]  → 세션 시작 시 프로젝트 컨벤션 감지
 [omh:context-snapshot]   → 컨텍스트 압축 전 상태 저장
+[omh:loop]               → 자율 루프의 강제 계속 / 중단 결정
+[omh:cross-verify]       → 교차 검증 판정 (PASS / FAIL / INCONCLUSIVE)
+[omh:spec]               → 스펙 작성 / 수용 기준 검사
 ```
 
 세션 출력 예시:
@@ -298,6 +301,88 @@ Claude Code의 내장 팀 시스템을 사용하여 병렬 작업을 오케스�
 ```
 
 > 커스텀 템플릿은 설정의 `nativeTeam.templates`로 추가할 수 있습니다.
+
+### 13. 자율 루프 (Autonomous Loop)
+
+0.3.0의 핵심 기능입니다. `SPEC.md`에 목표를 한 번 정의하면, OMH가 스펙이 객관적으로 충족될 때까지 *루프*를 돕니다 — 구현하고, 스스로 검증하고, 교차 검증하면서. 여기서의 철학은 OMH의 평소 "벽 대신 경고"와 정반대입니다: **계속할지 멈출지를 하네스가 소유**하며, 모델의 자기 평가에 맡기지 않습니다.
+
+**트리거:** Stop 훅 `hooks/loop-guard.mjs`가 곧 루프 엔진이자 안전 집행자입니다. `/omh-loop`이 활성 상태를 기록하면, 모든 Stop 이벤트마다 훅이 다시 진입합니다. 계속하려면 stdout에 **최상위** `{"decision":"block","reason":...}`를 출력하고 exit 0으로 종료합니다(exit 2 사용 금지, `hookSpecificOutput` 아래 중첩 금지). 목표가 충족되거나 가드레일이 발동하면 세션이 멈추도록 둡니다. 순수하고 단위 테스트된 코어는 `lib/loop.mjs`에 있습니다(`evaluateLoop`, `classifyTier`, `buildLadder`, `detectPlateau`, `detectOscillation`).
+
+**명령어:**
+
+| 명령어 | 설명 |
+|--------|------|
+| `/omh-loop "<목표>"` 또는 `/omh-loop SPEC.md` | 티어 분류, 스펙 게이트, 확인 후 한 번에 하나의 작업씩 반복 |
+| `/omh-loop stop` | 킬 스위치 — 루프 중단 (`.claude/.omh/STOP` 파일 생성과 동일) |
+
+**저렴한 것 우선 검증 사다리** — 가장 저렴한 검사를 먼저 돌리고 빠르게 실패하는, 엄격하게 순서가 정해진 단계들입니다. 첫 실패 시 *실제* 실패 출력을 다음 반복의 지시로 되먹임하여, 구조적으로 깨진 코드에 비싼 판정 모델을 낭비하지 않습니다. 각 단계는 자체 서브프로세스 타임아웃을 가집니다.
+
+```
+quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-review  →  cross-verify
+   30초, 결정론적                  180초, 결정론적            동일 모델       다른 모델
+```
+
+**교차 검증(Cross-verification)** — 생성기와 *다른* 모델(opus, 모델 라우팅 경유)이 LLM-as-judge 역할로 **각** SPEC 수용 기준을 근거와 함께 `PASS` / `FAIL`로 채점합니다. 에이전트의 "내가 X 했다"는 자기 보고를 다시 읽는 것이 아니라, 테스트를 실행하고 diff를 grep하여 **저장소 상태에 대해 독립적으로** 검증합니다. 또한 revert-and-rerun 변형 검사(변경을 되돌리면 새 테스트가 되돌린 코드에서 FAIL해야 함)를 실행하여, 에이전트가 빈껍데기 테스트로 자기 게이트를 통과하지 못하게 합니다. 판정은 `PASS | FAIL | INCONCLUSIVE` 타입이며, **INCONCLUSIVE는 안전하게 중단-및-보고로 폴백**합니다.
+
+**티어(Tiers)** — 가장 저렴한 티어에서 시작하고, 관찰된 신호(검증 실패, 큰 diff, 반복 실패)에 따라서만 승급합니다:
+
+| 티어 | 반복 | 벽시계 시간 | 교차 검증 |
+|------|:----:|:----------:|----------|
+| `quick` | ≤ 3 | 5분 | 없음 |
+| `standard` | ≤ 8 | 15분 | 완료 시 |
+| `deep` | ≤ 20 | 45분 | 5회마다 + 완료 시 |
+
+> 티어 교차 상한: `maxTotalIterations` = 30. 기본 티어는 `quick`이며, `standard` / `deep`은 승급 상태입니다.
+
+**가드레일 (진짜 벽)** — 모든 Stop 이벤트에서 계층화된 체크리스트로 평가됩니다:
+
+- `stop_hook_active`를 **가장 먼저** 검사하여 훅 자신의 응답 → block → 응답 무한 루프를 방지
+- `sessionId`를 통한 동시 세션 / worktree 격리 (불일치 시 손대지 않고 통과)
+- `STOP` 킬 스위치 (`.claude/.omh/STOP` 또는 `/omh-loop stop`)
+- 티어별 및 티어 교차 반복 예산, 그리고 독립적인 벽시계 타임아웃
+- 진전 없음 / 정체 감지 (티어의 `plateauWindow` 동안 빈 또는 미미한 커밋 diff)
+- 진동(oscillation) 감지 (반복되는 실패 시그니처 / A-B-A-B → 중단 + "반복이 아니라 구조적 문제"로 에스컬레이션)
+- 원자적(atomic) 상태 쓰기와 손상 시 **fail-open** — 깨진 상태 파일은 스스로 삭제하고 exit 0하여 사용자를 가두지 않음
+
+**상태 & 로그:** 머신 상태는 `.claude/.omh/loop-state.json`, 사람이 읽는 계획 + 로그는 `PROGRESS.md`, 캐시된 빌드/테스트 호출은 `.claude/.omh/loop-learnings.md`에 저장됩니다.
+
+**태그:** 훅은 강제 계속 / 중단 결정마다 `[omh:loop]`를, 판정 결과(루브릭 표 포함)에 `[omh:cross-verify]`를 출력합니다.
+
+**기법:** Ralph Wiggum 루프, Reflexion, Self-Refine, Chain-of-Verification(CoVe), LLM-as-judge, FrugalGPT 캐스케이드, Agreement-Based Cascading, Spec-Driven Development.
+
+**설정:**
+```json
+{
+  "features": { "autonomousLoop": true },
+  "loop": {
+    "defaultTier": "quick",
+    "requireSpec": true,
+    "specPath": "SPEC.md",
+    "logFile": "PROGRESS.md",
+    "maxTotalIterations": 30,
+    "crossVerify": true,
+    "crossVerifyModel": "architect",
+    "rungTimeoutSec": { "quickCheck": 30, "verify": 180 }
+  }
+}
+```
+
+> 기본적으로 ON이지만 `/omh-loop`이 활성 상태를 기록하기 전까지는 **비활성**입니다 — 루프가 아닌 세션에는 오버헤드가 없습니다. 전체 설정 블록과 설계 근거는 [자율 루프 가이드](loop.ko.md)를 참고하세요.
+
+### 14. 스펙 작성 (Spec Authoring)
+
+`/omh-spec`은 루프의 기준이 되는 기계 검증 가능한 `SPEC.md`를 작성합니다. 수용 기준은 **EARS 표기법** — `WHEN <트리거> THE SYSTEM SHALL <응답>` — 을 사용하며, 각 기준은 루프가 충족으로 간주하려면 exit 0이어야 하는 **검증 명령(verify command)**에 매핑됩니다. 의도 표류(drift)를 막기 위해 스펙의 간결하고 고정된 다이제스트가 매 반복마다 다시 주입됩니다.
+
+요청이 모호하면 `/omh-spec`은 `[NEEDS CLARIFICATION]` 마커를 삽입하고, 그것이 남아 있는 동안 **루프 시작을 거부**합니다 — 추측하는 대신 OMH의 기존 모호성 가드로 폴백합니다.
+
+```json
+{
+  "features": { "autonomousLoop": true },
+  "loop": { "requireSpec": true, "specPath": "SPEC.md" }
+}
+```
+
+> `[omh:spec]`를 출력합니다. EARS 템플릿과 작성 워크플로우는 [자율 루프 가이드](loop.ko.md)를 참고하세요.
 
 ---
 

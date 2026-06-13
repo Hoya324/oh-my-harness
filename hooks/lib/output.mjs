@@ -36,6 +36,24 @@ export function hookWarn(hookEventName, additionalContext) {
   });
 }
 
+/**
+ * Stop-hook continuation contract.
+ *
+ * To force Claude to CONTINUE (not stop), a Stop hook must emit the decision as
+ * TOP-LEVEL JSON keys (`{ "decision": "block", "reason": ... }`) and exit 0.
+ * This is intentionally NOT `hookBlock()` above — that helper nests `decision`
+ * inside `hookSpecificOutput`, which is the PreToolUse/UserPromptSubmit shape and
+ * is silently ignored by the Stop event, so the loop would never continue.
+ * Never use exit code 2 for this: it is broken for plugin-distributed hooks
+ * (Claude prints "Stop hook prevented continuation" and halts).
+ *
+ * @param {string} reason - Instruction fed back to the model as the next turn.
+ * @returns {string} JSON to print on stdout (then exit 0).
+ */
+export function hookStopContinue(reason) {
+  return JSON.stringify({ decision: 'block', reason });
+}
+
 export function hookCompact(systemMessage) {
   return JSON.stringify({
     continue: true,

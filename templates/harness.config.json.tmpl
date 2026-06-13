@@ -14,6 +14,7 @@
     "autoGitignore": true,
     "skillScaffolding": true,
     "nativeTeam": true,
+    "autonomousLoop": true,
     "weightRouting": true
   },
   "testEnforcement": {
@@ -70,6 +71,32 @@
           { "name": "architect", "role": "Architecture review", "agentType": "architect" }
         ]
       }
+    }
+  },
+  "loop": {
+    "classify": "auto",
+    "defaultTier": "quick",
+    "requireSpec": true,
+    "specPath": "SPEC.md",
+    "logFile": "PROGRESS.md",
+    "learningsFile": ".claude/.omh/loop-learnings.md",
+    "requireCommit": true,
+    "oneTaskPerIteration": true,
+    "maxDiffFilesPerIteration": 20,
+    "maxTotalIterations": 30,
+    "stopOnNoProgress": true,
+    "quickCheckCommand": "",
+    "verifyCommand": "",
+    "verifyInHook": true,
+    "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },
+    "crossVerify": true,
+    "crossVerifyModel": "architect",
+    "maxDeepVerifiesPerTask": 3,
+    "reflectionWindow": 3,
+    "tiers": {
+      "quick": { "model": "standard", "maxIterations": 3, "maxWallClockMinutes": 5, "plateauWindow": 2, "crossVerify": false, "crossVerifyEvery": 0, "marginalGainEpsilon": 0.05 },
+      "standard": { "model": "standard", "maxIterations": 8, "maxWallClockMinutes": 15, "plateauWindow": 2, "crossVerify": true, "crossVerifyEvery": 0, "marginalGainEpsilon": 0.03 },
+      "deep": { "model": "architect", "maxIterations": 20, "maxWallClockMinutes": 45, "plateauWindow": 3, "crossVerify": true, "crossVerifyEvery": 5, "marginalGainEpsilon": 0.02 }
     }
   },
   "tier3": {

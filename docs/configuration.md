@@ -28,7 +28,9 @@ This lets you set a global default once (User scope) that applies to every proje
     "scopeGuard": false,
     "usageTracking": true,
     "autoGitignore": true,
-    "nativeTeam": true
+    "nativeTeam": true,
+    "autonomousLoop": true,
+    "weightRouting": true
   },
   "testEnforcement": { "minCases": 2, "promptOnMissing": true },
   "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
@@ -37,7 +39,44 @@ This lets you set a global default once (User scope) that applies to every proje
   "commitConvention": { "style": "auto" },
   "scopeGuard": { "allowedPaths": [] },
   "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" },
-  "nativeTeam": { "maxTeammates": 4, "defaultTeamName": "omh-team" }
+  "nativeTeam": { "maxTeammates": 4, "defaultTeamName": "omh-team" },
+  "loop": {
+    "classify": "auto",
+    "defaultTier": "quick",
+    "requireSpec": true,
+    "specPath": "SPEC.md",
+    "logFile": "PROGRESS.md",
+    "learningsFile": ".claude/.omh/loop-learnings.md",
+    "requireCommit": true,
+    "oneTaskPerIteration": true,
+    "maxDiffFilesPerIteration": 20,
+    "maxTotalIterations": 30,
+    "stopOnNoProgress": true,
+    "quickCheckCommand": "",
+    "verifyCommand": "",
+    "verifyInHook": true,
+    "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },
+    "crossVerify": true,
+    "crossVerifyModel": "architect",
+    "maxDeepVerifiesPerTask": 3,
+    "reflectionWindow": 3,
+    "tiers": {
+      "quick":    { "model": "standard",  "maxIterations": 3,  "maxWallClockMinutes": 5,  "plateauWindow": 2, "crossVerify": false, "marginalGainEpsilon": 0.05 },
+      "standard": { "model": "standard",  "maxIterations": 8,  "maxWallClockMinutes": 15, "plateauWindow": 2, "crossVerify": true,  "crossVerifyEvery": 0, "marginalGainEpsilon": 0.03 },
+      "deep":     { "model": "architect", "maxIterations": 20, "maxWallClockMinutes": 45, "plateauWindow": 3, "crossVerify": true,  "crossVerifyEvery": 5, "marginalGainEpsilon": 0.02 }
+    }
+  },
+  "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": [] },
+  "verify": {
+    "rounds": 3,
+    "stopWhenClean": true,
+    "autoFix": false,
+    "lenses": [
+      { "model": "claude", "focus": "logic" },
+      { "model": "gpt",    "focus": "edge-cases" },
+      { "model": "gemini", "focus": "security" }
+    ]
+  }
 }
 ```
 
@@ -51,6 +90,8 @@ This lets you set a global default once (User scope) that applies to every proje
 /set-harness commitConvention.style gitmoji # Switch to gitmoji
 /set-harness multiAgent.maxAgents 6         # Allow up to 6 agents
 /set-harness nativeTeam.maxTeammates 6        # Allow up to 6 teammates
+/set-harness features.weightRouting false   # Disable prompt-weight classification
+/set-harness verify.rounds 5                 # Run 5 independent verify rounds
 ```
 
 ## Settings Reference
@@ -83,6 +124,7 @@ This lets you set a global default once (User scope) that applies to every proje
 | `features.nativeTeam` | bool | `true` | Enable native team skills |
 | `nativeTeam.maxTeammates` | number | `4` | Max teammates per team |
 | `nativeTeam.defaultTeamName` | string | `omh-team` | Default team name |
+| `features.autonomousLoop` | bool | `true` | Enable the spec-driven autonomous loop (`/omh-loop`) |
 | `features.weightRouting` | bool | `true` | Classify task weight (Tier 1/2/3) and route guardrails proportionally |
 | `tier3.taskThreshold` | number | `5` | Task count that forces Tier 3 |
 | `tier3.fileThreshold` | number | `5` | Changed-file count that forces Tier 3 |
@@ -91,6 +133,90 @@ This lets you set a global default once (User scope) that applies to every proje
 | `verify.stopWhenClean` | bool | `true` | Stop early when a round finds nothing |
 | `verify.autoFix` | bool | `false` | Auto-apply fixes (vs. confirm first) |
 | `verify.lenses` | object[] | claude/gpt/gemini | Verifier models + focus, rotated per round; missing CLIs auto-excluded |
+
+> `features.autonomousLoop` defaults ON but stays inert until `/omh-loop` writes an active loop state — there is zero overhead for non-loop sessions (the Stop hook returns immediately when no loop is active).
+
+> `features.weightRouting` defaults ON: every prompt is auto-classified into Tier 1/2/3 by weight, and Tier 3 (heavy/risky work) forces verification. The `tier3.*` thresholds control when a task is forced to Tier 3, and the `verify.*` block configures the `/omh-verify` independent multi-model verify+fix rounds.
+
+---
+
+## Autonomous Loop (`loop` block)
+
+The `loop` block configures the spec-driven autonomous loop that runs via `/omh-loop`. The loop forces continuation and forces termination — the harness owns *when to stop*, never the model's self-assessment. See **[Autonomous Loop](loop.md)** for the full design.
+
+Settings are deep-merged into defaults, so you only need to override the fields you care about.
+
+| Path | Type | Default | Description |
+|------|------|---------|-------------|
+| `loop.classify` | string | `auto` | Tier selection: `auto` (heuristic) / `quick` / `standard` / `deep` |
+| `loop.defaultTier` | string | `quick` | Starting tier; escalates to `standard`/`deep` on observed signals |
+| `loop.requireSpec` | bool | `true` | Require a `SPEC.md` before a loop may start |
+| `loop.specPath` | string | `SPEC.md` | Path to the spec with EARS acceptance criteria |
+| `loop.logFile` | string | `PROGRESS.md` | Human-readable plan + iteration log |
+| `loop.learningsFile` | string | `.claude/.omh/loop-learnings.md` | Cache of build/test invocations across iterations |
+| `loop.requireCommit` | bool | `true` | Commit each iteration (commit count = iteration, diff = progress) |
+| `loop.oneTaskPerIteration` | bool | `true` | One unit of work per iteration |
+| `loop.maxDiffFilesPerIteration` | number | `20` | Split an iteration whose diff exceeds this (smell guard) |
+| `loop.maxTotalIterations` | number | `30` | Cross-tier iteration cap (hard wall) |
+| `loop.stopOnNoProgress` | bool | `true` | Stop on plateau (no improvement + empty/cosmetic diff) |
+| `loop.quickCheckCommand` | string | `""` | Fast rung (lint/typecheck); auto-detected from conventions when empty |
+| `loop.verifyCommand` | string | `""` | Full rung (tests/build); auto-detected when empty |
+| `loop.verifyInHook` | bool | `true` | Run the cheap verify rungs inside the Stop hook |
+| `loop.rungTimeoutSec.quickCheck` | number | `30` | Per-rung subprocess timeout for `quickCheck` (seconds) |
+| `loop.rungTimeoutSec.verify` | number | `180` | Per-rung subprocess timeout for `verify` (seconds) |
+| `loop.crossVerify` | bool | `true` | Enable cross-verification by a different model |
+| `loop.crossVerifyModel` | string | `architect` | Model routing slot for the judge (different from the generator) |
+| `loop.maxDeepVerifiesPerTask` | number | `3` | Cap on expensive cross-verifies per task |
+| `loop.reflectionWindow` | number | `3` | Number of recent Reflexion entries re-injected each iteration |
+
+### Tier budgets (`loop.tiers`)
+
+Each tier sets its own iteration and wall-clock budgets and verification depth. The loop starts on the cheapest tier and escalates only on signals (verify failure, large diff, replan, repeated failure signature).
+
+| Field | `quick` | `standard` | `deep` |
+|-------|---------|------------|--------|
+| `model` | `standard` | `standard` | `architect` |
+| `maxIterations` | `3` | `8` | `20` |
+| `maxWallClockMinutes` | `5` | `15` | `45` |
+| `plateauWindow` | `2` | `2` | `3` |
+| `crossVerify` | `false` | `true` | `true` |
+| `crossVerifyEvery` | — | `0` (at done) | `5` (+ at done) |
+| `marginalGainEpsilon` | `0.05` | `0.03` | `0.02` |
+
+> **Cost tuning.** The default iteration budgets (quick 3 / standard 8 / deep 20) are the recommended starting point. The design's research pass suggested more conservative numbers — **quick 3 / standard 5 / deep 8** — to cap cost on tighter budgets. Lower `tiers.*.maxIterations` (and/or `maxTotalIterations`) to adopt them.
+
+```bash
+/set-harness features.autonomousLoop false       # Disable the autonomous loop
+/set-harness loop.defaultTier standard           # Start loops on the standard tier
+/set-harness loop.tiers.standard.maxIterations 5 # Adopt the conservative 3/5/8 budgets
+/set-harness loop.crossVerify false              # Skip cross-verification entirely
+```
+
+---
+
+## Weight Routing (`tier3` + `verify` blocks)
+
+The weight-aware harness classifies every prompt by weight into **Tier 1** (light), **Tier 2** (medium), and **Tier 3** (heavy/risky). Tier 3 forces verification before completion. The `tier3.*` thresholds decide when a task is escalated to Tier 3, and the `verify.*` block configures the `/omh-verify` skill — N rounds of independent, multi-model verification and fix, using Claude / GPT-codex / Gemini lenses (external verifiers run read-only). See **[Weight Routing](verify.md)** for the full design.
+
+Settings are deep-merged into defaults, so you only need to override the fields you care about.
+
+| Path | Type | Default | Description |
+|------|------|---------|-------------|
+| `tier3.taskThreshold` | number | `5` | Task count that forces Tier 3 |
+| `tier3.fileThreshold` | number | `5` | Changed-file count that forces Tier 3 |
+| `tier3.domainKeywords` | string[] | `[]` | Project terms that force Tier 3 (e.g. `["payment","결제"]`) |
+| `verify.rounds` | number | `3` | `/omh-verify` independent verify rounds |
+| `verify.stopWhenClean` | bool | `true` | Stop early when a round finds nothing |
+| `verify.autoFix` | bool | `false` | Auto-apply fixes (vs. confirm first) |
+| `verify.lenses` | object[] | claude/gpt/gemini | Verifier models + focus, rotated per round; missing CLIs auto-excluded |
+
+```bash
+/set-harness features.weightRouting false        # Disable prompt-weight classification
+/set-harness tier3.taskThreshold 3               # Force Tier 3 at 3+ tasks
+/set-harness tier3.domainKeywords '["payment","결제"]' # Force Tier 3 on domain-sensitive work
+/set-harness verify.rounds 5                      # Run 5 independent verify rounds
+/set-harness verify.autoFix true                 # Auto-apply fixes instead of confirming
+```
 
 ---
 
@@ -117,6 +243,10 @@ oh-my-harness reset     # Remove all harness files (clean uninstall)
 | `/team-spawn [template\|N] [task]` | Create native team with teammates |
 | `/team-status` | Check team and task progress |
 | `/team-stop` | Shutdown team and cleanup |
+| `/omh-spec [goal]` | Author a machine-checkable `SPEC.md` (EARS acceptance criteria) |
+| `/omh-loop [goal\|SPEC.md]` | Run the spec-driven autonomous loop |
+| `/omh-loop stop` | Abort the running loop (kill switch) |
+| `/omh-verify [N]` | Run N rounds of independent multi-model verify+fix (Claude/GPT-codex/Gemini lenses) |
 
 ---
 

@@ -87,6 +87,9 @@ Every OMH action is prefixed with a tag so you always know which feature fired:
 [omh:scope-guard]        → Warning about edit outside allowed paths
 [omh:convention-detect]  → Detected project conventions on session start
 [omh:context-snapshot]   → Saving state before context compaction
+[omh:loop]               → Autonomous loop forced continuation / stop decision
+[omh:cross-verify]       → Cross-verification verdict (PASS / FAIL / INCONCLUSIVE)
+[omh:spec]               → Spec authoring / acceptance-criteria check
 ```
 
 Example session output:
@@ -347,6 +350,88 @@ Orchestrate parallel work using Claude Code's built-in team system — no tmux o
 ```
 
 > Custom templates can be added via `nativeTeam.templates` in the config.
+
+### 13. Autonomous Loop
+
+The headline feature of 0.3.0. Define a goal once in a `SPEC.md`, then OMH *loops* — implementing, self-verifying, and cross-verifying — until the spec is objectively met. The philosophy here is the opposite of OMH's usual "warnings instead of walls": the **harness owns when to continue and when to stop**, never the model's self-assessment — autonomy with real walls.
+
+**Trigger:** the Stop hook `hooks/loop-guard.mjs` *is* the loop engine and safety enforcer. Once `/omh-loop` writes an active state, every Stop event re-enters the hook. To continue it prints a **top-level** `{"decision":"block","reason":...}` on stdout and exits 0 (never exit 2, never nested under `hookSpecificOutput`); when the goal is met or a guardrail fires, it lets the session stop. The pure, unit-tested core lives in `lib/loop.mjs` (`evaluateLoop`, `classifyTier`, `buildLadder`, `detectPlateau`, `detectOscillation`).
+
+**Commands:**
+
+| Command | What it does |
+|---------|-------------|
+| `/omh-loop "<goal>"` or `/omh-loop SPEC.md` | Classify tier, gate on the spec, confirm, then iterate one task at a time |
+| `/omh-loop stop` | Kill switch — aborts the loop (same as creating `.claude/.omh/STOP`) |
+
+**Cheap-first verify ladder** — strictly ordered rungs that fail fast and run the cheapest check first. On the first failure it blocks with the *actual* failing output piped back as the next iteration's instruction, so the model never burns an expensive judge on structurally broken code. Each rung has its own subprocess timeout.
+
+```
+quickCheck (lint / typecheck)  →  verify (tests / build)  →  self-review  →  cross-verify
+   30s, deterministic              180s, deterministic        same model      different model
+```
+
+**Cross-verification** — a *different* model than the generator (opus, via model routing) acts as an LLM-as-judge that scores **each** SPEC acceptance criterion `PASS` / `FAIL` with evidence. It verifies **independently against repo state** — running the tests and grepping the diff, not re-reading the agent's "I did X" self-report — and runs a revert-and-rerun mutation check (revert the change; new tests must FAIL on the reverted code) so the agent can't satisfy its own gate with vacuous tests. The verdict is typed `PASS | FAIL | INCONCLUSIVE`, and **INCONCLUSIVE fails safe to stop-and-report**.
+
+**Tiers** — start at the cheapest tier and escalate only on observed signals (verify failure, large diff, repeated failure):
+
+| Tier | Iterations | Wall-clock | Cross-verify |
+|------|:----------:|:----------:|--------------|
+| `quick` | ≤ 3 | 5 min | none |
+| `standard` | ≤ 8 | 15 min | at done |
+| `deep` | ≤ 20 | 45 min | every 5 iters + at done |
+
+> Cross-tier cap: `maxTotalIterations` = 30. Default tier is `quick`; `standard` / `deep` are escalation states.
+
+**Guardrails (real walls)** — evaluated as a layered checklist on every Stop event:
+
+- `stop_hook_active` is checked **first** to prevent the hook's own respond → block → respond infinite loop
+- concurrent-session / worktree isolation via `sessionId` (mismatch → pass through untouched)
+- `STOP` kill switch (`.claude/.omh/STOP` or `/omh-loop stop`)
+- per-tier and cross-tier iteration budgets, plus an independent wall-clock timeout
+- no-progress / plateau detection (empty or cosmetic commit diff across the tier's `plateauWindow`)
+- oscillation detection (repeated failure signature / A-B-A-B → stop + escalate as "architectural, not iterative")
+- atomic state writes and **fail-open** on corruption — a broken state file deletes itself and exits 0, never trapping the user
+
+**State & logs:** machine state in `.claude/.omh/loop-state.json`; the human-readable plan + log in `PROGRESS.md`; cached build/test invocations in `.claude/.omh/loop-learnings.md`.
+
+**Tags:** the hook emits `[omh:loop]` for each forced-continue / stop decision and `[omh:cross-verify]` with the rubric table for the judge's verdict.
+
+**Techniques:** Ralph Wiggum loop, Reflexion, Self-Refine, Chain-of-Verification (CoVe), LLM-as-judge, FrugalGPT cascade, Agreement-Based Cascading, and Spec-Driven Development.
+
+**Configuration:**
+```json
+{
+  "features": { "autonomousLoop": true },
+  "loop": {
+    "defaultTier": "quick",
+    "requireSpec": true,
+    "specPath": "SPEC.md",
+    "logFile": "PROGRESS.md",
+    "maxTotalIterations": 30,
+    "crossVerify": true,
+    "crossVerifyModel": "architect",
+    "rungTimeoutSec": { "quickCheck": 30, "verify": 180 }
+  }
+}
+```
+
+> ON by default, but **inert** until `/omh-loop` writes an active state — zero overhead for non-loop sessions. See [the Autonomous Loop guide](loop.md) for the full config block and design rationale.
+
+### 14. Spec Authoring
+
+`/omh-spec` writes a machine-checkable `SPEC.md` that anchors the loop. Acceptance criteria use **EARS notation** — `WHEN <trigger> THE SYSTEM SHALL <response>` — and each criterion maps to a **verify command** that must exit 0 for the loop to consider it met. A compact, fixed digest of the spec is re-injected every iteration to prevent intent drift.
+
+If a request is vague, `/omh-spec` inserts `[NEEDS CLARIFICATION]` markers and **refuses to start a loop** while any remain — falling back to OMH's existing Ambiguity Guard rather than guessing.
+
+```json
+{
+  "features": { "autonomousLoop": true },
+  "loop": { "requireSpec": true, "specPath": "SPEC.md" }
+}
+```
+
+> Emits `[omh:spec]`. See [the Autonomous Loop guide](loop.md) for the EARS template and authoring workflow.
 
 ---
 
