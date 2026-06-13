@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-7C3AED?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6TTIgMTJsMTAgNSAxMC01LTEwLTUtMTAgNXoiIGZpbGw9IndoaXRlIi8+PC9zdmc+" alt="Claude Code Plugin" />
-  <img src="https://img.shields.io/badge/version-0.3.0-blue?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.3.1-blue?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=for-the-badge&logo=node.js" alt="Node >= 18" />
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge" alt="MIT License" />
   <img src="https://img.shields.io/github/actions/workflow/status/Hoya324/oh-my-harness/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI" />
@@ -59,26 +59,14 @@ Everywhere else, OMH stays the harness you barely notice — smart defaults that
 
 ## Quick Start
 
-### Option A: Claude Code Plugin (recommended)
+Install via the Claude Code plugin marketplace — one copy-paste:
 
 ```bash
-# 1. Add the marketplace, then install — one copy-paste:
 claude plugin marketplace add Hoya324/oh-my-harness
 claude plugin install oh-my-harness@oh-my-harness
 ```
 
-That's it. **Zero setup required** — OMH works on sensible defaults the moment it's installed. `/harness-setup` is optional and only needed if you want to tune `harness.config.json`.
-
-### Option B: npm CLI (no global install)
-
-```bash
-cd your-project
-npx oh-my-harness@latest init
-```
-
-Or install globally if you prefer: `npm install -g oh-my-harness && oh-my-harness init`.
-
-Either way, start Claude Code as usual — harness features (including the autonomous loop) activate automatically.
+That's it. **Zero setup required** — OMH works on sensible defaults the moment it's installed, and harness features (including the autonomous loop) activate automatically. `/harness-setup` is optional and only needed if you want to tune `harness.config.json`.
 
 ---
 
@@ -86,27 +74,15 @@ Either way, start Claude Code as usual — harness features (including the auton
 
 When a new version is released, update to get the latest hooks, detection patterns, and features.
 
-### Plugin mode
-
 ```bash
 # Pull the latest plugin version
 claude plugin update oh-my-harness@oh-my-harness
 
-# Re-initialize to apply updated hooks and dictionary
+# Re-apply updated hooks and dictionary
 /harness-setup
 ```
 
-### npm CLI mode
-
-```bash
-# Update the global package
-npm update -g oh-my-harness
-
-# Re-run init to copy updated hooks into your project
-oh-my-harness init
-```
-
-> **Note:** `init` preserves your existing `harness.config.json`. Only hooks, commands, and CLAUDE.md instructions are refreshed.
+> **Note:** updating preserves your existing `harness.config.json`. Only hooks, commands, and CLAUDE.md instructions are refreshed.
 
 ---
 
@@ -371,7 +347,7 @@ graph TD
 | **[Autonomous Loop](docs/loop.md)** | Spec-driven loop, verify ladder, cross-verification, tiers, guardrails, and the research behind the design |
 | **[Verification](docs/verify.md)** | Weight routing (Tier 1/2/3), N-round multi-model verify+fix, read-only external verifiers, living `STATE.md` anchor |
 | **[Features](docs/features.md)** | HUD status line, smart defaults, feature tags, detailed feature descriptions |
-| **[Architecture](docs/architecture.md)** | System diagram, hook pipeline, plugin mode vs npm CLI directory structure |
+| **[Architecture](docs/architecture.md)** | System diagram, hook pipeline, plugin & local CLI directory structure |
 | **[Multi-Agent](docs/multi-agent.md)** | Spawn commands, workflow, worktree branching model, safety policies |
 | **[Configuration](docs/configuration.md)** | Settings reference, CLI commands, slash commands, OMC compatibility, uninstall |
 

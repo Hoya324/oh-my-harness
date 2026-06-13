@@ -48,7 +48,7 @@
     <aside class="docs-sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title">Oh My Harness</div>
-        <div class="sidebar-version">v0.3.0</div>
+        <div class="sidebar-version">v0.3.1</div>
       </div>
 
       <div class="sidebar-external">
@@ -161,29 +161,15 @@
       <!-- Installation -->
       <h2 id="installation" data-i18n="docs.installation.title">Installation</h2>
 
-      <h3 data-i18n="docs.installation.optionA">Option A: Claude Code Plugin (recommended)</h3>
-      <pre><code># 1. Install plugin
-claude plugin install oh-my-harness@oh-my-harness
+      <pre><code>claude plugin marketplace add Hoya324/oh-my-harness
+claude plugin install oh-my-harness@oh-my-harness</code></pre>
 
-# 2. Restart Claude Code, then initialize:
-/harness-setup</code></pre>
-
-      <h3 data-i18n="docs.installation.optionB">Option B: npm CLI</h3>
-      <pre><code>npm install -g oh-my-harness
-cd your-project
-oh-my-harness init</code></pre>
-
-      <blockquote><p data-i18n="docs.installation.note">Either way, start Claude Code as usual — harness features activate automatically.</p></blockquote>
+      <blockquote><p data-i18n="docs.installation.note">Zero setup required — harness features (including the autonomous loop) activate automatically. <code>/harness-setup</code> is optional.</p></blockquote>
 
       <h3 data-i18n="docs.installation.updating">Updating</h3>
-      <pre><code># Plugin mode
-claude plugin update oh-my-harness@oh-my-harness
-/harness-setup
-
-# npm mode
-npm update -g oh-my-harness
-oh-my-harness init</code></pre>
-      <blockquote><p data-i18n="docs.installation.updateNote"><code>init</code> preserves your existing <code>harness.config.json</code>. Only hooks, commands, and CLAUDE.md instructions are refreshed.</p></blockquote>
+      <pre><code>claude plugin update oh-my-harness@oh-my-harness
+/harness-setup</code></pre>
+      <blockquote><p data-i18n="docs.installation.updateNote">Updating preserves your existing <code>harness.config.json</code>. Only hooks, commands, and CLAUDE.md instructions are refreshed.</p></blockquote>
 
       <!-- Quick Start -->
       <h2 id="quick-start" data-i18n="docs.quickStart.title">Quick Start</h2>

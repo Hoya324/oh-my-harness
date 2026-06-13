@@ -1,6 +1,6 @@
 # Architecture
 
-OMH works in two modes — as a **Claude Code plugin** or via **npm CLI**. Both produce the same result: native hooks, skills, and CLAUDE.md instructions.
+OMH works in two modes — as a **Claude Code plugin** (recommended) or via a **local CLI** run from a cloned repo. Both produce the same result: native hooks, skills, and CLAUDE.md instructions.
 
 ## Overview
 
@@ -204,9 +204,9 @@ oh-my-harness/                    <- plugin root ($CLAUDE_PLUGIN_ROOT)
     └── architect.md               <- opus
 ```
 
-## npm CLI Mode
+## Local CLI Mode
 
-The CLI copies hooks and commands into your project's `.claude/` directory:
+Run from a cloned repo (`node bin/cli.mjs init`, or `npm link` for an `oh-my-harness` shortcut). The CLI copies hooks and commands into your project's `.claude/` directory:
 
 ```
 your-project/

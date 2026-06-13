@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-7C3AED?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6TTIgMTJsMTAgNSAxMC01LTEwLTUtMTAgNXoiIGZpbGw9IndoaXRlIi8+PC9zdmc+" alt="Claude Code Plugin" />
-  <img src="https://img.shields.io/badge/version-0.3.0-blue?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.3.1-blue?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=for-the-badge&logo=node.js" alt="Node >= 18" />
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge" alt="MIT License" />
   <img src="https://img.shields.io/github/actions/workflow/status/Hoya324/oh-my-harness/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI" />
@@ -59,34 +59,20 @@ graph LR
 
 ## 빠른 시작
 
-### 방법 A: Claude Code 플러그인 (권장)
+Claude Code 플러그인 마켓플레이스로 설치하세요 — 한 번에 복사·붙여넣기:
 
 ```bash
-# 1. 마켓플레이스 추가 후 설치 — 한 번에 복사·붙여넣기:
 claude plugin marketplace add Hoya324/oh-my-harness
 claude plugin install oh-my-harness@oh-my-harness
 ```
 
-이게 전부입니다. **설정은 전혀 필요 없습니다** — OMH는 설치되는 순간 합리적인 기본값으로 동작합니다. `/harness-setup`은 선택 사항이며, `harness.config.json`을 직접 조정하고 싶을 때만 사용하면 됩니다.
-
-### 방법 B: npm CLI (글로벌 설치 불필요)
-
-```bash
-cd your-project
-npx oh-my-harness@latest init
-```
-
-글로벌 설치를 선호한다면: `npm install -g oh-my-harness && oh-my-harness init`.
-
-어떤 방법이든, Claude Code를 평소처럼 시작하면 하네스 기능(자율 루프 포함)이 자동으로 활성화됩니다.
+이게 전부입니다. **설정은 전혀 필요 없습니다** — OMH는 설치되는 순간 합리적인 기본값으로 동작하고, 하네스 기능(자율 루프 포함)이 자동으로 활성화됩니다. `/harness-setup`은 선택 사항이며, `harness.config.json`을 직접 조정하고 싶을 때만 사용하면 됩니다.
 
 ---
 
 ## 업데이트
 
 새 버전이 출시되면 최신 훅, 감지 패턴, 기능을 적용할 수 있습니다.
-
-### 플러그인 모드
 
 ```bash
 # 최신 플러그인 버전 가져오기
@@ -96,17 +82,7 @@ claude plugin update oh-my-harness@oh-my-harness
 /harness-setup
 ```
 
-### npm CLI 모드
-
-```bash
-# 글로벌 패키지 업데이트
-npm update -g oh-my-harness
-
-# init 재실행으로 업데이트된 훅을 프로젝트에 복사
-oh-my-harness init
-```
-
-> **참고:** `init`은 기존 `harness.config.json`을 보존합니다. 훅, 명령어, CLAUDE.md 지시문만 갱신됩니다.
+> **참고:** 업데이트는 기존 `harness.config.json`을 보존합니다. 훅, 명령어, CLAUDE.md 지시문만 갱신됩니다.
 
 ---
 
@@ -350,7 +326,7 @@ graph TD
 | **[자율 루프](docs/loop.ko.md)** | 스펙 기반 루프, 검증 사다리, 교차 검증, 티어, 가드레일, 그리고 설계 근거가 된 연구 |
 | **[검증 & 무게 인식](docs/verify.ko.md)** | 무게 라우팅(Tier 1/2/3), N-라운드 다중 모델 검증+수정, 읽기 전용 외부 검증자, Living `STATE.md` 앵커 |
 | **[기능](docs/features.ko.md)** | HUD 상태 표시줄, 스마트 기본값, 기능 태그, 기능 상세 설명 |
-| **[아키텍처](docs/architecture.ko.md)** | 시스템 다이어그램, 훅 파이프라인, 플러그인 vs npm CLI 디렉토리 구조 |
+| **[아키텍처](docs/architecture.ko.md)** | 시스템 다이어그램, 훅 파이프라인, 플러그인 & 로컬 CLI 디렉토리 구조 |
 | **[멀티 에이전트](docs/multi-agent.ko.md)** | Spawn 명령어, 워크플로우, Worktree 브랜칭 모델, 안전 정책 |
 | **[설정](docs/configuration.ko.md)** | 설정 레퍼런스, CLI 명령어, 슬래시 명령어, OMC 호환성, 삭제 방법 |
 
