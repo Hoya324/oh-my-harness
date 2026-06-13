@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-06-13
+
+### Fixed
+- Docs: removed the npm/npx install instructions (`npm install -g oh-my-harness`, `npx oh-my-harness@latest`). The `oh-my-harness` name on npm belongs to an unrelated package, so those commands installed the wrong thing. Installation is now plugin-marketplace only; the local CLI (`node bin/cli.mjs init` from a cloned repo) is documented for contributors. Affects README (EN/KO), docs site, and i18n.
+
 ## [0.3.0] - 2026-06-13
 
 ### Added

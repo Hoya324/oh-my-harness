@@ -1,6 +1,6 @@
 # 아키텍처
 
-OMH는 **Claude Code 플러그인** 또는 **npm CLI** 두 가지 모드로 동작합니다. 둘 다 동일한 결과를 제공합니다: 네이티브 훅, 스킬, CLAUDE.md 지시문.
+OMH는 **Claude Code 플러그인**(권장) 또는 클론한 저장소에서 실행하는 **로컬 CLI** 두 가지 모드로 동작합니다. 둘 다 동일한 결과를 제공합니다: 네이티브 훅, 스킬, CLAUDE.md 지시문.
 
 ## 개요
 
@@ -186,9 +186,9 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
     └── architect.md               <- opus
 ```
 
-## npm CLI 모드
+## 로컬 CLI 모드
 
-CLI가 훅과 명령어를 프로젝트의 `.claude/` 디렉토리에 복사합니다:
+클론한 저장소에서 실행합니다(`node bin/cli.mjs init`, 또는 `npm link`로 `oh-my-harness` 단축 명령 등록). CLI가 훅과 명령어를 프로젝트의 `.claude/` 디렉토리에 복사합니다:
 
 ```
 your-project/

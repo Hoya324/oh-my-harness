@@ -1,5 +1,5 @@
 <!-- HARNESS:START -->
-<!-- HARNESS:VERSION:0.3.0 -->
+<!-- HARNESS:VERSION:0.3.1 -->
 ## oh-my-harness: Smart Defaults
 
 ### Hook Output Visibility
