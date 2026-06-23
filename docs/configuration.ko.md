@@ -112,8 +112,17 @@
 | `nativeTeam.defaultTeamName` | string | `omh-team` | 기본 팀 이름 |
 | `features.autonomousLoop` | bool | `true` | 스펙 기반 자율 루프(`/omh-loop`) 활성화 |
 | `features.weightRouting` | bool | `true` | 작업 무게(Tier 1/2/3) 판정 후 가드 비례 적용 |
+| `features.verifyGate` | bool | `true` | 평범한 세션에서 위험도 기반 검증 게이트(Stop 훅) 활성화 |
+| `verifyGate.riskThreshold` | number | `2` | 사다리를 실행할 최소 위험도(0–3) |
+| `verifyGate.maxBlocks` | number | `2` | 변경당 차단 횟수 상한 → 이후 stop 허용 (절대 wedge 안 함) |
+| `verifyGate.runLadder` | bool | `true` | 결정론적 사다리 실행 여부 (끄면 소프트 리마인드만) |
+| `verifyGate.recommendCrossVerify` | bool | `true` | 민감/대규모 변경에 `/omh-verify` 권고 |
+| `verifyGate.largeFiles` / `largeLines` | number | `8` / `400` | 위험도 점수의 diff 규모 임계값 |
+| `verifyGate.sensitivePaths` | string[] | auth/payment/migration/.env/… | 최고 위험도로 격상시키는 글롭 |
 
 > `features.autonomousLoop`는 기본값이 ON이지만 `/omh-loop`가 활성 루프 상태를 기록하기 전까지는 동작하지 않습니다 — 루프를 사용하지 않는 세션에는 오버헤드가 전혀 없습니다(활성 루프가 없으면 Stop 훅이 즉시 반환).
+
+> `features.verifyGate`는 기본값 ON: 평범한 세션(활성 `/omh-loop` 없음)에서 Stop 훅이 매 턴 diff를 점수화(민감 경로·규모·무테스트 소스, 프롬프트 티어가 하한)하고 위험도가 충분하면 verify 사다리를 실행해 실제 red면 차단합니다. 활성 루프엔 비켜나며, `maxBlocks` 상한 + fail-open으로 세션을 절대 가두지 않습니다. `/set-harness features.verifyGate false`로 끌 수 있습니다.
 
 ---
 

@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-7C3AED?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6TTIgMTJsMTAgNSAxMC01LTEwLTUtMTAgNXoiIGZpbGw9IndoaXRlIi8+PC9zdmc+" alt="Claude Code Plugin" />
-  <img src="https://img.shields.io/badge/version-0.3.1-blue?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.4.0-blue?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=for-the-badge&logo=node.js" alt="Node >= 18" />
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge" alt="MIT License" />
   <img src="https://img.shields.io/github/actions/workflow/status/Hoya324/oh-my-harness/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI" />
@@ -88,27 +88,43 @@ claude plugin update oh-my-harness@oh-my-harness
 
 ## 기능 목록
 
-| # | 기능 | 훅 | 기본값 | 설명 |
-|:-:|------|-----|:-----:|------|
-| 1 | 컨벤션 자동 감지 | `SessionStart` | ON | 프로젝트를 스캔하고 언어/테스트/린트 컨텍스트 주입 |
-| 2 | 테스트 강제 | `Stop` | ON | 코드 변경 후 테스트 확인 리마인드 |
-| 3 | 모델 라우팅 | CLAUDE.md + agents | ON | 복잡도에 따라 haiku / sonnet / opus로 서브에이전트 라우팅 |
-| 4 | 자동 Plan 모드 | `UserPromptSubmit` | ON | 3개 이상 작업 감지 시 계획 수립 제안 |
-| 5 | 모호성 가드 | `UserPromptSubmit` | ON | 모호한 요청에 대해 명확화 강제 |
-| 6 | 위험 명령 가드 | `PreToolUse` | ON | `rm -rf`, `git push --force`, `.env` 쓰기 전 경고 |
-| 7 | 컨텍스트 스냅샷 | `PreCompact` | ON | 컨텍스트 압축 전 작업 상태 저장 |
-| 8 | 커밋 컨벤션 | `PostToolUse` | ON | 커밋 형식 안내 (Conventional / Gitmoji) |
-| 9 | 스코프 가드 | `PostToolUse` | OFF | 허용된 경로 외 파일 수정 시 경고 |
-| 10 | 사용량 추적 | `PostToolUse` | ON | 세션별 도구 사용량 기록 |
-| 11 | 자동 .gitignore | CLI init | ON | `.claude/.omh/`를 `.gitignore`에 추가 |
-| 12 | 멀티 에이전트 | `/agent-spawn` | — | tmux + git worktree를 활용한 병렬 Claude 에이전트 |
-| 13 | 네이티브 팀 | `/team-spawn` | ON | Claude Code 내장 팀 오케스트레이션 (템플릿 지원) |
-| 14 | 스킬 스캐폴딩 | `/init-project` | ON | 감지된 스택에 맞춰 프로젝트 전용 스킬 자동 생성 |
-| 15 | **자율 루프** | `Stop` (loop-guard) + `/omh-loop` | ON | 스펙 기반 루프: 검증 사다리 + 교차 검증이 완료를 확인할 때까지 계속을 강제하며, 티어별 가드레일(예산, 타임아웃, 진척 없음, 진동)을 적용 |
-| 16 | 스펙 작성 | `/omh-spec` | ON | 기계가 검증 가능한 `SPEC.md`(EARS 수용 기준 → 검증 명령어)를 작성해 루프의 기준점으로 삼음 |
-| 17 | 무게 라우팅 | `UserPromptSubmit` | ON | 작업 무게(Tier 1/2/3) 자동 분류 후 가드 강도 조절; Tier 3은 완료 전 검증 강제 |
-| 18 | N-라운드 검증 | `/omh-verify` | — | 모델 로테이션(Claude → GPT/codex → Gemini)으로 N회 독립 검증+수정; 외부 검증자는 읽기 전용 |
-| 19 | Living State | `SessionStart` / `PreCompact` | ON | 디스크 앵커 `STATE.md`(목표/phase/결정/진행)를 세션 넘어 재주입해 context rot 방어 |
+OMH의 기능은 세 그룹으로 나뉩니다 — 모든 세션에서 자동으로 동작하는 **자동 가드**, 사용자가 직접 호출하는 **자율 실행**, 그리고 이를 가로지르는 **라우팅·스캐폴딩·관측** 레이어.
+
+### A. 자동 가드 & 라우팅 — 항상 켜짐
+
+| 기능 | 훅 | 기본값 | 설명 |
+|------|-----|:-----:|------|
+| 컨벤션 자동 감지 | `SessionStart` | ON | 프로젝트를 스캔하고 언어/테스트/린트 컨텍스트 주입 |
+| 무게 라우팅 (Tier 1/2/3) | `UserPromptSubmit` | ON | 프롬프트 무게를 분류해 가드 강도 조절; Tier 3은 완료 전 검증 강제 |
+| 모호성 가드 | `UserPromptSubmit` | ON | 모호한 요청에 대해 명확화 강제 |
+| 자동 Plan 모드 | `UserPromptSubmit` | ON | 3개 이상 작업 감지 시 계획 수립 제안 |
+| 위험 명령 가드 | `PreToolUse` | ON | `rm -rf`, `git push --force`, `.env` 쓰기 전 경고 |
+| 커밋 컨벤션 | `PostToolUse` | ON | 커밋 형식 안내 (Conventional / Gitmoji) |
+| 스코프 가드 | `PostToolUse` | OFF | 허용된 경로 외 파일 수정 시 경고 |
+| 사용량 추적 | `PostToolUse` | ON | 세션별 도구 사용량 기록 |
+| 테스트 강제 | `Stop` | ON | 코드 변경 후 테스트 확인 리마인드 |
+| 검증 게이트 | `Stop` (verify-gate) | ON | 매 턴 diff 위험도를 판단해 verify 사다리를 직접 실행; 민감/무테스트 변경이 red면 차단 (세션을 가두지 않음) |
+| 컨텍스트 스냅샷 | `PreCompact` | ON | 컨텍스트 압축 전 작업 상태 저장 |
+| Living State (`STATE.md`) | `SessionStart` / `PreCompact` | ON | 디스크 앵커 목표/phase/결정을 세션 넘어 재주입해 context rot 방어 |
+
+### B. 자율 실행 — 직접 호출
+
+| 기능 | 트리거 | 기본값 | 설명 |
+|------|--------|:-----:|------|
+| **자율 루프** | `Stop` (loop-guard) + `/omh-loop` | ON | 스펙 기반 루프: 검증 사다리 + 교차 검증이 완료를 확인할 때까지 계속을 강제하며, 티어별 가드레일(예산, 타임아웃, 진척 없음, 진동)을 적용 |
+| 스펙 작성 | `/omh-spec` | ON | 기계가 검증 가능한 `SPEC.md`(EARS 수용 기준 → 검증 명령어)를 작성해 루프의 기준점으로 삼음 |
+| N-라운드 검증 | `/omh-verify` | — | 모델 로테이션(Claude → GPT/codex → Gemini)으로 N회 독립 검증+수정; 외부 검증자는 읽기 전용 |
+| 네이티브 팀 | `/team-spawn` | ON | Claude Code 내장 팀 오케스트레이션 (템플릿 지원) |
+| 멀티 에이전트 | `/agent-spawn` | — | tmux + git worktree를 활용한 병렬 Claude 에이전트 |
+
+### C. 라우팅·스캐폴딩·관측
+
+| 기능 | 트리거 | 기본값 | 설명 |
+|------|--------|:-----:|------|
+| 모델 라우팅 | CLAUDE.md + agents | ON | 복잡도에 따라 haiku / sonnet / opus로 서브에이전트 라우팅 |
+| 스킬 스캐폴딩 | `/init-project` | ON | 감지된 스택에 맞춰 프로젝트 전용 스킬 자동 생성 |
+| 자동 .gitignore | CLI init | ON | `.claude/.omh/`를 `.gitignore`에 추가 |
+| 상태 HUD | 상태 표시줄 | ON | 레이트리밋·컨텍스트·도구 호출·모델 실시간 대시보드 |
 
 > 각 기능의 상세 설명은 [기능 문서](docs/features.ko.md)와 [자율 루프 가이드](docs/loop.ko.md)를 참고하세요.
 
@@ -153,6 +169,15 @@ graph TD
 ## 아키텍처
 
 > 전체 내용: [docs/architecture.ko.md](docs/architecture.ko.md)
+
+OMH는 **네 개의 계층**으로 구성됩니다. 핵심 판단 로직은 순수하게 유지되어 단위 테스트되고, 외부 세계와 맞닿는 훅은 얇고 fail-open 하게 유지됩니다.
+
+| 계층 | 구성 요소 | 역할 |
+|------|-----------|------|
+| **① 훅** | Claude Code 생명주기 이벤트 위의 9개 `.mjs` | 얇은 **fail-open** 래퍼 — 부수효과 신호(git, 시간, stdin)를 모아 판단을 출력 |
+| **② 순수 코어** (`lib/`) | `loop` · `tier` · `detect` · `config` · `verify` · `state` · `dictionary` | 모든 판단 로직을 **순수 함수**(fs / git / 시간 없음)로 → 완전한 단위 테스트 |
+| **③ 스킬** | 12개 슬래시 명령어 | 사용자 호출 워크플로우 (`/omh-loop`, `/omh-verify`, `/team-spawn`, …) |
+| **④ 에이전트** | `quick` · `standard` · `architect` | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
 
 ```mermaid
 graph TB
@@ -208,6 +233,17 @@ graph TB
 ```
 
 ## 훅 파이프라인
+
+각 Claude Code 생명주기 이벤트가 OMH 훅 하나를 트리거합니다 — `Stop` 이벤트가 자율 루프가 사는 곳입니다:
+
+| 생명주기 이벤트 | 훅 | 동작 |
+|-----------------|-----|------|
+| `SessionStart` | `session-start.mjs` | 컨벤션 감지 · `STATE.md` 주입 |
+| `UserPromptSubmit` | `pre-prompt.mjs` | 무게 티어 · 모호성 가드 · 자동 Plan |
+| `PreToolUse` | `dangerous-guard.mjs` | 위험 명령 경고 |
+| `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | 커밋 형식 · 스코프 · 사용량 통계 |
+| `PreCompact` | `pre-compact.mjs` | 컨텍스트 스냅샷 · `STATE.md` 갱신 |
+| `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | **자율 루프 엔진** · **위험도 기반 검증 게이트** · 테스트 강제 |
 
 ```mermaid
 sequenceDiagram
