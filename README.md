@@ -99,6 +99,7 @@ OMH's features fall into three groups — **automatic guards** that fire on ever
 | Ambiguity Guard | `UserPromptSubmit` | ON | Forces clarification for vague requests |
 | Auto-Plan Mode | `UserPromptSubmit` | ON | Detects 3+ tasks and suggests planning first |
 | Dangerous Guard | `PreToolUse` | ON | Warns before `rm -rf`, `git push --force`, `.env` writes |
+| Plan Gate | `PreToolUse` (plan-gate) | ON | Tier-3 prompts must produce a plan-mode implementation plan before any edit |
 | Commit Convention | `PostToolUse` | ON | Reminds commit format (Conventional / Gitmoji) |
 | Scope Guard | `PostToolUse` | OFF | Warns when modifying files outside allowed paths |
 | Usage Tracking | `PostToolUse` | ON | Records tool usage per session |
@@ -261,7 +262,7 @@ Each Claude Code lifecycle event triggers one OMH hook — the `Stop` event is w
 |-----------------|------|-------------|
 | `SessionStart` | `session-start.mjs` | Detect conventions · inject `STATE.md` |
 | `UserPromptSubmit` | `pre-prompt.mjs` | Weight tier · ambiguity guard · auto-plan |
-| `PreToolUse` | `dangerous-guard.mjs` | Warn on destructive commands |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | Warn on destructive commands · **plan gate (Tier 3)** |
 | `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | Commit format · scope · usage stats |
 | `PreCompact` | `pre-compact.mjs` | Snapshot context · refresh `STATE.md` |
 | `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | **Autonomous loop engine** · **risk-gated verify gate** · test enforcement |

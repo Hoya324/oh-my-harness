@@ -9,7 +9,7 @@ OMH is built in four layers. The design rule: **all decision logic lives in pure
 | Layer | Components | Role |
 |-------|-----------|------|
 | **① Hooks** | 9 `.mjs` on Claude Code lifecycle events (`hooks/`) | Thin **fail-open** wrappers — gather impure signals and emit decisions; any error stays silent rather than trapping the session |
-| **② Pure Core** | `lib/loop.mjs` · `risk.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | Decision logic as **pure functions** (no fs / git / `Date.now` / child_process) → fully unit-tested |
+| **② Pure Core** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | Decision logic as **pure functions** (no fs / git / `Date.now` / child_process) → fully unit-tested |
 | **③ Skills** | 12 slash commands (`skills/`) | User-invoked workflows: setup, agents, teams, spec / loop / verify |
 | **④ Agents** | `quick` / `standard` / `architect` (`agents/`) | Model routing — haiku / sonnet / opus by task weight |
 
@@ -19,7 +19,7 @@ Each Claude Code lifecycle event triggers exactly one hook (the `Stop` event is 
 |-----------------|------|-------------|
 | `SessionStart` | `session-start.mjs` | Detect conventions · inject `STATE.md` |
 | `UserPromptSubmit` | `pre-prompt.mjs` | Weight tier · ambiguity guard · auto-plan |
-| `PreToolUse` | `dangerous-guard.mjs` | Warn on destructive commands |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | Warn on destructive commands · plan gate (Tier-3 prompts must plan before editing) |
 | `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | Commit format · scope · usage stats |
 | `PreCompact` | `pre-compact.mjs` | Snapshot context · refresh `STATE.md` |
 | `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | Autonomous loop engine · risk-gated verify gate · test enforcement |

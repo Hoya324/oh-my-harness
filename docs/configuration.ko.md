@@ -119,10 +119,16 @@
 | `verifyGate.recommendCrossVerify` | bool | `true` | 민감/대규모 변경에 `/omh-verify` 권고 |
 | `verifyGate.largeFiles` / `largeLines` | number | `8` / `400` | 위험도 점수의 diff 규모 임계값 |
 | `verifyGate.sensitivePaths` | string[] | auth/payment/migration/.env/… | 최고 위험도로 격상시키는 글롭 |
+| `features.planGate` | bool | `true` | Tier 3 프롬프트는 편집 전 plan모드 플랜 강제 |
+| `planGate.minTier` | number | `3` | 프롬프트 티어가 이 값 이상이면 게이트 발동 |
+| `planGate.maxDenials` | number | `3` | 프롬프트당 편집 차단 횟수 상한 (never-wedge) |
+| `planGate.gatedTools` | string[] | Edit/Write/NotebookEdit/MultiEdit | 플랜 전까지 차단할 도구 |
 
 > `features.autonomousLoop`는 기본값이 ON이지만 `/omh-loop`가 활성 루프 상태를 기록하기 전까지는 동작하지 않습니다 — 루프를 사용하지 않는 세션에는 오버헤드가 전혀 없습니다(활성 루프가 없으면 Stop 훅이 즉시 반환).
 
 > `features.verifyGate`는 기본값 ON: 평범한 세션(활성 `/omh-loop` 없음)에서 Stop 훅이 매 턴 diff를 점수화(민감 경로·규모·무테스트 소스, 프롬프트 티어가 하한)하고 위험도가 충분하면 verify 사다리를 실행해 실제 red면 차단합니다. 활성 루프엔 비켜나며, `maxBlocks` 상한 + fail-open으로 세션을 절대 가두지 않습니다. `/set-harness features.verifyGate false`로 끌 수 있습니다.
+
+> `features.planGate`는 기본값 ON: Tier 3 프롬프트는 모델이 plan모드에 진입해 구현 플랜(Context · 접근 · 변경 파일 · 검증)을 제시하기 전까지 편집 도구(Edit/Write/NotebookEdit/MultiEdit)를 차단합니다. `ExitPlanMode`가 해제합니다. 읽기 도구는 항상 통과하고, 프롬프트당 `maxDenials` 상한으로 절대 가두지 않습니다. `/set-harness features.planGate false`로 끌 수 있습니다.
 
 ---
 

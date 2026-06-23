@@ -325,6 +325,7 @@ claude plugin install oh-my-harness@oh-my-harness</code></pre>
           <tr><td><code>session-start.mjs</code></td><td>SessionStart</td><td data-i18n="docs.hooks.r1.desc">Convention detection, skill hints</td></tr>
           <tr><td><code>pre-prompt.mjs</code></td><td>UserPromptSubmit</td><td data-i18n="docs.hooks.r2.desc">Ambiguity guard, auto-plan mode</td></tr>
           <tr><td><code>dangerous-guard.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r3.desc">Warns before destructive commands</td></tr>
+          <tr><td><code>plan-gate.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r11.desc">Plan gate — requires a plan before edits</td></tr>
           <tr><td><code>commit-convention.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r4.desc">Reminds commit format</td></tr>
           <tr><td><code>scope-guard.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r5.desc">Warns about out-of-scope edits</td></tr>
           <tr><td><code>usage-tracker.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r6.desc">Records tool usage</td></tr>
@@ -410,6 +411,7 @@ claude plugin install oh-my-harness@oh-my-harness</code></pre>
           <tr><td>Ambiguity Guard</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>Auto-Plan Mode</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>Dangerous Guard</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Plan Gate</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>Commit Convention</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>Scope Guard</td><td>PostToolUse</td><td><span class="feature-badge badge-off">OFF</span></td></tr>
           <tr><td>Usage Tracking</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>

@@ -9,7 +9,7 @@ OMH는 네 개의 계층으로 구성됩니다. 설계 원칙은 이렇습니다
 | 계층 | 구성 요소 | 역할 |
 |------|-----------|------|
 | **① 훅** | Claude Code 생명주기 이벤트 위의 9개 `.mjs` (`hooks/`) | 얇은 **fail-open** 래퍼 — 부수효과 신호를 모아 판단을 출력; 오류가 나도 세션을 가두지 않고 조용히 통과 |
-| **② 순수 코어** | `lib/loop.mjs` · `risk.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | 판단 로직을 **순수 함수**(fs / git / `Date.now` / child_process 없음)로 → 완전한 단위 테스트 |
+| **② 순수 코어** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | 판단 로직을 **순수 함수**(fs / git / `Date.now` / child_process 없음)로 → 완전한 단위 테스트 |
 | **③ 스킬** | 12개 슬래시 명령어 (`skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 |
 | **④ 에이전트** | `quick` / `standard` / `architect` (`agents/`) | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
 
@@ -19,7 +19,7 @@ OMH는 네 개의 계층으로 구성됩니다. 설계 원칙은 이렇습니다
 |-----------------|-----|------|
 | `SessionStart` | `session-start.mjs` | 컨벤션 감지 · `STATE.md` 주입 |
 | `UserPromptSubmit` | `pre-prompt.mjs` | 무게 티어 · 모호성 가드 · 자동 Plan |
-| `PreToolUse` | `dangerous-guard.mjs` | 위험 명령 경고 |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | 위험 명령 경고 · 플랜 게이트 (Tier 3은 편집 전 계획 필수) |
 | `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | 커밋 형식 · 스코프 · 사용량 통계 |
 | `PreCompact` | `pre-compact.mjs` | 컨텍스트 스냅샷 · `STATE.md` 갱신 |
 | `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | 자율 루프 엔진 · 위험도 기반 검증 게이트 · 테스트 강제 |

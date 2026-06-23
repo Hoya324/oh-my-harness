@@ -99,6 +99,7 @@ OMH의 기능은 세 그룹으로 나뉩니다 — 모든 세션에서 자동으
 | 모호성 가드 | `UserPromptSubmit` | ON | 모호한 요청에 대해 명확화 강제 |
 | 자동 Plan 모드 | `UserPromptSubmit` | ON | 3개 이상 작업 감지 시 계획 수립 제안 |
 | 위험 명령 가드 | `PreToolUse` | ON | `rm -rf`, `git push --force`, `.env` 쓰기 전 경고 |
+| 플랜 게이트 | `PreToolUse` (plan-gate) | ON | Tier 3 프롬프트는 편집 전 plan모드 구현 플랜 작성 강제 |
 | 커밋 컨벤션 | `PostToolUse` | ON | 커밋 형식 안내 (Conventional / Gitmoji) |
 | 스코프 가드 | `PostToolUse` | OFF | 허용된 경로 외 파일 수정 시 경고 |
 | 사용량 추적 | `PostToolUse` | ON | 세션별 도구 사용량 기록 |
@@ -240,7 +241,7 @@ graph TB
 |-----------------|-----|------|
 | `SessionStart` | `session-start.mjs` | 컨벤션 감지 · `STATE.md` 주입 |
 | `UserPromptSubmit` | `pre-prompt.mjs` | 무게 티어 · 모호성 가드 · 자동 Plan |
-| `PreToolUse` | `dangerous-guard.mjs` | 위험 명령 경고 |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | 위험 명령 경고 · **플랜 게이트 (Tier 3)** |
 | `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | 커밋 형식 · 스코프 · 사용량 통계 |
 | `PreCompact` | `pre-compact.mjs` | 컨텍스트 스냅샷 · `STATE.md` 갱신 |
 | `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | **자율 루프 엔진** · **위험도 기반 검증 게이트** · 테스트 강제 |
