@@ -133,8 +133,23 @@ This lets you set a global default once (User scope) that applies to every proje
 | `verify.stopWhenClean` | bool | `true` | Stop early when a round finds nothing |
 | `verify.autoFix` | bool | `false` | Auto-apply fixes (vs. confirm first) |
 | `verify.lenses` | object[] | claude/gpt/gemini | Verifier models + focus, rotated per round; missing CLIs auto-excluded |
+| `features.verifyGate` | bool | `true` | Enable the risk-gated verify gate (Stop hook) in plain sessions |
+| `verifyGate.riskThreshold` | number | `2` | Min risk level (0–3) at which the ladder runs |
+| `verifyGate.maxBlocks` | number | `2` | Hard cap of blocks per change before allowing the stop (never-wedge) |
+| `verifyGate.runLadder` | bool | `true` | Run the deterministic ladder (vs. soft reminders only) |
+| `verifyGate.recommendCrossVerify` | bool | `true` | Recommend `/omh-verify` for sensitive/large changes |
+| `verifyGate.largeFiles` / `largeLines` | number | `8` / `400` | Diff-size thresholds for the risk score |
+| `verifyGate.sensitivePaths` | string[] | auth/payment/migration/.env/… | Globs that escalate a change to the top risk level |
+| `features.planGate` | bool | `true` | Force a plan-mode plan before edits on Tier-3 prompts |
+| `planGate.minTier` | number | `3` | Prompt tier ≥ this arms the gate |
+| `planGate.maxDenials` | number | `3` | Hard cap of edit-denials per prompt (never-wedge) |
+| `planGate.gatedTools` | string[] | Edit/Write/NotebookEdit/MultiEdit | Tools blocked until a plan exists |
 
 > `features.autonomousLoop` defaults ON but stays inert until `/omh-loop` writes an active loop state — there is zero overhead for non-loop sessions (the Stop hook returns immediately when no loop is active).
+
+> `features.verifyGate` defaults ON: in a plain session (no active `/omh-loop`), the Stop hook scores each turn's diff (sensitive paths, size, source-without-test) floored by the prompt tier, and runs the verify ladder when the risk warrants it — blocking on real red. It defers to an active loop and can never wedge a session (`maxBlocks` cap + fail-open). Disable with `/set-harness features.verifyGate false`.
+
+> `features.planGate` defaults ON: a Tier-3 prompt blocks mutating tools (Edit/Write/NotebookEdit/MultiEdit) until the model enters plan mode and presents an implementation plan (Context · Approach · Files · Verification); `ExitPlanMode` clears it. Read-only tools always pass, and a per-prompt `maxDenials` cap means it can never wedge. Disable with `/set-harness features.planGate false`.
 
 > `features.weightRouting` defaults ON: every prompt is auto-classified into Tier 1/2/3 by weight, and Tier 3 (heavy/risky work) forces verification. The `tier3.*` thresholds control when a task is forced to Tier 3, and the `verify.*` block configures the `/omh-verify` independent multi-model verify+fix rounds.
 

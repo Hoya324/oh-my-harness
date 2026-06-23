@@ -2,6 +2,32 @@
 
 OMH는 **Claude Code 플러그인**(권장) 또는 클론한 저장소에서 실행하는 **로컬 CLI** 두 가지 모드로 동작합니다. 둘 다 동일한 결과를 제공합니다: 네이티브 훅, 스킬, CLAUDE.md 지시문.
 
+## 계층 구조
+
+OMH는 네 개의 계층으로 구성됩니다. 설계 원칙은 이렇습니다 — **모든 판단 로직은 순수하고 단위 테스트된 코어 모듈에 두고, git·시간·stdin과 맞닿는 훅은 얇고 fail-open 하게 유지한다.** 이 분리 덕분에 자율 루프의 핵심 종료 로직을 라이브 세션 없이 단위 테스트할 수 있습니다.
+
+| 계층 | 구성 요소 | 역할 |
+|------|-----------|------|
+| **① 훅** | Claude Code 생명주기 이벤트 위의 9개 `.mjs` (`hooks/`) | 얇은 **fail-open** 래퍼 — 부수효과 신호를 모아 판단을 출력; 오류가 나도 세션을 가두지 않고 조용히 통과 |
+| **② 순수 코어** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | 판단 로직을 **순수 함수**(fs / git / `Date.now` / child_process 없음)로 → 완전한 단위 테스트 |
+| **③ 스킬** | 12개 슬래시 명령어 (`skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 |
+| **④ 에이전트** | `quick` / `standard` / `architect` (`agents/`) | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
+
+각 Claude Code 생명주기 이벤트는 정확히 하나의 훅을 트리거합니다 (`Stop` 이벤트가 자율 루프가 사는 곳):
+
+| 생명주기 이벤트 | 훅 | 동작 |
+|-----------------|-----|------|
+| `SessionStart` | `session-start.mjs` | 컨벤션 감지 · `STATE.md` 주입 |
+| `UserPromptSubmit` | `pre-prompt.mjs` | 무게 티어 · 모호성 가드 · 자동 Plan |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | 위험 명령 경고 · 플랜 게이트 (Tier 3은 편집 전 계획 필수) |
+| `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | 커밋 형식 · 스코프 · 사용량 통계 |
+| `PreCompact` | `pre-compact.mjs` | 컨텍스트 스냅샷 · `STATE.md` 갱신 |
+| `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | 자율 루프 엔진 · 위험도 기반 검증 게이트 · 테스트 강제 |
+
+아래 다이어그램은 이 계층들이 설정과 디스크 데이터에 어떻게 연결되는지를 보여줍니다.
+
+Stop 훅 게이트는 **두 개**입니다: `loop-guard.mjs`는 활성 `/omh-loop` 안에서 검증을 소유하고, `verify-gate.mjs`는 평범한 세션에서 소유합니다(루프가 활성이면 비켜남). 둘 다 동일한 최상위 `{decision:'block'}` 계약으로 계속을 강제합니다.
+
 ## 개요
 
 ```mermaid

@@ -109,6 +109,21 @@ Example session output:
 
 ---
 
+## Feature Map
+
+The features below group into three layers — the same grouping used in the [README](../README.md#features-overview):
+
+**A. Automatic guards & routing** — fire on every session, no prompting:
+[Convention Auto-Detect](#1-convention-auto-detect) · [Test Enforcement](#2-test-enforcement) · [Auto-Plan Mode](#4-auto-plan-mode) · [Ambiguity Guard](#5-ambiguity-guard) · [Dangerous Guard](#6-dangerous-guard) · [Context Snapshot](#7-context-snapshot) · [Commit Convention](#8-commit-convention) · [Scope Guard](#9-scope-guard) · [Usage Tracking](#10-usage-tracking) · [Weight Routing](#15-weight-routing-tier-123) · [Living State](#17-living-state-statemd) · [Verify Gate](#verify-gate) · [Plan Gate](#plan-gate)
+
+**B. Autonomous execution** — explicit workflows you invoke:
+[Native Team](#12-native-team) · [Autonomous Loop](#13-autonomous-loop) · [Spec Authoring](#14-spec-authoring) · [N-Round Verify](#16-n-round-independent-verify-omh-verify)
+
+**C. Routing, scaffolding & observability** — cross-cutting:
+[Status Line (HUD)](#status-line-hud) · [Model Routing](#3-model-routing) · [Skill Scaffolding](#11-skill-scaffolding)
+
+---
+
 ## Feature Details
 
 ### 1. Convention Auto-Detect
@@ -435,7 +450,7 @@ If a request is vague, `/omh-spec` inserts `[NEEDS CLARIFICATION]` markers and *
 
 ---
 
-## 15. Weight Routing (Tier 1/2/3)
+### 15. Weight Routing (Tier 1/2/3)
 
 **Hook:** `UserPromptSubmit` · **Default:** ON (`features.weightRouting`)
 
@@ -454,7 +469,7 @@ Classifies each prompt into a weight tier and routes guardrails proportionally, 
 }
 ```
 
-## 16. N-Round Independent Verify (`/omh-verify`)
+### 16. N-Round Independent Verify (`/omh-verify`)
 
 **Command:** `/omh-verify` · **Default:** triggered by Tier 3
 
@@ -482,8 +497,49 @@ Runs N independent verify+fix rounds over the current `git diff`, rotating model
 }
 ```
 
-## 17. Living State (STATE.md)
+### 17. Living State (STATE.md)
 
 **Hook:** `SessionStart` (inject) / `PreCompact` (integrate) · **Default:** ON
 
 A disk-anchored `STATE.md` under `.claude/.omh/` holds goal, current phase, key decisions, and progress. It is re-injected at session start and referenced in the pre-compaction snapshot, so working context survives session boundaries and compaction — directly mitigating context rot.
+
+### Verify Gate
+
+**Hook:** `Stop` (`verify-gate.mjs`) · **Default:** ON
+
+The autonomous loop only hard-enforces verification *inside* `/omh-loop`. The Verify Gate brings the same harness-owned enforcement to **plain sessions**. On every Stop it scores the turn's risk from the **actual working-tree diff** — not the model's self-assessment:
+
+| Signal | Effect |
+|--------|--------|
+| Sensitive paths (`**/auth/**`, `**/payment/**`, `*migration*`, `.env*`, …) | escalate to the top risk level |
+| Large diff (files/lines over `largeFiles`/`largeLines`) | escalate |
+| Source changed without a matching test | run the ladder |
+| Prompt tier (1/2/3) | acts as a **floor** — `level = max(diffRisk, tierFloor)` |
+
+When the risk warrants it, the hook **runs the verify ladder itself** (cheap quickCheck for moderate risk; full ladder for sensitive/large) and:
+- **red** → forces continuation with the real failing output (top-level `{"decision":"block"}` + exit 0);
+- **green / low-risk** → allows the stop. Sensitive/large changes also get a `/omh-verify` cross-model recommendation.
+
+**It can never wedge a session.** A per-diff `maxBlocks` cap guarantees it eventually allows the stop (even against a pre-existing red baseline), plus a `stop_hook_active` re-entry guard, already-verified skip, defer-to-active-loop, empty-ladder/git-missing pass-through, off switches (`features.verifyGate`, `DISABLE_HARNESS`, `STOP`), and fail-open on any error. Decision logic is the pure, unit-tested `lib/risk.mjs`.
+
+> Emits `[omh:verify-gate]`. See the `verifyGate` block in [Configuration](configuration.md).
+
+### Plan Gate
+
+**Hook:** `PreToolUse` (`plan-gate.mjs`) · **Default:** ON
+
+Where the Verify Gate enforces verification *after* a turn, the Plan Gate enforces planning *before* one. On a **Tier-3 prompt** (the existing prompt-weight classifier — architecture, security, migration, 5+ tasks, or configured domain keywords), `pre-prompt.mjs` arms a per-prompt marker and injects a directive to plan. The PreToolUse hook then **denies** mutating tools until the model plans:
+
+| Tool | Behavior while armed |
+|------|---------------------|
+| `Edit` / `Write` / `NotebookEdit` / `MultiEdit` | **denied** with the plan directive (until cleared) |
+| `Read` / `Grep` / `Glob` / `EnterPlanMode` / … | always allowed (you must investigate to plan) |
+| `ExitPlanMode` | **clears** the requirement → edits flow |
+
+So a heavy prompt forces the model to call `EnterPlanMode` and write an implementation plan with **Context · Approach · Files to change · Verification**, present it, and get approval before any file is touched. (A hook cannot switch Claude into plan mode directly — only the model or the user can — so the gate enforces it indirectly by blocking edits.)
+
+**It can never wedge a session.** A per-prompt `maxDenials` cap (default 3) eventually allows the edit with a warning; read-only tools are never gated; the marker is per-prompt (a Tier-1/2 prompt disarms it); off switches are `features.planGate` / `DISABLE_HARNESS`; and it fails open on a corrupt marker. Decision logic is the pure, unit-tested `lib/plan-gate.mjs`.
+
+> **Limitation (v1):** only Edit/Write/NotebookEdit/MultiEdit are gated; a `Bash` file-write (`echo > file`) can bypass it. Gating all Bash would block investigation commands, so it is out of scope for v1.
+
+> Emits `[omh:plan-gate]`. See the `planGate` block in [Configuration](configuration.md).

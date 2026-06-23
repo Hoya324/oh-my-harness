@@ -2,6 +2,32 @@
 
 OMH works in two modes — as a **Claude Code plugin** (recommended) or via a **local CLI** run from a cloned repo. Both produce the same result: native hooks, skills, and CLAUDE.md instructions.
 
+## Layers
+
+OMH is built in four layers. The design rule: **all decision logic lives in pure, unit-tested core modules; the hooks that touch git, time, and stdin stay thin and fail-open.** That separation is why the load-bearing termination logic of the autonomous loop can be unit-tested without a live session.
+
+| Layer | Components | Role |
+|-------|-----------|------|
+| **① Hooks** | 9 `.mjs` on Claude Code lifecycle events (`hooks/`) | Thin **fail-open** wrappers — gather impure signals and emit decisions; any error stays silent rather than trapping the session |
+| **② Pure Core** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | Decision logic as **pure functions** (no fs / git / `Date.now` / child_process) → fully unit-tested |
+| **③ Skills** | 12 slash commands (`skills/`) | User-invoked workflows: setup, agents, teams, spec / loop / verify |
+| **④ Agents** | `quick` / `standard` / `architect` (`agents/`) | Model routing — haiku / sonnet / opus by task weight |
+
+Each Claude Code lifecycle event triggers exactly one hook (the `Stop` event is where the autonomous loop lives):
+
+| Lifecycle event | Hook | What it does |
+|-----------------|------|-------------|
+| `SessionStart` | `session-start.mjs` | Detect conventions · inject `STATE.md` |
+| `UserPromptSubmit` | `pre-prompt.mjs` | Weight tier · ambiguity guard · auto-plan |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | Warn on destructive commands · plan gate (Tier-3 prompts must plan before editing) |
+| `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | Commit format · scope · usage stats |
+| `PreCompact` | `pre-compact.mjs` | Snapshot context · refresh `STATE.md` |
+| `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | Autonomous loop engine · risk-gated verify gate · test enforcement |
+
+The diagram below shows how these layers connect to config and on-disk data.
+
+There are **two Stop-hook gates**: `loop-guard.mjs` owns verification inside an active `/omh-loop`; `verify-gate.mjs` owns it in plain sessions (it defers when a loop is active). Both force continuation via the same top-level `{decision:'block'}` contract.
+
 ## Overview
 
 ```mermaid

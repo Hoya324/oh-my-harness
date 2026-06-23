@@ -15,7 +15,9 @@
     "skillScaffolding": true,
     "nativeTeam": true,
     "autonomousLoop": true,
-    "weightRouting": true
+    "weightRouting": true,
+    "verifyGate": true,
+    "planGate": true
   },
   "testEnforcement": {
     "minCases": 2,
@@ -103,6 +105,23 @@
     "taskThreshold": 5,
     "fileThreshold": 5,
     "domainKeywords": []
+  },
+  "verifyGate": {
+    "riskThreshold": 2,
+    "maxBlocks": 2,
+    "runLadder": true,
+    "recommendCrossVerify": true,
+    "largeFiles": 8,
+    "largeLines": 400,
+    "ladderTimeoutSec": { "quickCheck": 30, "verify": 180 },
+    "quickCheckCommand": "",
+    "verifyCommand": "",
+    "sensitivePaths": ["**/auth/**", "**/payment/**", "**/security/**", "*migration*", "**/*migration*", ".env*", "**/.env*", "**/secrets/**", "**/*.sql"]
+  },
+  "planGate": {
+    "minTier": 3,
+    "maxDenials": 3,
+    "gatedTools": ["Edit", "Write", "NotebookEdit", "MultiEdit"]
   },
   "verify": {
     "rounds": 3,

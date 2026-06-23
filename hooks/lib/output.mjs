@@ -54,6 +54,22 @@ export function hookStopContinue(reason) {
   return JSON.stringify({ decision: 'block', reason });
 }
 
+/**
+ * PreToolUse deny contract — blocks the tool call and shows `reason` to the model.
+ * Uses the documented permission shape (NOT the nested decision shape).
+ * @param {string} reason
+ * @returns {string} JSON to print on stdout (then exit 0).
+ */
+export function hookPreToolDeny(reason) {
+  return JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: reason,
+    },
+  });
+}
+
 export function hookCompact(systemMessage) {
   return JSON.stringify({
     continue: true,

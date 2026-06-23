@@ -48,7 +48,7 @@
     <aside class="docs-sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title">Oh My Harness</div>
-        <div class="sidebar-version">v0.3.1</div>
+        <div class="sidebar-version">v0.4.0</div>
       </div>
 
       <div class="sidebar-external">
@@ -91,6 +91,7 @@
           <span class="chevron">&#9662;</span>
         </div>
         <div class="sidebar-links">
+          <a href="#architecture" class="sidebar-link" data-i18n="docs.sidebar.architecture">Architecture</a>
           <a href="#hooks" class="sidebar-link" data-i18n="docs.sidebar.hooks">Hooks</a>
           <a href="#skills" class="sidebar-link" data-i18n="docs.sidebar.skills">Skills</a>
           <a href="#agents" class="sidebar-link" data-i18n="docs.sidebar.agents">Agents</a>
@@ -296,6 +297,22 @@ claude plugin install oh-my-harness@oh-my-harness</code></pre>
 }</code></pre>
       <blockquote><p data-i18n="docs.loop.config.techniques">Techniques drawn on: the Ralph Wiggum loop, Reflexion, Self-Refine, Chain-of-Verification (CoVe), LLM-as-judge, FrugalGPT cascade, Agreement-Based Cascading, EARS notation, and Spec-Driven Development.</p></blockquote>
 
+      <!-- Architecture -->
+      <h2 id="architecture" data-i18n="docs.architecture.title">Architecture</h2>
+      <p data-i18n="docs.architecture.intro">OMH is built in four layers. All decision logic lives in pure, unit-tested core modules; the hooks that touch git, time, and stdin stay thin and fail-open. The tables below detail each layer.</p>
+
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.architecture.th.layer">Layer</th><th data-i18n="docs.architecture.th.role">Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>① Hooks</strong> (<code>hooks/</code>)</td><td data-i18n="docs.architecture.l1">9 thin fail-open wrappers on lifecycle events — gather signals, emit decisions</td></tr>
+          <tr><td><strong>② Pure Core</strong> (<code>lib/</code>)</td><td data-i18n="docs.architecture.l2">All decision logic as pure functions (no fs / git / time) — fully unit-tested</td></tr>
+          <tr><td><strong>③ Skills</strong> (<code>skills/</code>)</td><td data-i18n="docs.architecture.l3">12 user-invoked slash-command workflows</td></tr>
+          <tr><td><strong>④ Agents</strong> (<code>agents/</code>)</td><td data-i18n="docs.architecture.l4">Model routing — haiku / sonnet / opus by task weight</td></tr>
+        </tbody>
+      </table>
+
       <!-- Hooks -->
       <h2 id="hooks" data-i18n="docs.hooks.title">Hooks</h2>
       <p data-i18n="docs.hooks.intro">OMH hooks into Claude Code's lifecycle at every stage. All hooks run automatically — no manual intervention needed.</p>
@@ -308,11 +325,13 @@ claude plugin install oh-my-harness@oh-my-harness</code></pre>
           <tr><td><code>session-start.mjs</code></td><td>SessionStart</td><td data-i18n="docs.hooks.r1.desc">Convention detection, skill hints</td></tr>
           <tr><td><code>pre-prompt.mjs</code></td><td>UserPromptSubmit</td><td data-i18n="docs.hooks.r2.desc">Ambiguity guard, auto-plan mode</td></tr>
           <tr><td><code>dangerous-guard.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r3.desc">Warns before destructive commands</td></tr>
+          <tr><td><code>plan-gate.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r11.desc">Plan gate — requires a plan before edits</td></tr>
           <tr><td><code>commit-convention.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r4.desc">Reminds commit format</td></tr>
           <tr><td><code>scope-guard.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r5.desc">Warns about out-of-scope edits</td></tr>
           <tr><td><code>usage-tracker.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r6.desc">Records tool usage</td></tr>
           <tr><td><code>pre-compact.mjs</code></td><td>PreCompact</td><td data-i18n="docs.hooks.r7.desc">Saves context snapshot</td></tr>
           <tr><td><code>loop-guard.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r9.desc">Autonomous loop engine + safety enforcer</td></tr>
+          <tr><td><code>verify-gate.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r10.desc">Risk-gated verify gate for plain sessions</td></tr>
           <tr><td><code>post-task.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r8.desc">Test enforcement reminder</td></tr>
         </tbody>
       </table>
@@ -379,27 +398,54 @@ claude plugin install oh-my-harness@oh-my-harness</code></pre>
 
       <!-- Features -->
       <h2 id="features" data-i18n="docs.features.title">Features Overview</h2>
+      <p data-i18n="docs.features.intro">Features group into three layers — automatic guards that fire on every session, autonomous execution you invoke explicitly, and the cross-cutting routing &amp; observability layer.</p>
 
+      <h3 data-i18n="docs.features.groupA">A · Automatic guards &amp; routing (always on)</h3>
       <table>
         <thead>
-          <tr><th data-i18n="docs.features.th.num">#</th><th data-i18n="docs.features.th.feature">Feature</th><th data-i18n="docs.features.th.hook">Hook</th><th data-i18n="docs.features.th.default">Default</th></tr>
+          <tr><th data-i18n="docs.features.th.feature">Feature</th><th data-i18n="docs.features.th.hook">Hook</th><th data-i18n="docs.features.th.default">Default</th></tr>
         </thead>
         <tbody>
-          <tr><td>1</td><td>Convention Auto-Detect</td><td>SessionStart</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>2</td><td>Test Enforcement</td><td>Stop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>3</td><td>Model Routing</td><td>CLAUDE.md</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>4</td><td>Auto-Plan Mode</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>5</td><td>Ambiguity Guard</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>6</td><td>Dangerous Guard</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>7</td><td>Context Snapshot</td><td>PreCompact</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>8</td><td>Commit Convention</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>9</td><td>Scope Guard</td><td>PostToolUse</td><td><span class="feature-badge badge-off">OFF</span></td></tr>
-          <tr><td>10</td><td>Usage Tracking</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>11</td><td>Auto .gitignore</td><td>CLI init</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>12</td><td>Multi-Agent</td><td>/agent-spawn</td><td>—</td></tr>
-          <tr><td>13</td><td data-i18n="docs.features.nativeTeam">Native Team</td><td>/team-spawn</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>14</td><td>Skill Scaffolding</td><td>/init-project</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>15</td><td data-i18n="docs.features.autonomousLoop">Autonomous Loop</td><td>Stop / /omh-loop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Convention Auto-Detect</td><td>SessionStart</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Weight Routing (Tier 1/2/3)</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Ambiguity Guard</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Auto-Plan Mode</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Dangerous Guard</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Plan Gate</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Commit Convention</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Scope Guard</td><td>PostToolUse</td><td><span class="feature-badge badge-off">OFF</span></td></tr>
+          <tr><td>Usage Tracking</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Test Enforcement</td><td>Stop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Verify Gate</td><td>Stop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Context Snapshot</td><td>PreCompact</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Living State (STATE.md)</td><td>SessionStart / PreCompact</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3 data-i18n="docs.features.groupB">B · Autonomous execution (you invoke it)</h3>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.features.th.feature">Feature</th><th data-i18n="docs.features.th.trigger">Trigger</th><th data-i18n="docs.features.th.default">Default</th></tr>
+        </thead>
+        <tbody>
+          <tr><td data-i18n="docs.features.autonomousLoop">Autonomous Loop</td><td>Stop / /omh-loop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Spec Authoring</td><td>/omh-spec</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>N-Round Verify</td><td>/omh-verify</td><td>—</td></tr>
+          <tr><td data-i18n="docs.features.nativeTeam">Native Team</td><td>/team-spawn</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Multi-Agent</td><td>/agent-spawn</td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <h3 data-i18n="docs.features.groupC">C · Routing, scaffolding &amp; observability</h3>
+      <table>
+        <thead>
+          <tr><th data-i18n="docs.features.th.feature">Feature</th><th data-i18n="docs.features.th.trigger">Trigger</th><th data-i18n="docs.features.th.default">Default</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Model Routing</td><td>CLAUDE.md</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Skill Scaffolding</td><td>/init-project</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Auto .gitignore</td><td>CLI init</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Status HUD</td><td>status line</td><td><span class="feature-badge badge-on">ON</span></td></tr>
         </tbody>
       </table>
 

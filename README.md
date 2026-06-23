@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-7C3AED?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6TTIgMTJsMTAgNSAxMC01LTEwLTUtMTAgNXoiIGZpbGw9IndoaXRlIi8+PC9zdmc+" alt="Claude Code Plugin" />
-  <img src="https://img.shields.io/badge/version-0.3.1-blue?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.4.0-blue?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=for-the-badge&logo=node.js" alt="Node >= 18" />
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge" alt="MIT License" />
   <img src="https://img.shields.io/github/actions/workflow/status/Hoya324/oh-my-harness/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI" />
@@ -88,27 +88,44 @@ claude plugin update oh-my-harness@oh-my-harness
 
 ## Features Overview
 
-| # | Feature | Hook | Default | What it does |
-|:-:|---------|------|:-------:|-------------|
-| 1 | Convention Auto-Detect | `SessionStart` | ON | Scans project and injects language/test/lint context |
-| 2 | Test Enforcement | `Stop` | ON | Reminds to verify tests after every code change |
-| 3 | Model Routing | CLAUDE.md + agents | ON | Routes subagents to haiku / sonnet / opus by complexity |
-| 4 | Auto-Plan Mode | `UserPromptSubmit` | ON | Detects 3+ tasks and suggests planning first |
-| 5 | Ambiguity Guard | `UserPromptSubmit` | ON | Forces clarification for vague requests |
-| 6 | Dangerous Guard | `PreToolUse` | ON | Warns before `rm -rf`, `git push --force`, `.env` writes |
-| 7 | Context Snapshot | `PreCompact` | ON | Saves task state before context compaction |
-| 8 | Commit Convention | `PostToolUse` | ON | Reminds commit format (Conventional / Gitmoji) |
-| 9 | Scope Guard | `PostToolUse` | OFF | Warns when modifying files outside allowed paths |
-| 10 | Usage Tracking | `PostToolUse` | ON | Records tool usage per session |
-| 11 | Auto .gitignore | CLI init | ON | Adds `.claude/.omh/` to `.gitignore` |
-| 12 | Multi-Agent | `/agent-spawn` | — | Parallel Claude agents in tmux with git worktrees |
-| 13 | Native Team | `/team-spawn` | ON | Native Claude Code team orchestration with templates |
-| 14 | Skill Scaffolding | `/init-project` | ON | Auto-generates project-specific skills based on detected stack |
-| 15 | **Autonomous Loop** | `Stop` (loop-guard) + `/omh-loop` | ON | Spec-driven loop: forces continuation until the verify ladder + cross-verify confirm done, with tiered guardrails (budget, timeout, no-progress, oscillation) |
-| 16 | Spec Authoring | `/omh-spec` | ON | Writes a machine-checkable `SPEC.md` (EARS acceptance criteria → verify commands) to anchor the loop |
-| 17 | Weight Routing | `UserPromptSubmit` | ON | Classifies task weight (Tier 1/2/3) and routes guardrails proportionally; Tier 3 enforces verification before completion |
-| 18 | N-Round Verify | `/omh-verify` | — | N independent verify+fix rounds with model rotation (Claude → GPT/codex → Gemini); external verifiers run read-only |
-| 19 | Living State | `SessionStart` / `PreCompact` | ON | Disk-anchored `STATE.md` (goal/phase/decisions/progress) re-injected across sessions to fight context rot |
+OMH's features fall into three groups — **automatic guards** that fire on every session, **autonomous execution** you invoke explicitly, and the cross-cutting **routing, scaffolding & observability** layer.
+
+### A. Automatic guards & routing — always on
+
+| Feature | Hook | Default | What it does |
+|---------|------|:-------:|-------------|
+| Convention Auto-Detect | `SessionStart` | ON | Scans project and injects language/test/lint context |
+| Weight Routing (Tier 1/2/3) | `UserPromptSubmit` | ON | Classifies prompt weight and routes guardrails proportionally; Tier 3 enforces verification before completion |
+| Ambiguity Guard | `UserPromptSubmit` | ON | Forces clarification for vague requests |
+| Auto-Plan Mode | `UserPromptSubmit` | ON | Detects 3+ tasks and suggests planning first |
+| Dangerous Guard | `PreToolUse` | ON | Warns before `rm -rf`, `git push --force`, `.env` writes |
+| Plan Gate | `PreToolUse` (plan-gate) | ON | Tier-3 prompts must produce a plan-mode implementation plan before any edit |
+| Commit Convention | `PostToolUse` | ON | Reminds commit format (Conventional / Gitmoji) |
+| Scope Guard | `PostToolUse` | OFF | Warns when modifying files outside allowed paths |
+| Usage Tracking | `PostToolUse` | ON | Records tool usage per session |
+| Test Enforcement | `Stop` | ON | Reminds to verify tests after every code change |
+| Verify Gate | `Stop` (verify-gate) | ON | Risk-judges each turn's diff and runs the verify ladder itself; blocks on red for sensitive/untested changes (never wedges) |
+| Context Snapshot | `PreCompact` | ON | Saves task state before context compaction |
+| Living State (`STATE.md`) | `SessionStart` / `PreCompact` | ON | Disk-anchored goal/phase/decisions re-injected across sessions to fight context rot |
+
+### B. Autonomous execution — you invoke it
+
+| Feature | Trigger | Default | What it does |
+|---------|---------|:-------:|-------------|
+| **Autonomous Loop** | `Stop` (loop-guard) + `/omh-loop` | ON | Spec-driven loop: forces continuation until the verify ladder + cross-verify confirm done, with tiered guardrails (budget, timeout, no-progress, oscillation) |
+| Spec Authoring | `/omh-spec` | ON | Writes a machine-checkable `SPEC.md` (EARS acceptance criteria → verify commands) to anchor the loop |
+| N-Round Verify | `/omh-verify` | — | N independent verify+fix rounds with model rotation (Claude → GPT/codex → Gemini); external verifiers run read-only |
+| Native Team | `/team-spawn` | ON | Native Claude Code team orchestration with templates |
+| Multi-Agent | `/agent-spawn` | — | Parallel Claude agents in tmux with git worktrees |
+
+### C. Routing, scaffolding & observability
+
+| Feature | Trigger | Default | What it does |
+|---------|---------|:-------:|-------------|
+| Model Routing | CLAUDE.md + agents | ON | Routes subagents to haiku / sonnet / opus by complexity |
+| Skill Scaffolding | `/init-project` | ON | Auto-generates project-specific skills based on detected stack |
+| Auto .gitignore | CLI init | ON | Adds `.claude/.omh/` to `.gitignore` |
+| Status HUD | status line | ON | Real-time rate-limit, context, tool-call, and model dashboard |
 
 > See [Feature Details](docs/features.md), the [Autonomous Loop guide](docs/loop.md), and the [Verification guide](docs/verify.md) for full descriptions.
 
@@ -171,6 +188,15 @@ Full details, the verifier lenses, and the tier policy live in [docs/verify.md](
 
 > Full details: [docs/architecture.md](docs/architecture.md)
 
+OMH is built in **four layers**, so the load-bearing decision logic stays pure and unit-tested while the hooks that touch the outside world stay thin and fail-open.
+
+| Layer | Components | Role |
+|-------|-----------|------|
+| **① Hooks** | 9 `.mjs` on Claude Code lifecycle events | Thin **fail-open** wrappers — gather impure signals (git, time, stdin) and emit decisions |
+| **② Pure Core** (`lib/`) | `loop` · `tier` · `detect` · `config` · `verify` · `state` · `dictionary` | All decision logic as **pure functions** (no fs / git / time) → fully unit-tested |
+| **③ Skills** | 12 slash commands | User-invoked workflows (`/omh-loop`, `/omh-verify`, `/team-spawn`, …) |
+| **④ Agents** | `quick` · `standard` · `architect` | Model routing — haiku / sonnet / opus by task weight |
+
 ```mermaid
 graph TB
     subgraph "Claude Code Session"
@@ -229,6 +255,17 @@ graph TB
 ```
 
 ## Hook Pipeline
+
+Each Claude Code lifecycle event triggers one OMH hook — the `Stop` event is where the autonomous loop lives:
+
+| Lifecycle event | Hook | What it does |
+|-----------------|------|-------------|
+| `SessionStart` | `session-start.mjs` | Detect conventions · inject `STATE.md` |
+| `UserPromptSubmit` | `pre-prompt.mjs` | Weight tier · ambiguity guard · auto-plan |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | Warn on destructive commands · **plan gate (Tier 3)** |
+| `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | Commit format · scope · usage stats |
+| `PreCompact` | `pre-compact.mjs` | Snapshot context · refresh `STATE.md` |
+| `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | **Autonomous loop engine** · **risk-gated verify gate** · test enforcement |
 
 ```mermaid
 sequenceDiagram

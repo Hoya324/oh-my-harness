@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-06-23
+
+### Added
+- **Risk-Gated Verify Gate** — a Stop hook (`verify-gate.mjs`) that enforces verification in PLAIN sessions (no active `/omh-loop`). It judges each turn's risk from the actual working-tree diff (sensitive paths, diff size, source-without-test), floored by the prompt's tier, and — when the risk warrants it — runs the deterministic verify ladder itself. Red → forces continuation (top-level `decision:block` + exit 0); green or low-risk → allows the stop. Cross-model `/omh-verify` is recommended (not forced) for sensitive/large changes.
+- `lib/risk.mjs` — pure, unit-tested gate core: `computeRisk`, `evaluateGate`, `globMatch`, `classifyFiles`, `diffSignature`, `tierFloor`. Mirrors the pure-core/impure-wrapper split of `lib/loop.mjs`.
+- `features.verifyGate` (default ON) + `verifyGate` config block (`riskThreshold`, `maxBlocks`, `runLadder`, `recommendCrossVerify`, `largeFiles`/`largeLines`, `ladderTimeoutSec`, `quickCheckCommand`/`verifyCommand`, `sensitivePaths`).
+- `hooks/pre-prompt.mjs` now persists the classified tier to `.claude/.omh/last-prompt.json` so the gate can use it as a risk floor.
+- **Plan Gate** — a PreToolUse hook (`plan-gate.mjs`) that enforces planning on heavy work. A Tier-3 prompt arms a per-prompt marker (via `pre-prompt.mjs`) + injects a plan directive; the hook then **denies** mutating tools (Edit/Write/NotebookEdit/MultiEdit) until the model enters plan mode and `ExitPlanMode` clears it. Read-only tools always pass. Pure core `lib/plan-gate.mjs`.
+- `features.planGate` (default ON) + `planGate` config block (`minTier`, `maxDenials`, `gatedTools`).
+
+### Safety
+- The Verify Gate **cannot wedge a session**: a per-diff `maxBlocks` cap guarantees it eventually allows the stop, with a `stop_hook_active` re-entry guard, already-verified skip, defer-to-active-loop, empty-ladder/git-missing pass-through, off switches (`features.verifyGate`, `DISABLE_HARNESS`, `STOP`), and fail-open on any error.
+- The Plan Gate **cannot wedge a session** either: a per-prompt `maxDenials` cap eventually allows the edit, read-only tools are never gated, and it fails open on a corrupt marker or with `features.planGate:false` / `DISABLE_HARNESS`.
+
+### Tests
+- 246 pass (added `risk` 33, `verify-gate` 10, `plan-gate` 9 + hook 6, `config` 1).
+
 ## [0.3.1] - 2026-06-13
 
 ### Fixed
