@@ -33,6 +33,11 @@
             "type": "command",
             "command": "node \"$CLAUDE_PLUGIN_ROOT\"/hooks/dangerous-guard.mjs",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/hooks/plan-gate.mjs",
+            "timeout": 5
           }
         ]
       }
