@@ -46,6 +46,14 @@ describe('config', () => {
     assert.equal(config.loop.tiers.deep.model, 'architect');
   });
 
+  it('ships planGate defaults', () => {
+    const d = getDefault();
+    assert.equal(d.features.planGate, true);
+    assert.equal(d.planGate.minTier, 3);
+    assert.equal(d.planGate.maxDenials, 3);
+    assert.deepEqual(d.planGate.gatedTools, ['Edit', 'Write', 'NotebookEdit', 'MultiEdit']);
+  });
+
   it('deep-merges partial loop config with defaults', () => {
     writeFileSync(configPath(TMP), JSON.stringify({ loop: { tiers: { deep: { maxIterations: 50 } } } }));
     const config = readConfig(TMP);
