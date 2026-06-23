@@ -73,6 +73,30 @@ try {
     } catch { /* fail-open */ }
   }
 
+  // Arm / disarm the plan gate for this prompt (Tier >= minTier => require a plan
+  // before any edit). Own try/catch — fail-open: on error the gate just isn't armed.
+  if (config.features?.planGate !== false) {
+    try {
+      const omhDir = join(projectRoot, '.claude', '.omh');
+      mkdirSync(omhDir, { recursive: true });
+      const minTier = config.planGate?.minTier ?? 3;
+      const armed = classification.tier >= minTier;
+      let promptId = 1;
+      try { promptId = (JSON.parse(readFileSync(join(omhDir, 'plan-gate.json'), 'utf8')).promptId || 0) + 1; } catch {}
+      const marker = {
+        required: armed, satisfied: false, denials: 0,
+        tier: classification.tier, promptId,
+        sessionId: input.session_id || input.sessionId || null, ts: Date.now(),
+      };
+      const tmp = join(omhDir, `plan-gate.json.${process.pid}.tmp`);
+      writeFileSync(tmp, JSON.stringify(marker));
+      renameSync(tmp, join(omhDir, 'plan-gate.json'));
+      if (armed) {
+        result.push(`[omh:plan-gate] Tier-${classification.tier} work detected — before editing any file you MUST call EnterPlanMode and write an implementation plan (Context · Approach · Files to change · Verification). Editing is blocked until the plan is presented and approved.`);
+      }
+    } catch { /* fail-open: gate just isn't armed */ }
+  }
+
   if (result.length > 0) {
     console.log(hookOutput('UserPromptSubmit', result.join('\n')));
   }
