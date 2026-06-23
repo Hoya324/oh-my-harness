@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'fs';
 import { join } from 'path';
 import { hookOutput, hookSilent } from './lib/output.mjs';
 import { getDictionary } from './lib/dictionary.mjs';
@@ -52,12 +52,25 @@ try {
   }
 
   // 4-C: Tier classification → weight-proportional routing
+  const classification = classifyTier(prompt, config);
   if (config.features?.weightRouting) {
-    const { tier, reasons } = classifyTier(prompt, config);
-    result.push(messages.tierNotice(tier, reasons));
-    if (tier === 3) {
+    result.push(messages.tierNotice(classification.tier, classification.reasons));
+    if (classification.tier === 3) {
       result.push(messages.tier3Reminder);
     }
+  }
+
+  // Persist the classified tier so the verify-gate (Stop hook) can use it as a
+  // risk floor at end-of-turn. Own try/catch — a write failure must never break
+  // prompt submission (fail-open: the gate just loses the floor, diff-risk stays).
+  if (config.features?.verifyGate !== false) {
+    try {
+      const omhDir = join(projectRoot, '.claude', '.omh');
+      mkdirSync(omhDir, { recursive: true });
+      const tmp = join(omhDir, `last-prompt.json.${process.pid}.tmp`);
+      writeFileSync(tmp, JSON.stringify({ tier: classification.tier, sessionId: input.session_id || input.sessionId || null, ts: Date.now() }));
+      renameSync(tmp, join(omhDir, 'last-prompt.json'));
+    } catch { /* fail-open */ }
   }
 
   if (result.length > 0) {

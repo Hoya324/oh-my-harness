@@ -82,6 +82,11 @@
           },
           {
             "type": "command",
+            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/hooks/verify-gate.mjs",
+            "timeout": 600
+          },
+          {
+            "type": "command",
             "command": "node \"$CLAUDE_PLUGIN_ROOT\"/hooks/post-task.mjs",
             "timeout": 5
           }
