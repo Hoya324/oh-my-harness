@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readConfig, writeConfig, getDefault, configPath, sanitizeTmuxSession } from '../lib/config.mjs';
+import { readConfig, writeConfig, getDefault, configPath, sanitizeTmuxSession, mergeWithDefaults } from '../lib/config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TMP = join(__dirname, '__tmp_config');
@@ -33,6 +33,13 @@ describe('config', () => {
     assert.equal(config.features.testEnforcement, false);
     assert.equal(config.features.conventionSetup, true); // default preserved
     assert.equal(config.modelRouting.quick, 'haiku'); // default preserved
+  });
+
+  it('mergeWithDefaults does not alias shared DEFAULTS (mutating a result leaves later merges pristine)', () => {
+    const a = mergeWithDefaults({}); // no nested overrides
+    a.multiAgent.tmuxSession = 'mutated-by-caller'; // a consumer mutates a nested block of the result
+    const b = mergeWithDefaults({}); // a later, independent merge
+    assert.equal(b.multiAgent.tmuxSession, 'omh-agents'); // must still be the pristine default
   });
 
   it('includes autonomous-loop defaults', () => {

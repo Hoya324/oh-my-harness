@@ -64,7 +64,9 @@ describe('pre-prompt hook', () => {
 
   it('stays silent for simple single task', () => {
     writeConfig({
-      features: { autoPlanMode: true, ambiguityDetection: false },
+      // weightRouting off to isolate auto-plan/ambiguity: it otherwise always
+      // emits a tier tag, so this test would never see truly empty output.
+      features: { autoPlanMode: true, ambiguityDetection: false, weightRouting: false },
       autoPlan: { threshold: 3 },
       ambiguityDetection: { threshold: 2 },
     });
@@ -89,7 +91,8 @@ describe('pre-prompt hook', () => {
 
   it('does not flag specific request as ambiguous', () => {
     writeConfig({
-      features: { autoPlanMode: false, ambiguityDetection: true },
+      // weightRouting off to isolate ambiguity detection (see note above).
+      features: { autoPlanMode: false, ambiguityDetection: true, weightRouting: false },
       autoPlan: { threshold: 3 },
       ambiguityDetection: { threshold: 2 },
     });
