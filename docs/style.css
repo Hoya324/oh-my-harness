@@ -21,6 +21,9 @@
   --radius: 4px;
   --radius-sm: 2px;
   --radius-xs: 2px;
+  --rp-warn: #e0a13a; --rp-warn-bg: rgba(224,161,58,0.12); --rp-warn-bd: rgba(224,161,58,0.32);
+  --rp-danger: #e8705a; --rp-danger-bg: rgba(232,112,90,0.12); --rp-danger-bd: rgba(232,112,90,0.32);
+  --rp-ok: #3ec98a; --rp-ok-bg: rgba(62,201,138,0.12); --rp-ok-bd: rgba(62,201,138,0.32);
 }
 
 [data-theme="light"] {
@@ -42,6 +45,9 @@
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
   --grid-color: rgba(26, 82, 118, 0.06);
   --grid-color-major: rgba(26, 82, 118, 0.12);
+  --rp-warn: #9a6a12; --rp-warn-bg: rgba(154,106,18,0.10); --rp-warn-bd: rgba(154,106,18,0.30);
+  --rp-danger: #b23a22; --rp-danger-bg: rgba(178,58,34,0.10); --rp-danger-bd: rgba(178,58,34,0.30);
+  --rp-ok: #1d8a5a; --rp-ok-bg: rgba(29,138,90,0.10); --rp-ok-bd: rgba(29,138,90,0.30);
 }
 
 /* ── Reset ── */
@@ -455,6 +461,108 @@ nav {
   height: 20px;
   border-left: 1px dashed var(--accent-border);
   margin-left: 17px;
+}
+
+/* ── Hook replay ── */
+.hook-replay {
+  margin-top: 3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--code-bg);
+  overflow: hidden;
+}
+.replay-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px dashed var(--accent-border);
+}
+.replay-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+.replay-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: replayPulse 1.8s ease-in-out infinite;
+}
+.replay-ctrls { display: flex; gap: 0.35rem; }
+.replay-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--accent-light);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+}
+.replay-btn:hover { background: var(--bg-hover); }
+.replay-thread {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.9rem 0.9rem;
+  min-height: 130px;
+}
+.rmsg {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(6px);
+  margin: 0;
+  overflow: hidden;
+  transition: max-height .45s ease, opacity .4s ease, transform .4s ease, margin .35s ease;
+}
+.rmsg.show { max-height: 120px; opacity: 1; transform: none; margin: 0.45rem 0; }
+.rmsg.ruser, .rmsg.rclaude { justify-content: flex-end; }
+.rtag {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
+  color: var(--accent-light);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+}
+.rtxt { font-size: 0.82rem; color: var(--text); line-height: 1.5; }
+.rmsg.ruser .rtxt {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-light);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius);
+}
+.rmsg.rclaude .rtxt {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius);
+}
+.rmsg[data-cat="neutral"] .rtag { color: var(--text-secondary); background: var(--bg-hover); border-color: var(--border); }
+.rmsg[data-cat="warn"] .rtag { color: var(--rp-warn); background: var(--rp-warn-bg); border-color: var(--rp-warn-bd); }
+.rmsg[data-cat="danger"] .rtag { color: var(--rp-danger); background: var(--rp-danger-bg); border-color: var(--rp-danger-bd); }
+.rmsg[data-cat="ok"] .rtag { color: var(--rp-ok); background: var(--rp-ok-bg); border-color: var(--rp-ok-bd); }
+.pipeline-stage.active .stage-marker { background: var(--accent); color: var(--bg); box-shadow: 0 0 0 3px var(--accent-bg); }
+@keyframes replayPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) {
+  .rmsg { max-height: 120px; opacity: 1; transform: none; margin: 0.45rem 0; transition: none; }
+  .replay-dot { animation: none; }
 }
 
 /* ── Features ── */
