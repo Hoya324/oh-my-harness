@@ -22,7 +22,13 @@ const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
 
 const CODE_EXT = /\.(js|ts|jsx|tsx|py|go|rs|java|kt|rb|php|c|cpp|h|swift|vue|svelte)$/i;
 const TEST_FILE = /\.(test|spec)\./i;
+// JVM / PascalCase convention: FooTest.kt, FooTests.java, FooSpec.kt, FooIT.java.
+// Case-sensitive so production files like `unit.kt` / `audit.java` are NOT matched.
+const JVM_TEST_FILE = /(Test|Tests|Spec|IT)\.(kt|java|scala|groovy)$/;
 const TEST_DIR = /(\/__tests__\/|\/test\/|\/tests\/)/;
+
+/** A file is a test if it follows the dotted (.test./.spec.) or JVM (XxxTest.kt) convention. */
+function isTestFile(name) { return TEST_FILE.test(name) || JVM_TEST_FILE.test(name); }
 
 function readStdin() {
   try { return JSON.parse(readFileSync(0, 'utf8')); } catch { return {}; }
@@ -39,7 +45,7 @@ function getChangedCodeFiles() {
       ...run('git diff --cached --name-only'),
       ...run('git ls-files --others --exclude-standard'),
     ])];
-    return files.filter(f => CODE_EXT.test(f) && !TEST_FILE.test(f) && !TEST_DIR.test(f));
+    return files.filter(f => CODE_EXT.test(f) && !isTestFile(f) && !TEST_DIR.test(f));
   } catch {
     return null; // git unavailable
   }
@@ -52,7 +58,7 @@ function getStdinCodeFile(input) {
   const filePath = toolInput.file_path || toolInput.filePath || toolInput.path || '';
   const codeChangeTools = ['Edit', 'Write', 'NotebookEdit'];
   if (codeChangeTools.includes(toolName) && CODE_EXT.test(filePath)) {
-    if (!TEST_FILE.test(filePath) && !TEST_DIR.test(filePath)) return [filePath];
+    if (!isTestFile(filePath) && !TEST_DIR.test(filePath)) return [filePath];
   }
   return [];
 }
@@ -71,7 +77,7 @@ function referencedByTest(fileName) {
     let entries;
     try { entries = readdirSync(join(projectRoot, td)); } catch { continue; }
     for (const entry of entries) {
-      if (!TEST_FILE.test(entry)) continue;
+      if (!isTestFile(entry)) continue;
       try { if (re.test(readFileSync(join(projectRoot, td, entry), 'utf8'))) return true; } catch { /* unreadable: skip */ }
     }
   }
@@ -95,6 +101,13 @@ function hasTestFile(file) {
     join(dirname(dir), 'tests', `${base}${ext}`),
     join(dir, `${base}_test${ext}`), // Go convention
   ];
+  // JVM / PascalCase suffix conventions, in the same dir and the src/main -> src/test mirror dir
+  // (e.g. src/main/kotlin/com/x/Foo.kt -> src/test/kotlin/com/x/FooTest.kt).
+  const mirror = dir.replace(/(^|\/)main(\/|$)/, '$1test$2');
+  for (const sfx of ['Test', 'Tests', 'Spec', 'IT']) {
+    candidates.push(join(dir, `${base}${sfx}${ext}`));
+    if (mirror !== dir) candidates.push(join(mirror, `${base}${sfx}${ext}`));
+  }
   if (candidates.some(c => existsSync(join(projectRoot, c)))) return true;
   return referencedByTest(basename(file));
 }

@@ -282,6 +282,50 @@ describe('post-task hook', () => {
     assert.ok(ctx.includes('anti-rationalization'), 'unreferenced file should still warn');
   });
 
+  it('recognizes a Kotlin/Gradle FooTest.kt under the mirrored src/test path', () => {
+    writeConfig({ features: { testEnforcement: true }, testEnforcement: { minCases: 2 } });
+    mkdirSync(join(TMP, 'src', 'main', 'kotlin', 'com', 'x'), { recursive: true });
+    mkdirSync(join(TMP, 'src', 'test', 'kotlin', 'com', 'x'), { recursive: true });
+    writeFileSync(join(TMP, 'src', 'main', 'kotlin', 'com', 'x', 'StringToOrgAuthorityConverter.kt'), 'class StringToOrgAuthorityConverter');
+    writeFileSync(join(TMP, 'src', 'test', 'kotlin', 'com', 'x', 'StringToOrgAuthorityConverterTest.kt'), 'class StringToOrgAuthorityConverterTest { @Test fun t() {} }');
+    const raw = runHook('post-task.mjs', {
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/main/kotlin/com/x/StringToOrgAuthorityConverter.kt' },
+    });
+    const ctx = getContext(raw);
+    assert.ok(!ctx.includes('anti-rationalization'), 'FooTest.kt under src/test should count as coverage');
+    assert.ok(ctx.includes('test-enforcement'), 'should confirm tests found');
+  });
+
+  it('recognizes a Java FooIT.java integration test under src/test', () => {
+    writeConfig({ features: { testEnforcement: true }, testEnforcement: { minCases: 2 } });
+    mkdirSync(join(TMP, 'src', 'main', 'java', 'com', 'x'), { recursive: true });
+    mkdirSync(join(TMP, 'src', 'test', 'java', 'com', 'x'), { recursive: true });
+    writeFileSync(join(TMP, 'src', 'main', 'java', 'com', 'x', 'PaymentService.java'), 'class PaymentService {}');
+    writeFileSync(join(TMP, 'src', 'test', 'java', 'com', 'x', 'PaymentServiceIT.java'), 'class PaymentServiceIT {}');
+    const raw = runHook('post-task.mjs', {
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/main/java/com/x/PaymentService.java' },
+    });
+    const ctx = getContext(raw);
+    assert.ok(!ctx.includes('anti-rationalization'), 'PaymentServiceIT.java should count as coverage');
+  });
+
+  it('does not match a different class via base-name word boundary (Foo vs FooBar)', () => {
+    writeConfig({ features: { testEnforcement: true }, testEnforcement: { minCases: 2 } });
+    mkdirSync(join(TMP, 'src', 'main', 'kotlin'), { recursive: true });
+    mkdirSync(join(TMP, 'src', 'test', 'kotlin'), { recursive: true });
+    writeFileSync(join(TMP, 'src', 'main', 'kotlin', 'Foo.kt'), 'class Foo');
+    // Only a test for a DIFFERENT class whose name contains "Foo" as a prefix.
+    writeFileSync(join(TMP, 'src', 'test', 'kotlin', 'FooBarTest.kt'), 'class FooBarTest { fun t() { FooBar() } }');
+    const raw = runHook('post-task.mjs', {
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/main/kotlin/Foo.kt' },
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('anti-rationalization'), 'FooBarTest must not count as coverage for Foo');
+  });
+
   it('stays silent when no code changes', () => {
     writeConfig({
       features: { testEnforcement: true },
