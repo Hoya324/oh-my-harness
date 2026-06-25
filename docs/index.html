@@ -45,7 +45,7 @@
 
   <!-- Hero -->
   <section class="hero">
-    <div class="hero-badge" data-i18n="index.hero.badge">v0.4.0 &middot; MIT License</div>
+    <div class="hero-badge" data-i18n="index.hero.badge">v0.4.2 &middot; MIT License</div>
     <h1 class="hero-title" data-i18n-html="index.hero.title">
       Oh My<br><span class="gradient-text">Harness</span>
       <span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>
@@ -132,6 +132,28 @@
             <p data-i18n="index.pipeline.s4.desc">Verifies tests exist for changed code. Saves context snapshots before compaction.</p>
             <code class="stage-tag">[omh:test-enforcement]</code>
           </div>
+        </div>
+      </div>
+
+      <div class="hook-replay" id="hook-replay">
+        <div class="replay-bar">
+          <span class="replay-brand"><span class="replay-dot"></span>oh-my-harness &middot; <span data-i18n="index.pipeline.replay.label">live replay</span></span>
+          <div class="replay-ctrls">
+            <button class="replay-btn" id="replay-toggle" type="button" aria-label="play / pause">&#10073;&#10073;</button>
+            <button class="replay-btn" id="replay-restart" type="button" aria-label="restart">&#8635;</button>
+          </div>
+        </div>
+        <div class="replay-thread" id="replay-thread">
+          <div class="rmsg" data-stage="1" data-cat="info"><span class="rtag">[omh:convention-detect]</span><span class="rtxt" data-i18n="index.pipeline.replay.m1">Detected: TypeScript &middot; vitest &middot; eslint</span></div>
+          <div class="rmsg ruser" data-stage="2"><span class="rtxt" data-i18n="index.pipeline.replay.m2">Add rate limiting to the login API</span></div>
+          <div class="rmsg" data-stage="2" data-cat="neutral"><span class="rtag">[omh:tier]</span><span class="rtxt" data-i18n="index.pipeline.replay.m3">Tier 3 &mdash; auth domain, careful mode</span></div>
+          <div class="rmsg" data-stage="2" data-cat="warn"><span class="rtag">[omh:plan-gate]</span><span class="rtxt" data-i18n="index.pipeline.replay.m4">Heavy work &mdash; present a plan before editing</span></div>
+          <div class="rmsg rclaude" data-stage="3"><span class="rtxt" data-i18n="index.pipeline.replay.m5">Adding a sliding-window limiter to AuthController</span></div>
+          <div class="rmsg" data-stage="3" data-cat="info"><span class="rtag">[omh:model-routing &#8594; opus]</span><span class="rtxt" data-i18n="index.pipeline.replay.m6">Architecture change &#8594; routed to opus</span></div>
+          <div class="rmsg" data-stage="3" data-cat="danger"><span class="rtag">[omh:dangerous-guard]</span><span class="rtxt" data-i18n="index.pipeline.replay.m7">rm -rf detected &mdash; confirm before running</span></div>
+          <div class="rmsg" data-stage="3" data-cat="info"><span class="rtag">[omh:commit-convention]</span><span class="rtxt" data-i18n="index.pipeline.replay.m8">Conventional Commits enforced</span></div>
+          <div class="rmsg" data-stage="4" data-cat="ok"><span class="rtag">[omh:test-enforcement]</span><span class="rtxt" data-i18n="index.pipeline.replay.m9">Changed code lacks tests &mdash; add them first</span></div>
+          <div class="rmsg" data-stage="4" data-cat="warn"><span class="rtag">[omh:verify-gate]</span><span class="rtxt" data-i18n="index.pipeline.replay.m10">Code changed &mdash; verify before stopping</span></div>
         </div>
       </div>
     </div>
@@ -374,6 +396,35 @@
         }, 1500);
       });
     }
+
+    (function () {
+      var thread = document.getElementById('replay-thread');
+      if (!thread) return;
+      var rows = [].slice.call(thread.querySelectorAll('.rmsg'));
+      var stages = [].slice.call(document.querySelectorAll('.pipeline .pipeline-stage'));
+      var toggle = document.getElementById('replay-toggle');
+      var restart = document.getElementById('replay-restart');
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var i = 0, paused = false, timer = null;
+      function setStage(s) { stages.forEach(function (el, idx) { el.classList.toggle('active', idx === s - 1); }); }
+      function step() {
+        if (paused) return;
+        if (i >= rows.length) { timer = setTimeout(reset, 2600); return; }
+        var row = rows[i];
+        row.classList.add('show');
+        setStage(parseInt(row.getAttribute('data-stage'), 10));
+        var isUser = row.classList.contains('ruser');
+        i++;
+        timer = setTimeout(step, i === 1 ? 500 : (isUser ? 1000 : 820));
+      }
+      function reset() { rows.forEach(function (r) { r.classList.remove('show'); }); i = 0; setStage(0); timer = setTimeout(step, 500); }
+      function play() { paused = false; if (toggle) toggle.innerHTML = '&#10073;&#10073;'; step(); }
+      function pause() { paused = true; clearTimeout(timer); if (toggle) toggle.innerHTML = '&#9654;'; }
+      if (toggle) toggle.addEventListener('click', function () { paused ? play() : pause(); });
+      if (restart) restart.addEventListener('click', function () { clearTimeout(timer); paused = false; if (toggle) toggle.innerHTML = '&#10073;&#10073;'; reset(); });
+      if (reduce) { rows.forEach(function (r) { r.classList.add('show'); }); if (toggle) toggle.style.display = 'none'; return; }
+      timer = setTimeout(step, 700);
+    })();
   </script>
 </body>
 </html>

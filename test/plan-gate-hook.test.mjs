@@ -59,6 +59,19 @@ describe('plan-gate hook', () => {
     const p = parse(runHook({ tool_name: 'Edit', tool_input: { file_path: 'a.ts' }, session_id: 's1' }));
     assert.notEqual(p?.hookSpecificOutput?.permissionDecision, 'deny');
   });
+  it('allows a Write to the native plan file (~/.claude/plans) even when armed', () => {
+    writeConfig(cfg);
+    writeMarker({ required: true, satisfied: false, denials: 0, tier: 3 });
+    const planFile = join(TMP, '__home', '.claude', 'plans', 'my-plan.md');
+    const p = parse(runHook({ tool_name: 'Write', tool_input: { file_path: planFile }, session_id: 's1' }));
+    assert.notEqual(p?.hookSpecificOutput?.permissionDecision, 'deny');
+  });
+  it('still denies a Write to a project file when armed', () => {
+    writeConfig(cfg);
+    writeMarker({ required: true, satisfied: false, denials: 0, tier: 3 });
+    const p = parse(runHook({ tool_name: 'Write', tool_input: { file_path: join(TMP, 'src', 'a.ts') }, session_id: 's1' }));
+    assert.equal(p.hookSpecificOutput.permissionDecision, 'deny');
+  });
   it('fail-opens on a corrupt marker', () => {
     writeConfig(cfg);
     mkdirSync(OMH, { recursive: true });

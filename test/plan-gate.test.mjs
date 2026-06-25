@@ -52,4 +52,14 @@ describe('evaluatePlanGate', () => {
   it('off / disabled -> allow', () => {
     assert.equal(evaluatePlanGate(armed(), base({ featureOff: true })).action, 'allow');
   });
+  it('allows a gated tool that writes the native plan file (no denial increment)', () => {
+    const r = evaluatePlanGate(armed(), base({ toolName: 'Write', isPlanFile: true }));
+    assert.equal(r.action, 'allow');
+    assert.equal(r.stopCause, 'plan_file');
+    assert.equal(r.nextState.denials, 0); // writing the plan must never count against the cap
+  });
+  it('still denies a gated tool for a non-plan file', () => {
+    const r = evaluatePlanGate(armed(), base({ toolName: 'Write', isPlanFile: false }));
+    assert.equal(r.action, 'deny');
+  });
 });

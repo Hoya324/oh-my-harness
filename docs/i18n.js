@@ -16,7 +16,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.4.0 \u00b7 MIT License',
+    'index.hero.badge': 'v0.4.2 \u00b7 MIT License',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>',
     'index.hero.subtitle': 'Smart Defaults for Claude Code',
     'index.hero.desc': 'A spec-driven autonomous loop with real walls \u2014 plus safety guards, intelligent model routing, and multi-agent orchestration, all through native hooks. Define a goal once; the harness implements, self-verifies, and cross-verifies until the spec is met. Zero config, instant boost.',
@@ -44,6 +44,17 @@ const translations = {
     'index.pipeline.s3.desc': 'Warns before destructive commands. Routes subagents to the right model tier. Enforces commit conventions.',
     'index.pipeline.s4.title': 'Task Complete',
     'index.pipeline.s4.desc': 'Verifies tests exist for changed code. Saves context snapshots before compaction.',
+    'index.pipeline.replay.label': 'live replay',
+    'index.pipeline.replay.m1': 'Detected: TypeScript · vitest · eslint',
+    'index.pipeline.replay.m2': 'Add rate limiting to the login API',
+    'index.pipeline.replay.m3': 'Tier 3 — auth domain, careful mode',
+    'index.pipeline.replay.m4': 'Heavy work — present a plan before editing',
+    'index.pipeline.replay.m5': 'Adding a sliding-window limiter to AuthController',
+    'index.pipeline.replay.m6': 'Architecture change → routed to opus',
+    'index.pipeline.replay.m7': 'rm -rf detected — confirm before running',
+    'index.pipeline.replay.m8': 'Conventional Commits enforced',
+    'index.pipeline.replay.m9': 'Changed code lacks tests — add them first',
+    'index.pipeline.replay.m10': 'Code changed — verify before stopping',
 
     // ── Index: Features ──
     'index.features.tag': 'Features',
@@ -434,7 +445,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.4.0 \u00b7 MIT \ub77c\uc774\uc120\uc2a4',
+    'index.hero.badge': 'v0.4.2 \u00b7 MIT \ub77c\uc774\uc120\uc2a4',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12</span>',
     'index.hero.subtitle': 'Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12',
     'index.hero.desc': '\uc9c4\uc9dc \ubcbd\uc744 \uac16\ucd98 \uc2a4\ud399 \uae30\ubc18 \uc790\uc728 \ub8e8\ud504 \u2014 \uc5ec\uae30\uc5d0 \uc548\uc804 \uac00\ub4dc, \uc9c0\ub2a5\ud615 \ubaa8\ub378 \ub77c\uc6b0\ud305, \uba40\ud2f0 \uc5d0\uc774\uc804\ud2b8 \uc624\ucf00\uc2a4\ud2b8\ub808\uc774\uc158\uae4c\uc9c0 \ubaa8\ub450 \ub124\uc774\ud2f0\ube0c \ud6c5\uc744 \ud1b5\ud574. \ubaa9\ud45c\ub97c \ud55c \ubc88 \uc815\uc758\ud558\uba74 \ud558\ub124\uc2a4\uac00 \uad6c\ud604\ud558\uace0 \uc790\uccb4 \uac80\uc99d\ud558\uace0 \uad50\ucc28 \uac80\uc99d\ud558\uc5ec \uc2a4\ud399\uc774 \ucda9\uc871\ub420 \ub54c\uae4c\uc9c0 \ubc18\ubcf5\ud569\ub2c8\ub2e4. \uc124\uc815 \uc5c6\uc774, \uc989\uc2dc \ud5a5\uc0c1.',
@@ -462,6 +473,17 @@ const translations = {
     'index.pipeline.s3.desc': '\ud30c\uad34\uc801 \uba85\ub839 \uc804\uc5d0 \uacbd\uace0\ud569\ub2c8\ub2e4. \uc11c\ube0c\uc5d0\uc774\uc804\ud2b8\ub97c \uc801\uc808\ud55c \ubaa8\ub378 \ud2f0\uc5b4\ub85c \ub77c\uc6b0\ud305\ud569\ub2c8\ub2e4. \ucee4\ubc0b \ucee8\ubca4\uc158\uc744 \uc801\uc6a9\ud569\ub2c8\ub2e4.',
     'index.pipeline.s4.title': '\uc791\uc5c5 \uc644\ub8cc',
     'index.pipeline.s4.desc': '\ubcc0\uacbd\ub41c \ucf54\ub4dc\uc5d0 \ub300\ud55c \ud14c\uc2a4\ud2b8 \uc874\uc7ac\ub97c \ud655\uc778\ud569\ub2c8\ub2e4. \uc555\ucd95 \uc804 \ucee8\ud14d\uc2a4\ud2b8 \uc2a4\ub0c5\uc0f7\uc744 \uc800\uc7a5\ud569\ub2c8\ub2e4.',
+    'index.pipeline.replay.label': '\ub77c\uc774\ube0c \ub9ac\ud50c\ub808\uc774',
+    'index.pipeline.replay.m1': '\uac10\uc9c0: TypeScript \u00b7 vitest \u00b7 eslint',
+    'index.pipeline.replay.m2': '\ub85c\uadf8\uc778 API\uc5d0 \ub808\uc774\ud2b8 \ub9ac\ubbf8\ud2b8 \ucd94\uac00\ud574\uc918',
+    'index.pipeline.replay.m3': 'Tier 3 \u2014 auth \ub3c4\uba54\uc778, \uc2e0\uc911 \ubaa8\ub4dc',
+    'index.pipeline.replay.m4': '\ubb34\uac70\uc6b4 \uc791\uc5c5 \u2014 \ud3b8\uc9d1 \uc804 \ud50c\ub79c\uc744 \uc81c\uc2dc\ud558\uc138\uc694',
+    'index.pipeline.replay.m5': 'AuthController\uc5d0 \uc2ac\ub77c\uc774\ub529 \uc708\ub3c4\uc6b0 \ub9ac\ubbf8\ud130\ub97c \ucd94\uac00\ud569\ub2c8\ub2e4',
+    'index.pipeline.replay.m6': '\uc544\ud0a4\ud14d\ucc98 \ubcc0\uacbd \u2192 opus\ub85c \ub77c\uc6b0\ud305',
+    'index.pipeline.replay.m7': 'rm -rf \uac10\uc9c0 \u2014 \uc2e4\ud589 \uc804 \ud655\uc778 \ud544\uc694',
+    'index.pipeline.replay.m8': 'Conventional Commits \uc801\uc6a9',
+    'index.pipeline.replay.m9': '\ubcc0\uacbd \ucf54\ub4dc\uc5d0 \ud14c\uc2a4\ud2b8 \uc5c6\uc74c \u2014 \uba3c\uc800 \ucd94\uac00\ud558\uc138\uc694',
+    'index.pipeline.replay.m10': '\ucf54\ub4dc \ubcc0\uacbd \uac10\uc9c0 \u2014 \uc885\ub8cc \uc804 \uac80\uc99d \uad8c\uc7a5',
 
     // ── Index: Features ──
     'index.features.tag': '\uae30\ub2a5',

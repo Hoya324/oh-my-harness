@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-06-25
+
+### Fixed
+- Plan Gate no longer blocks writes to the native plan-mode plan file (`~/.claude/plans/*.md`). Entering plan mode for Tier-3 work previously triggered spurious "editing blocked" denials before the plan could even be written, relying on the `maxDenials` fail-open to get through. `evaluatePlanGate` now takes an `isPlanFile` signal (allow, no denial increment), and `hooks/plan-gate.mjs` resolves the tool's target path against `~/.claude/plans/` to set it.
+
+### Added
+- Interactive hook-pipeline replay on the landing page — an animated chat-style demo of what each hook emits as a request flows through the four lifecycle stages. Bilingual (EN/KO), light/dark themed, and `prefers-reduced-motion` aware.
+
+### Docs
+- Synced the docs version badge (landing hero + docs sidebar) to the released version, and adopted the rule that release notes and docs versions stay in lockstep.
+
+### Internal
+- Added `test/i18n-parity.test.mjs` — asserts en/ko translation key parity and that every `data-i18n` key referenced in the HTML exists in both languages.
+
 ## [0.4.1] - 2026-06-25
 
 ### Fixed

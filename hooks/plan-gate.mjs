@@ -8,7 +8,8 @@
  * All decision logic lives in the pure lib/plan-gate.mjs::evaluatePlanGate.
  */
 import { readFileSync, writeFileSync, existsSync, renameSync, unlinkSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { join, resolve, sep } from 'path';
+import { homedir } from 'os';
 import { hookPreToolDeny, hookOutput, hookSilent, hookDebug } from './lib/output.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
 import { evaluatePlanGate } from '../lib/plan-gate.mjs';
@@ -40,12 +41,25 @@ try {
   const toolName = input.tool_name || input.toolName || '';
   const cfg = config.planGate || {};
 
+  // A write to the native plan-mode plan file (~/.claude/plans/*) must never be
+  // gated — that IS the planning step. Detect it from the tool's target path.
+  const toolInput = input.tool_input || input.toolInput || {};
+  const filePath = toolInput.file_path || toolInput.filePath || '';
+  let isPlanFile = false;
+  try {
+    if (filePath) {
+      const plansDir = join(homedir(), '.claude', 'plans');
+      isPlanFile = resolve(filePath).startsWith(plansDir + sep);
+    }
+  } catch { /* fail-open: treat as non-plan */ }
+
   const result = evaluatePlanGate(state, {
     toolName,
     gatedTools: cfg.gatedTools,
     maxDenials: cfg.maxDenials ?? 3,
     featureOff: false,
     disabled: false,
+    isPlanFile,
   });
 
   // Persist only when the state actually changed (clear / deny / max-denials).
