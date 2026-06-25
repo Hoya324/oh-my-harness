@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-06-25
+
+### Added
+- The landing-page hook-pipeline replay now cycles through multiple scenarios — adding a feature (Tier-3 guard path), a one-line fix (Tier-1 light path), and a dedicated verify-gate loop that shows the block → verify → allow behaviour (claim done → gate blocks → run the verify ladder → gate allows the stop). The scenario title rotates in the replay bar. Bilingual (EN/KO), light/dark, `prefers-reduced-motion` aware.
+
+### Fixed
+- Test-enforcement (`hooks/post-task.mjs` `hasTestFile`) now recognizes cross-file coverage. Previously it only matched a test whose basename and extension mirrored the source (`<base>.test<ext>`), so a `.js` file exercised by an `.mjs` test, or a parity/integration test that references the file by name, read as "no tests" and triggered a false `[omh:anti-rationalization]` warning. A `referencedByTest` fallback now scans the project's test directories for a test file that references the source by filename (matched on a path/quote/space boundary so `a.js` does not match inside `data.js`).
+
+### Docs
+- Synced every version surface (package/plugin/marketplace, README badges EN/KO, docs hero + sidebar) to 0.4.3.
+
 ## [0.4.2] - 2026-06-25
 
 ### Fixed
