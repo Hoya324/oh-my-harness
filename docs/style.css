@@ -493,6 +493,8 @@ nav {
   background: var(--accent);
   animation: replayPulse 1.8s ease-in-out infinite;
 }
+.replay-scn { display: none; }
+.replay-scn.on { display: inline; }
 .replay-ctrls { display: flex; gap: 0.35rem; }
 .replay-btn {
   width: 26px;
