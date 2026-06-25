@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-06-25
+
+### Fixed
+- Test-enforcement (`hooks/post-task.mjs`) now recognizes JVM/Gradle test conventions. A changed `src/main/kotlin/.../Foo.kt` (or `.java`/`.scala`/`.groovy`) with a `FooTest`/`FooTests`/`FooSpec`/`FooIT` under the mirrored `src/test/...` path is now counted as covered, instead of falsely warning "no test". Adds a case-sensitive `JVM_TEST_FILE` matcher (so production files like `unit.kt` are not misread as tests) and `src/main → src/test` mirror candidates.
+
+### Changed
+- The landing-page verify-gate replay scenario now portrays the verification system accurately: a risk-gated change (sensitive path + missing test) → the gate runs the verify ladder itself → recommends cross-model `/omh-verify` → independent rounds (Claude · GPT · Gemini) catch an edge case a single model missed → fix → criterion + revert/mutation check → cross-model consensus allows the stop. This replaces the previous "retry tests until green" framing. The pipeline "Task Complete" stage description was updated to match (risk-gating + cross-model verification, harness owns done).
+
 ## [0.4.4] - 2026-06-25
 
 ### Fixed
