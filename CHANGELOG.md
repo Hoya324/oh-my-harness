@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-06-25
+
+### Fixed
+- Plugin load error "Duplicate hooks file detected". The plugin manifest (`.claude-plugin/plugin.json`) declared `"hooks": "./hooks/hooks.json"`, but Claude Code already auto-loads `hooks/hooks.json` from the plugin root, so the manifest reference loaded it a second time. Removed the manifest `hooks` field (it should only point to *additional* hook files); the standard `hooks/hooks.json` continues to load automatically.
+
+### Changed
+- The landing-page verify-gate replay scenario now shows the gate looping multiple times until green — claim done → gate blocks (tests not run) → run lint + tests → gate blocks again (still failing) → fix → all green → stop allowed — instead of a single block→allow.
+
 ## [0.4.3] - 2026-06-25
 
 ### Added
