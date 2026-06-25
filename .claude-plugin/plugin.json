@@ -1,6 +1,6 @@
 {
   "name": "oh-my-harness",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Spec-driven autonomous Claude Code harness — autonomous loop with self/cross-verification, weight-aware routing & multi-model independent verify, smart defaults, test enforcement, model routing",
   "author": { "name": "Hoya324" },
   "repository": "https://github.com/Hoya324/oh-my-harness",

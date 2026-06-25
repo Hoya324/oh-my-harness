@@ -244,6 +244,44 @@ describe('post-task hook', () => {
     assert.ok(!ctx.includes('anti-rationalization'), 'should not warn');
   });
 
+  it('reports verified when a differently-named test references the file', () => {
+    writeConfig({
+      features: { testEnforcement: true },
+      testEnforcement: { minCases: 2 },
+    });
+    // Source does not follow the test-name convention, but a parity/integration
+    // test under test/ references it by filename → that IS coverage.
+    mkdirSync(join(TMP, 'src'), { recursive: true });
+    writeFileSync(join(TMP, 'src', 'i18n.js'), 'export const t = {};');
+    mkdirSync(join(TMP, 'test'), { recursive: true });
+    writeFileSync(join(TMP, 'test', 'parity.test.mjs'), "import { readFileSync } from 'fs';\nreadFileSync('src/i18n.js', 'utf8');\n");
+    const raw = runHook('post-task.mjs', {
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/i18n.js' },
+    });
+    const ctx = getContext(raw);
+    assert.ok(!ctx.includes('anti-rationalization'), 'a referencing test should count as coverage');
+    assert.ok(ctx.includes('test-enforcement'), 'should confirm tests found');
+  });
+
+  it('still warns when no test references an unconventionally-tested file', () => {
+    writeConfig({
+      features: { testEnforcement: true },
+      testEnforcement: { minCases: 2 },
+    });
+    mkdirSync(join(TMP, 'src'), { recursive: true });
+    writeFileSync(join(TMP, 'src', 'lonely.js'), 'export const x = 1;');
+    mkdirSync(join(TMP, 'test'), { recursive: true });
+    // A test exists but references a DIFFERENT file — must not count.
+    writeFileSync(join(TMP, 'test', 'other.test.mjs'), "readFileSync('src/data.js');\n");
+    const raw = runHook('post-task.mjs', {
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/lonely.js' },
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('anti-rationalization'), 'unreferenced file should still warn');
+  });
+
   it('stays silent when no code changes', () => {
     writeConfig({
       features: { testEnforcement: true },

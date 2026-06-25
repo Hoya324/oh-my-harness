@@ -54,12 +54,13 @@ test('no translation value is empty or whitespace-only', () => {
   }
 });
 
-test('the new pipeline replay keys are present in both languages', () => {
+test('the pipeline replay scenario keys are present in both languages', () => {
   const t = loadTranslations();
-  for (let i = 1; i <= 10; i++) {
-    const key = `index.pipeline.replay.m${i}`;
-    assert.ok(key in t.en, `${key} missing in en`);
-    assert.ok(key in t.ko, `${key} missing in ko`);
+  for (const s of [1, 2, 3]) {
+    const title = `index.pipeline.replay.s${s}.title`;
+    assert.ok(title in t.en && title in t.ko, `${title} missing`);
   }
-  assert.ok('index.pipeline.replay.label' in t.en && 'index.pipeline.replay.label' in t.ko);
+  const msgKeys = Object.keys(t.en).filter((k) => /^index\.pipeline\.replay\.s\d+\.m\d+$/.test(k));
+  assert.ok(msgKeys.length >= 16, `expected >= 16 replay message keys, got ${msgKeys.length}`);
+  for (const k of msgKeys) assert.ok(k in t.ko, `${k} missing in ko`);
 });
