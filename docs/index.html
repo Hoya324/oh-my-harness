@@ -45,7 +45,7 @@
 
   <!-- Hero -->
   <section class="hero">
-    <div class="hero-badge" data-i18n="index.hero.badge">v0.4.3 &middot; MIT License</div>
+    <div class="hero-badge" data-i18n="index.hero.badge">v0.4.4 &middot; MIT License</div>
     <h1 class="hero-title" data-i18n-html="index.hero.title">
       Oh My<br><span class="gradient-text">Harness</span>
       <span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>
@@ -141,7 +141,7 @@
             <span class="replay-dot"></span>
             <span class="replay-scn on" data-scn="0" data-i18n="index.pipeline.replay.s1.title">Example: add a feature</span>
             <span class="replay-scn" data-scn="1" data-i18n="index.pipeline.replay.s2.title">Example: a one-line fix</span>
-            <span class="replay-scn" data-scn="2" data-i18n="index.pipeline.replay.s3.title">Example: the verify gate</span>
+            <span class="replay-scn" data-scn="2" data-i18n="index.pipeline.replay.s3.title">Example: the verify gate loops</span>
           </span>
           <div class="replay-ctrls">
             <button class="replay-btn" id="replay-toggle" type="button" aria-label="play / pause">&#10073;&#10073;</button>
@@ -162,9 +162,11 @@
           <div class="rmsg rclaude" data-scn="1" data-stage="3"><span class="rtxt" data-i18n="index.pipeline.replay.s2.m4">Fixed 'recieve' &#8594; 'receive'</span></div>
           <div class="rmsg" data-scn="1" data-stage="4" data-cat="info"><span class="rtag">[omh:commit-convention]</span><span class="rtxt" data-i18n="index.pipeline.replay.s2.m5">docs: fix typo in README</span></div>
           <div class="rmsg rclaude" data-scn="2" data-stage="4"><span class="rtxt" data-i18n="index.pipeline.replay.s3.m1">Done &mdash; auth middleware updated</span></div>
-          <div class="rmsg" data-scn="2" data-stage="4" data-cat="danger"><span class="rtag">[omh:verify-gate]</span><span class="rtxt" data-i18n="index.pipeline.replay.s3.m2">Risky change, tests not run &#8594; keep going</span></div>
-          <div class="rmsg rclaude" data-scn="2" data-stage="4"><span class="rtxt" data-i18n="index.pipeline.replay.s3.m3">Running the verify ladder: lint + tests&hellip;</span></div>
-          <div class="rmsg" data-scn="2" data-stage="4" data-cat="ok"><span class="rtag">[omh:verify-gate]</span><span class="rtxt" data-i18n="index.pipeline.replay.s3.m4">Tests green &#8594; stop allowed</span></div>
+          <div class="rmsg" data-scn="2" data-stage="4" data-cat="danger"><span class="rtag">[omh:verify-gate]</span><span class="rtxt" data-i18n="index.pipeline.replay.s3.m2">Tests not run yet &#8594; keep going</span></div>
+          <div class="rmsg rclaude" data-scn="2" data-stage="4"><span class="rtxt" data-i18n="index.pipeline.replay.s3.m3">Running lint + tests&hellip;</span></div>
+          <div class="rmsg" data-scn="2" data-stage="4" data-cat="danger"><span class="rtag">[omh:verify-gate]</span><span class="rtxt" data-i18n="index.pipeline.replay.s3.m4">2 tests still failing &#8594; keep going</span></div>
+          <div class="rmsg rclaude" data-scn="2" data-stage="4"><span class="rtxt" data-i18n="index.pipeline.replay.s3.m5">Fixed the failing cases&hellip;</span></div>
+          <div class="rmsg" data-scn="2" data-stage="4" data-cat="ok"><span class="rtag">[omh:verify-gate]</span><span class="rtxt" data-i18n="index.pipeline.replay.s3.m6">All green &#8594; stop allowed</span></div>
         </div>
       </div>
     </div>

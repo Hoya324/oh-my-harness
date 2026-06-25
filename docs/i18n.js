@@ -16,7 +16,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.4.3 \u00b7 MIT License',
+    'index.hero.badge': 'v0.4.4 \u00b7 MIT License',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>',
     'index.hero.subtitle': 'Smart Defaults for Claude Code',
     'index.hero.desc': 'A spec-driven autonomous loop with real walls \u2014 plus safety guards, intelligent model routing, and multi-agent orchestration, all through native hooks. Define a goal once; the harness implements, self-verifies, and cross-verifies until the spec is met. Zero config, instant boost.',
@@ -58,11 +58,13 @@ const translations = {
     'index.pipeline.replay.s2.m3': 'Trivial edit → routed to haiku',
     'index.pipeline.replay.s2.m4': "Fixed 'recieve' → 'receive'",
     'index.pipeline.replay.s2.m5': 'docs: fix typo in README',
-    'index.pipeline.replay.s3.title': 'Example: the verify gate',
+    'index.pipeline.replay.s3.title': 'Example: the verify gate loops',
     'index.pipeline.replay.s3.m1': 'Done — auth middleware updated',
-    'index.pipeline.replay.s3.m2': 'Risky change, tests not run → keep going',
-    'index.pipeline.replay.s3.m3': 'Running the verify ladder: lint + tests…',
-    'index.pipeline.replay.s3.m4': 'Tests green → stop allowed',
+    'index.pipeline.replay.s3.m2': 'Tests not run yet → keep going',
+    'index.pipeline.replay.s3.m3': 'Running lint + tests…',
+    'index.pipeline.replay.s3.m4': '2 tests still failing → keep going',
+    'index.pipeline.replay.s3.m5': 'Fixed the failing cases…',
+    'index.pipeline.replay.s3.m6': 'All green → stop allowed',
 
     // ── Index: Features ──
     'index.features.tag': 'Features',
@@ -453,7 +455,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.4.3 \u00b7 MIT \ub77c\uc774\uc120\uc2a4',
+    'index.hero.badge': 'v0.4.4 \u00b7 MIT \ub77c\uc774\uc120\uc2a4',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12</span>',
     'index.hero.subtitle': 'Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12',
     'index.hero.desc': '\uc9c4\uc9dc \ubcbd\uc744 \uac16\ucd98 \uc2a4\ud399 \uae30\ubc18 \uc790\uc728 \ub8e8\ud504 \u2014 \uc5ec\uae30\uc5d0 \uc548\uc804 \uac00\ub4dc, \uc9c0\ub2a5\ud615 \ubaa8\ub378 \ub77c\uc6b0\ud305, \uba40\ud2f0 \uc5d0\uc774\uc804\ud2b8 \uc624\ucf00\uc2a4\ud2b8\ub808\uc774\uc158\uae4c\uc9c0 \ubaa8\ub450 \ub124\uc774\ud2f0\ube0c \ud6c5\uc744 \ud1b5\ud574. \ubaa9\ud45c\ub97c \ud55c \ubc88 \uc815\uc758\ud558\uba74 \ud558\ub124\uc2a4\uac00 \uad6c\ud604\ud558\uace0 \uc790\uccb4 \uac80\uc99d\ud558\uace0 \uad50\ucc28 \uac80\uc99d\ud558\uc5ec \uc2a4\ud399\uc774 \ucda9\uc871\ub420 \ub54c\uae4c\uc9c0 \ubc18\ubcf5\ud569\ub2c8\ub2e4. \uc124\uc815 \uc5c6\uc774, \uc989\uc2dc \ud5a5\uc0c1.',
@@ -495,11 +497,13 @@ const translations = {
     'index.pipeline.replay.s2.m3': '사소한 수정 → haiku로 라우팅',
     'index.pipeline.replay.s2.m4': "'recieve' → 'receive' 수정",
     'index.pipeline.replay.s2.m5': 'docs: README 오타 수정',
-    'index.pipeline.replay.s3.title': '예시: 검증 게이트',
+    'index.pipeline.replay.s3.title': '예시: 검증 게이트 반복',
     'index.pipeline.replay.s3.m1': '완료 — auth 미들웨어 수정함',
-    'index.pipeline.replay.s3.m2': '위험한 변경, 테스트 미실행 → 계속 진행',
-    'index.pipeline.replay.s3.m3': '검증 래더 실행: lint + 테스트…',
-    'index.pipeline.replay.s3.m4': '테스트 통과 → 종료 허용',
+    'index.pipeline.replay.s3.m2': '테스트 미실행 → 계속 진행',
+    'index.pipeline.replay.s3.m3': 'lint + 테스트 실행 중…',
+    'index.pipeline.replay.s3.m4': '테스트 2개 여전히 실패 → 계속 진행',
+    'index.pipeline.replay.s3.m5': '실패 케이스 수정함…',
+    'index.pipeline.replay.s3.m6': '전부 통과 → 종료 허용',
 
     // ── Index: Features ──
     'index.features.tag': '\uae30\ub2a5',
