@@ -10,7 +10,7 @@
  * Fallback: if git is unavailable it falls back to checking the last tool's
  * file_path from stdin (original behaviour).
  */
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname, basename, extname } from 'path';
 import { execSync } from 'child_process';
 import { hookOutput, hookSilent } from './lib/output.mjs';
@@ -57,6 +57,27 @@ function getStdinCodeFile(input) {
   return [];
 }
 
+/**
+ * A test file under a test dir that mentions this filename counts as coverage —
+ * catches parity/integration tests that don't follow the `<base>.test` naming
+ * convention or use a different module extension than the source (e.g. a `.js`
+ * file exercised by an `.mjs` test). Matched on a path/quote/space boundary so
+ * `a.js` does not spuriously match inside `data.js`.
+ */
+function referencedByTest(fileName) {
+  const escaped = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp("(^|[\\\\/'\"\\s])" + escaped + "(['\"\\s)]|$)");
+  for (const td of ['test', 'tests', '__tests__']) {
+    let entries;
+    try { entries = readdirSync(join(projectRoot, td)); } catch { continue; }
+    for (const entry of entries) {
+      if (!TEST_FILE.test(entry)) continue;
+      try { if (re.test(readFileSync(join(projectRoot, td, entry), 'utf8'))) return true; } catch { /* unreadable: skip */ }
+    }
+  }
+  return false;
+}
+
 /** Check if a test file exists for the given source file. */
 function hasTestFile(file) {
   const dir = dirname(file);
@@ -74,7 +95,8 @@ function hasTestFile(file) {
     join(dirname(dir), 'tests', `${base}${ext}`),
     join(dir, `${base}_test${ext}`), // Go convention
   ];
-  return candidates.some(c => existsSync(join(projectRoot, c)));
+  if (candidates.some(c => existsSync(join(projectRoot, c)))) return true;
+  return referencedByTest(basename(file));
 }
 
 try {
