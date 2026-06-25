@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-06-25
+
+### Fixed
+- Hook config loader (`hooks/lib/hook-config.mjs` `loadConfig`) now deep-merges a found config over the built-in defaults, mirroring `lib/config.mjs` `readConfig`. A partial or stale config written by an older version (missing `features.autonomousLoop`, `features.verifyGate`, `features.planGate`, etc.) previously read those keys as `undefined`, silently disabling the autonomous loop in `loop-guard.mjs` even though the documented default is ON. Missing keys now inherit their documented defaults; explicit values still win; an uninitialized project still yields `null` so hooks stay silent.
+
+### Internal
+- Extracted a reusable `mergeWithDefaults(raw)` export in `lib/config.mjs` — a single source of truth for default-merging across the CLI (`readConfig`) and hook (`loadConfig`) config readers. It clones the defaults base so a consumer mutating the returned config can never pollute the shared module-level `DEFAULTS`.
+
 ## [0.4.0] - 2026-06-23
 
 ### Added
