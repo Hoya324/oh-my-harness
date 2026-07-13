@@ -503,6 +503,20 @@ Runs N independent verify+fix rounds over the current `git diff`, rotating model
 
 A disk-anchored `STATE.md` under `.claude/.omh/` holds goal, current phase, key decisions, and progress. It is re-injected at session start and referenced in the pre-compaction snapshot, so working context survives session boundaries and compaction — directly mitigating context rot.
 
+### 18. Long-Term Memory
+
+**MCP:** `omh-memory` (knowledge graph) · **Default:** ON
+
+A cross-session, **cross-runtime** knowledge graph, backed by the reference `@modelcontextprotocol/server-memory` and stored at `~/.omh/memory/graph.jsonl` — **one store shared by Claude Code and Codex**. A launcher (`bin/omh-memory.sh`) points every runtime at the same file; Claude Code auto-loads it via the plugin's `.mcp.json`, Codex via a `[mcp_servers.omh-memory]` block.
+
+- **Read** — before planning, `/omh-loop` and `/omh-spec` query the graph for prior learnings, already-verified `quickCheck`/`verify` commands, and known pitfalls.
+- **Write** — a failed iteration's Reflexion becomes a `Learning`; a green verify appends the verified commands to the `Project`; `/omh-verify` persists high-confidence findings (2+ model consensus).
+- **Access** — agents use the MCP tools live; hooks/CLI use `lib/memory.mjs` (atomic, server-format-compatible: `read` / `search` / `add-learning` / `add-observation` / `stats`).
+- **Graceful degradation** — if the server is unavailable, LTM steps are skipped silently; the loop never blocks on memory.
+- **Concurrency** — the graph server is single-writer by design; fine for personal single-agent use, avoid heavy simultaneous writes from both runtimes at once.
+
+> Store: `~/.omh/memory/graph.jsonl`. Re-seed file memory with `node ~/.omh/bin/seed-from-claude-memory.mjs <memory-dir>`.
+
 ### Verify Gate
 
 **Hook:** `Stop` (`verify-gate.mjs`) · **Default:** ON

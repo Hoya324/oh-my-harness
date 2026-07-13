@@ -438,6 +438,20 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 `.claude/.omh/STATE.md`에 목표·현재 phase·핵심 결정·진행을 보관합니다. 세션 시작 시 재주입되고 압축 전 스냅샷에서 참조되어, 세션 경계와 compaction을 넘어 작업 컨텍스트가 유지됩니다 — context rot 직접 방어.
 
+### 18. 장기 메모리 (Long-Term Memory)
+
+**MCP:** `omh-memory` (지식그래프) · **기본값:** ON
+
+세션·런타임을 넘나드는 지식그래프. 레퍼런스 `@modelcontextprotocol/server-memory` 기반, 스토어는 `~/.omh/memory/graph.jsonl` — **Claude Code와 Codex가 공유하는 하나의 스토어**. 런처(`bin/omh-memory.sh`)가 모든 런타임을 같은 파일로 향하게 하며, Claude Code는 플러그인 `.mcp.json`으로 자동 로드, Codex는 `[mcp_servers.omh-memory]` 블록으로 연결.
+
+- **읽기** — 계획 전에 `/omh-loop`·`/omh-spec`이 과거 학습·이미 검증된 `quickCheck`/`verify` 커맨드·기존 함정을 조회.
+- **쓰기** — 실패한 iteration의 Reflexion은 `Learning`이 되고, 통과한 verify는 검증된 커맨드를 `Project`에 적립, `/omh-verify`는 고신뢰 findings(2+ 모델 합의)를 영속화.
+- **접근** — 에이전트는 MCP 툴을 실시간으로, 훅/CLI는 `lib/memory.mjs`(원자적, 서버와 포맷 호환: `read`/`search`/`add-learning`/`add-observation`/`stats`).
+- **Graceful degradation** — 서버 미연결 시 LTM 단계는 조용히 스킵, 루프는 메모리 때문에 막히지 않음.
+- **동시성** — 그래프 서버는 single-writer 설계. 개인용(한 번에 한 에이전트)엔 무해하나 양 런타임 동시 대량 쓰기는 피할 것.
+
+> 스토어: `~/.omh/memory/graph.jsonl`. 파일메모리 재시드: `node ~/.omh/bin/seed-from-claude-memory.mjs <memory-dir>`.
+
 ### 검증 게이트
 
 **훅:** `Stop` (`verify-gate.mjs`) · **기본값:** ON

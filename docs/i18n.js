@@ -73,7 +73,7 @@ const translations = {
     // ── Index: Features ──
     'index.features.tag': 'Features',
     'index.features.title': 'Everything OMH does for you',
-    'index.features.desc': '17 features that activate automatically. No manual intervention needed.',
+    'index.features.desc': '18 features that activate automatically. No manual intervention needed.',
     'index.features.f0.title': 'Autonomous Loop',
     'index.features.f0.desc': 'Spec-driven, tiered, self- and cross-verifying. Author a machine-checkable SPEC.md, then /omh-loop implements, verifies, and cross-verifies until every acceptance criterion passes — or a guardrail fires. The Stop hook owns continuation and termination; the model never decides when to stop.',
     'index.features.f1.title': 'Safety Guards',
@@ -88,6 +88,8 @@ const translations = {
     'index.features.f5.desc': 'Verifies tests exist after every code change. Auto-generates project-specific skills for code review, test writing, and linting.',
     'index.features.f6.title': 'Weight-Aware Verification',
     'index.features.f6.desc': 'Classifies task weight (Tier 1/2/3); heavy work runs N independent verify+fix rounds rotating Claude, GPT, and Gemini. Plus disk-anchored STATE.md to survive context compaction.',
+    'index.features.f7.title': 'Long-Term Memory',
+    'index.features.f7.desc': 'A knowledge-graph memory shared across Claude Code and Codex — one store, both runtimes. The loop reads prior learnings and verified commands before planning, then persists reflexions and high-confidence findings so lessons carry into the next session.',
 
     // ── Index: Agents ──
     'index.agents.tag': 'Model Routing',
@@ -410,6 +412,7 @@ const translations = {
     'docs.teamVsAgent.r5.team': 'Coordinated team workflows',
     'docs.features.nativeTeam': 'Native Team',
     'docs.features.autonomousLoop': 'Autonomous Loop',
+    'docs.features.longTermMemory': 'Long-Term Memory',
     'docs.settingsRef.title': 'Settings Reference',
     'docs.settingsRef.th.path': 'Path',
     'docs.settingsRef.th.type': 'Type',
@@ -516,7 +519,7 @@ const translations = {
     // ── Index: Features ──
     'index.features.tag': '\uae30\ub2a5',
     'index.features.title': 'OMH\uac00 \uc5ec\ub7ec\ubd84\uc744 \uc704\ud574 \ud558\ub294 \ubaa8\ub4e0 \uac83',
-    'index.features.desc': '\uc790\ub3d9\uc73c\ub85c \ud65c\uc131\ud654\ub418\ub294 17\uac00\uc9c0 \uae30\ub2a5. \uc218\ub3d9 \uac1c\uc785\uc774 \ud544\uc694 \uc5c6\uc2b5\ub2c8\ub2e4.',
+    'index.features.desc': '\uc790\ub3d9\uc73c\ub85c \ud65c\uc131\ud654\ub418\ub294 18\uac00\uc9c0 \uae30\ub2a5. \uc218\ub3d9 \uac1c\uc785\uc774 \ud544\uc694 \uc5c6\uc2b5\ub2c8\ub2e4.',
     'index.features.f0.title': '\uc790\uc728 \ub8e8\ud504',
     'index.features.f0.desc': '\uc2a4\ud399 \uae30\ubc18, \ud2f0\uc5b4\ubcc4, \uc790\uccb4 \ubc0f \uad50\ucc28 \uac80\uc99d. \uae30\uacc4\uac00 \uac80\uc99d \uac00\ub2a5\ud55c SPEC.md\ub97c \uc791\uc131\ud55c \ub4a4, /omh-loop\uac00 \ubaa8\ub4e0 \uc778\uc218 \uae30\uc900\uc774 \ud1b5\uacfc\ud558\uac70\ub098 \uac00\ub4dc\ub808\uc77c\uc774 \uc791\ub3d9\ud560 \ub54c\uae4c\uc9c0 \uad6c\ud604\ud558\uace0 \uac80\uc99d\ud558\uace0 \uad50\ucc28 \uac80\uc99d\ud569\ub2c8\ub2e4. Stop \ud6c5\uc774 \uacc4\uc18d\uacfc \uc885\ub8cc\ub97c \uacb0\uc815\ud558\uba70, \ubaa8\ub378\uc740 \uc5b8\uc81c \uba48\ucd9c\uc9c0 \uacb0\uc815\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.',
     'index.features.f1.title': '\uc548\uc804 \uac00\ub4dc',
@@ -531,6 +534,8 @@ const translations = {
     'index.features.f5.desc': '\ubaa8\ub4e0 \ucf54\ub4dc \ubcc0\uacbd \ud6c4 \ud14c\uc2a4\ud2b8 \uc874\uc7ac\ub97c \ud655\uc778. \ucf54\ub4dc \ub9ac\ubdf0, \ud14c\uc2a4\ud2b8 \uc791\uc131, \ub9b0\ud305\uc744 \uc704\ud55c \ud504\ub85c\uc81d\ud2b8\ubcc4 \uc2a4\ud0ac\uc744 \uc790\ub3d9 \uc0dd\uc131.',
     'index.features.f6.title': '\ubb34\uac8c \ube44\ub840 \uac80\uc99d',
     'index.features.f6.desc': '\uc791\uc5c5 \ubb34\uac8c(Tier 1/2/3)\ub97c \ud310\uc815 \u2014 \ubb34\uac70\uc6b4 \uc791\uc5c5\uc740 Claude\u00b7GPT\u00b7Gemini\ub97c \ub85c\ud14c\uc774\uc158\ud558\uba70 N\ud68c \ub3c5\ub9bd \uac80\uc99d+\uc218\uc815. \ucef4\ud328\ud2b8\ub97c \uacac\ub514\ub294 \ub514\uc2a4\ud06c \uc575\ucee4 STATE.md \ud3ec\ud568.',
+    'index.features.f7.title': '\uc7a5\uae30 \uba54\ubaa8\ub9ac',
+    'index.features.f7.desc': 'Claude Code\uc640 Codex\uac00 \uacf5\uc720\ud558\ub294 \uc9c0\uc2dd\uadf8\ub798\ud504 \uba54\ubaa8\ub9ac \u2014 \ud558\ub098\uc758 \uc2a4\ud1a0\uc5b4, \ub450 \ub7f0\ud0c0\uc784. \ub8e8\ud504\uac00 \uacc4\ud68d \uc804 \uacfc\uac70 \ud559\uc2b5\u00b7\uac80\uc99d\ub41c \ucee4\ub9e8\ub4dc\ub97c \uc77d\uace0, reflexion\u00b7\uace0\uc2e0\ub8b0 findings\ub97c \uc601\uc18d\ud654\ud574 \uad50\ud6c8\uc774 \ub2e4\uc74c \uc138\uc158\uc73c\ub85c \uc774\uc5b4\uc9d1\ub2c8\ub2e4.',
 
     // ── Index: Agents ──
     'index.agents.tag': '\ubaa8\ub378 \ub77c\uc6b0\ud305',
@@ -853,6 +858,7 @@ const translations = {
     'docs.teamVsAgent.r5.team': '\uc870\uc728\ub41c \ud300 \uc6cc\ud06c\ud50c\ub85c\uc6b0',
     'docs.features.nativeTeam': '\ub124\uc774\ud2f0\ube0c \ud300',
     'docs.features.autonomousLoop': '\uc790\uc728 \ub8e8\ud504',
+    'docs.features.longTermMemory': '\uc7a5\uae30 \uba54\ubaa8\ub9ac',
     'docs.settingsRef.title': '\uc124\uc815 \ub808\ud37c\ub7f0\uc2a4',
     'docs.settingsRef.th.path': '\uacbd\ub85c',
     'docs.settingsRef.th.type': '\ud0c0\uc785',
