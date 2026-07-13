@@ -115,6 +115,7 @@ OMH의 기능은 세 그룹으로 나뉩니다 — 모든 세션에서 자동으
 | **자율 루프** | `Stop` (loop-guard) + `/omh-loop` | ON | 스펙 기반 루프: 검증 사다리 + 교차 검증이 완료를 확인할 때까지 계속을 강제하며, 티어별 가드레일(예산, 타임아웃, 진척 없음, 진동)을 적용 |
 | 스펙 작성 | `/omh-spec` | ON | 기계가 검증 가능한 `SPEC.md`(EARS 수용 기준 → 검증 명령어)를 작성해 루프의 기준점으로 삼음 |
 | N-라운드 검증 | `/omh-verify` | — | 모델 로테이션(Claude → GPT/codex → Gemini)으로 N회 독립 검증+수정; 외부 검증자는 읽기 전용 |
+| **장기 메모리** | MCP `omh-memory` + `/omh-loop`, `/omh-verify` | ON | 세션·런타임을 넘나드는 지식그래프(Codex와 공유): 루프가 과거 학습을 읽고 reflexion·고신뢰 findings를 영속화 |
 | 네이티브 팀 | `/team-spawn` | ON | Claude Code 내장 팀 오케스트레이션 (템플릿 지원) |
 | 멀티 에이전트 | `/agent-spawn` | — | tmux + git worktree를 활용한 병렬 Claude 에이전트 |
 
@@ -164,6 +165,35 @@ graph TD
 - **진짜 가드레일** — 티어별 & 티어 교차 반복 상한, 벽시계 타임아웃, 진척 없음/정체 및 진동 감지, `stop_hook_active` 자가 루프 가드, 동시 세션/worktree 격리, 원자적 상태 쓰기, fail-open, 그리고 `STOP` 킬 스위치.
 
 설계와 그 근거가 된 연구(Ralph Wiggum 루프, Reflexion, Chain-of-Verification, FrugalGPT 스타일 캐스케이드, EARS)는 [docs/loop.ko.md](docs/loop.ko.md)에 정리되어 있습니다.
+
+---
+
+## 장기 메모리 (LTM)
+
+OMH는 학습한 것을 **지식그래프 메모리**에 영속화하며, 이 저장소는 **Claude Code와 Codex가 공유**합니다 — 하나의 스토어, 두 런타임 — 한 세션(과 한 에이전트)의 교훈이 다음으로 이어집니다.
+
+```bash
+# `omh-memory` MCP 서버로 프로비저닝됨; 스토어는 ~/.omh/memory/graph.jsonl
+node ~/.omh/lib/memory.mjs search "<project>"   # 이 프로젝트가 하네스에 이미 가르친 것은?
+node ~/.omh/lib/memory.mjs stats                 # 엔티티 / 관계 / 스토어 경로
+```
+
+- **백엔드** — 레퍼런스 지식그래프 서버(`@modelcontextprotocol/server-memory`): 로컬, API 키 불필요, JSONL 파일에 엔티티+관계+observation. 런처(`bin/omh-memory.sh`)가 모든 런타임을 동일한 `~/.omh/memory/graph.jsonl`로 향하게 합니다.
+- **루프가 읽음** — 계획 전에 `/omh-loop`·`/omh-spec`이 그래프에서 과거 학습·이미 검증된 `quickCheck`/`verify` 커맨드·기존 함정을 조회해 계획에 반영합니다(이미 아는 것을 재탐지하지 않음).
+- **루프가 씀** — 실패한 iteration의 Reflexion은 `Learning` 엔티티가 되고, 통과한 verify는 검증된 커맨드를 `Project`에 적립하며, `/omh-verify`는 **고신뢰 findings**(2+ 모델 합의)를 영속화해 다음 실행이 재발견하지 않게 합니다.
+- **에이전트 + 프로그래매틱 접근** — 에이전트는 MCP 툴을 실시간으로, 훅/CLI는 `lib/memory.mjs`(원자적 쓰기, 서버와 포맷 호환)로 결정론적으로 접근합니다.
+- **Graceful degradation** — MCP 서버가 미연결(또는 오프라인)이면 LTM 단계는 조용히 스킵됩니다. 루프는 메모리 때문에 막히지 않습니다.
+
+> **동시성 주의.** 지식그래프 서버는 인메모리 복사본을 두고 mutation마다 파일 전체를 다시 쓰므로, 한 번에 한 writer를 전제로 설계됐습니다. 개인용(한 번에 한 에이전트)엔 무해하나, Claude Code와 Codex가 동시에 대량 쓰기하는 것은 피하세요.
+
+**설정** — Claude Code는 플러그인의 `.mcp.json`에서 서버를 자동 로드합니다. Codex는 `~/.codex/config.toml`에 추가하세요:
+
+```toml
+[mcp_servers.omh-memory]
+command = "bash"
+args = ["/ABSOLUTE/PATH/TO/.omh/bin/omh-memory.sh"]
+startup_timeout_sec = 60
+```
 
 ---
 

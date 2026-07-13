@@ -115,6 +115,7 @@ OMH's features fall into three groups — **automatic guards** that fire on ever
 | **Autonomous Loop** | `Stop` (loop-guard) + `/omh-loop` | ON | Spec-driven loop: forces continuation until the verify ladder + cross-verify confirm done, with tiered guardrails (budget, timeout, no-progress, oscillation) |
 | Spec Authoring | `/omh-spec` | ON | Writes a machine-checkable `SPEC.md` (EARS acceptance criteria → verify commands) to anchor the loop |
 | N-Round Verify | `/omh-verify` | — | N independent verify+fix rounds with model rotation (Claude → GPT/codex → Gemini); external verifiers run read-only |
+| **Long-Term Memory** | MCP `omh-memory` + `/omh-loop`, `/omh-verify` | ON | Cross-session, cross-runtime knowledge graph (shared with Codex): the loop reads prior learnings and persists reflexions & high-confidence findings |
 | Native Team | `/team-spawn` | ON | Native Claude Code team orchestration with templates |
 | Multi-Agent | `/agent-spawn` | — | Parallel Claude agents in tmux with git worktrees |
 
@@ -164,6 +165,35 @@ graph TD
 - **Real guardrails** — per-tier & cross-tier iteration caps, wall-clock timeout, no-progress/plateau and oscillation detection, `stop_hook_active` self-loop guard, concurrent-session/worktree isolation, atomic state, fail-open, and a `STOP` kill switch.
 
 The design and the research behind it (Ralph Wiggum loop, Reflexion, Chain-of-Verification, FrugalGPT-style cascades, EARS) are documented in [docs/loop.md](docs/loop.md).
+
+---
+
+## Long-Term Memory (LTM)
+
+OMH persists what it learns to a **knowledge-graph memory** that is **shared across Claude Code and Codex** — one store, both runtimes — so lessons from one session (and one agent) carry into the next.
+
+```bash
+# Provisioned as the `omh-memory` MCP server; store lives at ~/.omh/memory/graph.jsonl
+node ~/.omh/lib/memory.mjs search "<project>"   # what has this project already taught the harness?
+node ~/.omh/lib/memory.mjs stats                 # entities / relations / store path
+```
+
+- **Backend** — the reference knowledge-graph server (`@modelcontextprotocol/server-memory`): local, no API key, entities + relations + observations in a JSONL file. A launcher (`bin/omh-memory.sh`) points every runtime at the same `~/.omh/memory/graph.jsonl`.
+- **The loop reads it** — before planning, `/omh-loop` and `/omh-spec` query the graph for prior learnings, already-verified `quickCheck`/`verify` commands, and known pitfalls, and fold them into the plan (no re-detecting what's already known).
+- **The loop writes it** — a failed iteration's Reflexion becomes a `Learning` entity; a green verify appends the verified commands to the `Project`; `/omh-verify` persists **high-confidence findings** (2+ models agree) so the next run doesn't rediscover them.
+- **Agent + programmatic access** — the agent uses the MCP tools live; hooks/CLI use `lib/memory.mjs` (atomic writes, format-compatible with the server) for deterministic access.
+- **Graceful degradation** — if the MCP server isn't connected (or offline), LTM steps are skipped silently; the loop never blocks on memory.
+
+> **Concurrency note.** The knowledge-graph server keeps an in-memory copy and rewrites the whole file per mutation, so it is designed for one writer at a time. For personal single-agent use this is fine; avoid heavy simultaneous writes from Claude Code and Codex at the same instant.
+
+**Setup** — Claude Code auto-loads the server from the plugin's `.mcp.json`. For Codex, add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.omh-memory]
+command = "bash"
+args = ["/ABSOLUTE/PATH/TO/.omh/bin/omh-memory.sh"]
+startup_timeout_sec = 60
+```
 
 ---
 

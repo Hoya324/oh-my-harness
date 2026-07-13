@@ -20,7 +20,7 @@ The loop's stop condition is objective: it may end only when every acceptance cr
 
 2. **Gather intent**: From `$ARGUMENTS` (or the existing spec file if a path is given). If the goal is vague or scope-less, use **AskUserQuestion** to clarify — do not guess. Clarify: the concrete outcome, in/out of scope, constraints, and how success is *measured*.
 
-3. **Detect verify commands**: Read `.claude/.omh/conventions.json` (or detect) to suggest `quickCheckCommand` (lint/typecheck) and `verifyCommand` (tests/build) for the stack. Each acceptance criterion should map to a command (or a specific test) that returns exit 0 when satisfied.
+3. **Detect verify commands**: Read `.claude/.omh/conventions.json` (or detect) to suggest `quickCheckCommand` (lint/typecheck) and `verifyCommand` (tests/build) for the stack. Each acceptance criterion should map to a command (or a specific test) that returns exit 0 when satisfied. **Reuse LTM first**: query the `omh-memory` graph for commands this project already verified (`node ~/.omh/lib/memory.mjs search "<project>"` or `search_nodes`) before re-detecting — skip silently if LTM is unavailable.
 
 4. **Write the spec** to `loop.specPath` using this structure:
    ```markdown

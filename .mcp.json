@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "omh-memory": {
+      "command": "bash",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/omh-memory.sh"],
+      "_meta": {
+        "description": "oh-my-harness long-term memory — a knowledge-graph MCP store at ~/.omh/memory/graph.jsonl, shared across Claude Code and Codex. Backed by @modelcontextprotocol/server-memory."
+      }
+    }
+  }
+}

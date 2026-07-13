@@ -47,7 +47,7 @@ Example: /omh-loop stop   (abort the active loop)
    2. **ripgrep before implementing** (don't assume something isn't there). **NO PLACEHOLDERS** — full implementations only.
    3. Run the **verify ladder, cheapest first**: `quickCheckCommand` (lint/typecheck) → `verifyCommand` (tests/build). On the first failure, stop the ladder and fix that.
    4. If the work passes the ladder, and the tier requires it, run **cross-verify** (step 8).
-   5. Write the outcome to PROGRESS.md: append findings, **mark + prune** completed items, and on failure write a **Reflexion** note ("attempt N failed because X; root cause Y; next I will Z").
+   5. Write the outcome to PROGRESS.md: append findings, **mark + prune** completed items, and on failure write a **Reflexion** note ("attempt N failed because X; root cause Y; next I will Z"). **Also persist it to LTM** (see Long-term memory) so the next session/run reuses it.
    6. Record the iteration outcome into `loop-state.json` under `pending` so the hook can evaluate: `{ verifyPassed:<bool>, ladder:[{rung,status,signature,output,retryable}], crossVerifyVerdict:<PASS|FAIL|INCONCLUSIVE|null>, reflection:<string|null> }`. Distinguish a real test **fail** (retryable) from an infra **error** like "no test runner" (`retryable:false` → the loop will stop and ask).
    7. **Commit** this iteration (one task = one commit) following the project's commit convention.
    8. End your turn. The Stop hook re-injects the next instruction or ends the loop.
@@ -66,11 +66,31 @@ Example: /omh-loop stop   (abort the active loop)
    - `infra_error` / `cross_verify_inconclusive` → report the blocker and ask.
    Remove the kill switch if present.
 
+## Long-term memory (LTM)
+
+omh persists cross-session learnings to the **`omh-memory` MCP server** — a knowledge graph at
+`~/.omh/memory/graph.jsonl`, **shared with Codex** (one store, both runtimes). Use the MCP tools when
+connected; fall back to the CLI helper otherwise; **skip silently if neither is available**
+(graceful degrade — LTM must never block the loop).
+
+- **Read (during step 6/7, before pulling work):** retrieve prior learnings, verified build/test
+  commands, and known pitfalls for this project/goal and fold them into the plan / PROGRESS.md.
+  - MCP: `search_nodes({query: "<project> <goal keywords>"})`
+  - CLI: `node ~/.omh/lib/memory.mjs search "<keywords>"`
+- **Write (step 7.5, on outcome):**
+  - failure/Reflexion → a `Learning` entity ("attempt N failed because X; root cause Y; next Z"),
+    related `about` → the `Project`.
+    - MCP: `create_entities` + `create_relations`  ·  CLI: `node ~/.omh/lib/memory.mjs add-learning "<project>" "<reflexion>"`
+  - verify pass → append the verified `quickCheck`/`verify` commands and durable facts to the `Project` entity.
+    - MCP: `add_observations`  ·  CLI: `node ~/.omh/lib/memory.mjs add-observation "<project>" "<fact>"`
+- Prefer MCP tools for live in-session writes (the server owns the file); use the CLI for
+  hook/non-session writes. Avoid heavy concurrent writes from both runtimes at once.
+
 ## Policies
 - **Always confirm before starting** — never auto-start a loop.
 - **Harness owns termination** — never declare "done" yourself; the verify ladder + cross-verify + the Stop hook decide. Never emit a false completion (it seeds the next turn's context and compounds).
 - **One unit of work per iteration**; if a single iteration's diff exceeds `loop.maxDiffFilesPerIteration`, split it.
 - **Keep the best commit**: if an iteration's verify score regresses, prefer resetting to the highest-scoring commit (per-iteration commits make this trivial).
 - **Human gates** (formalize OMH's existing guards): halt for confirmation before anything outside `scopeGuard.allowedPaths`, deletions, force-push, or merging a cross-verify branch. Never auto-merge.
-- **PROGRESS.md hygiene**: prune completed items; compact when it grows large (it's re-loaded every iteration). Cache build/test invocations in `loop.learningsFile`.
+- **PROGRESS.md hygiene**: prune completed items; compact when it grows large (it's re-loaded every iteration). Cache build/test invocations in `loop.learningsFile` and **promote durable ones to LTM** (cross-session, cross-runtime).
 - **Kill switch**: `/omh-loop stop` or creating `.claude/.omh/STOP` halts the loop on the next Stop event.

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Long-term memory (LTM).** OMH now persists cross-session, **cross-runtime** learnings to a knowledge-graph MCP server (`omh-memory`, backed by `@modelcontextprotocol/server-memory`) whose store — `~/.omh/memory/graph.jsonl` — is **shared by Claude Code and Codex**.
+  - `bin/omh-memory.sh` launcher points every runtime at the same store; the plugin's `.mcp.json` auto-provisions it for Claude Code (Codex via a `[mcp_servers.omh-memory]` block in `~/.codex/config.toml`).
+  - `lib/memory.mjs` — atomic, server-format-compatible read/append/search helper (CLI: `read`, `search`, `add-learning`, `add-observation`, `stats`) for hook/CLI writes.
+  - `/omh-loop` reads prior learnings, already-verified commands, and known pitfalls before planning, and persists Reflexions (on failure) + verified commands (on green); `/omh-verify` persists high-confidence findings (2+ model consensus); `/omh-spec` reuses previously-verified commands. All LTM steps **degrade gracefully** when the server is unavailable — the loop never blocks on memory.
+  - Concurrency: the graph server is single-writer by design — fine for personal single-agent use; avoid heavy simultaneous writes from both runtimes at once.
+
 ## [0.4.5] - 2026-06-25
 
 ### Fixed
