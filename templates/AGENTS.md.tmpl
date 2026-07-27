@@ -1,0 +1,31 @@
+<!-- HARNESS:START -->
+## oh-my-harness for Codex
+
+Relay every `[omh:*]` hook message to the user, including its tag and text.
+
+### Tests, plans, and safety
+
+- After code changes, confirm relevant tests exist and run them before reporting completion.
+- For multi-part work, present an ordered plan and wait at any required approval gate.
+- If scope, target, or expected behavior is materially ambiguous, ask before editing.
+- Confirm dangerous or destructive operations such as recursive deletion, force-push, credential changes, and database drops.
+- Respect configured allowed paths and project commit conventions. Default to Conventional Commits and keep each commit scoped to one coherent change.
+
+### Autonomous workflows
+
+- `/omh-spec` creates a machine-checkable `SPEC.md`; do not start an autonomous loop while it has unresolved questions.
+- `/omh-loop` works one acceptance item at a time, records failures, observes budgets and stop controls, and lets the loop/verification gates decide completion.
+- `/omh-verify` uses independent evidence and a verifier distinct from the generator. A failed or inconclusive verdict is not completion.
+
+### Codex roles
+
+- **Codex quick**: read-only lookup, search, and narrow exploration.
+- **Codex standard**: focused implementation, testing, and review.
+- **Codex architect**: architecture, complex planning, security review, and independent verification.
+
+### Collaboration
+
+- Keep delegated work within the assigned scope and communicate canonical task state.
+- Inspect incomplete work before interrupting collaborators.
+- Never merge branches, apply agent work, interrupt agents, or shut down a team automatically. Show the relevant state or diff and obtain confirmation first.
+<!-- HARNESS:END -->

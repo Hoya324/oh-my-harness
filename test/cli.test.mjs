@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TMP = join(__dirname, '__tmp_cli');
+const TEST_HOME = join(TMP, 'home');
 const CLI = join(__dirname, '..', 'bin', 'cli.mjs');
 
 function runCli(...args) {
@@ -14,11 +15,20 @@ function runCli(...args) {
     cwd: TMP,
     encoding: 'utf8',
     timeout: 10000,
-    env: { ...process.env, OMH_SKIP_GLOBAL: '1' },
+    env: {
+      ...process.env,
+      HOME: TEST_HOME,
+      USERPROFILE: TEST_HOME,
+      NODE_TEST_CONTEXT: '',
+      OMH_SKIP_GLOBAL: '',
+    },
   });
 }
 
-beforeEach(() => { mkdirSync(TMP, { recursive: true }); });
+beforeEach(() => {
+  mkdirSync(TMP, { recursive: true });
+  mkdirSync(TEST_HOME, { recursive: true });
+});
 afterEach(() => { rmSync(TMP, { recursive: true, force: true }); });
 
 describe('cli init', () => {
@@ -122,6 +132,129 @@ describe('cli init', () => {
     const output = runCli('init', '--scope', 'project');
     assert.ok(output.includes('Project'));
   });
+
+  it('keeps the default runtime Claude-only', () => {
+    runCli('init');
+    assert.ok(existsSync(join(TMP, '.claude', 'settings.local.json')));
+    assert.ok(!existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TMP, 'AGENTS.md')));
+  });
+});
+
+describe('cli runtime matrix', () => {
+  it('installs Codex project hooks, runtime, roles, skills, and guidance only', () => {
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+
+    assert.ok(existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(existsSync(join(TMP, '.codex', 'config.toml')));
+    assert.ok(existsSync(join(TMP, '.codex', 'agents', 'quick.toml')));
+    assert.ok(existsSync(join(TMP, 'AGENTS.md')));
+    assert.ok(existsSync(join(TMP, '.agents', 'skills', 'omh-loop', 'SKILL.md')));
+    assert.ok(existsSync(join(TMP, '.claude', '.omh', 'runtime', 'hooks', 'codex', 'run.mjs')));
+    assert.ok(existsSync(join(TMP, '.claude', '.omh', 'runtime', 'hooks', 'lib', 'hook-config.mjs')));
+    assert.ok(existsSync(join(TMP, '.claude', '.omh', 'runtime', 'lib', 'loop.mjs')));
+    assert.ok(!existsSync(join(TMP, '.claude', 'CLAUDE.md')));
+    assert.ok(!existsSync(join(TMP, '.claude', 'settings.local.json')));
+
+    const hooks = readFileSync(join(TMP, '.codex', 'hooks.json'), 'utf8');
+    assert.ok(!hooks.includes('${PLUGIN_ROOT}'));
+    assert.ok(hooks.includes(join(TMP, '.claude', '.omh', 'runtime', 'hooks', 'codex', 'run.mjs')));
+
+    const config = readFileSync(join(TMP, '.codex', 'config.toml'), 'utf8');
+    assert.ok(config.includes('[agents.quick]'));
+    assert.ok(config.includes('[agents.standard]'));
+    assert.ok(config.includes('[agents.architect]'));
+  });
+
+  it('installs both runtime registrations while sharing state', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'project');
+
+    assert.ok(existsSync(join(TMP, '.claude', 'settings.local.json')));
+    assert.ok(existsSync(join(TMP, '.claude', 'CLAUDE.md')));
+    assert.ok(existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(existsSync(join(TMP, 'AGENTS.md')));
+    assert.ok(existsSync(join(TMP, '.claude', '.omh', 'harness.config.json')));
+  });
+
+  it('preserves unrelated Codex files and shared config across idempotent init', () => {
+    const agents = '# Team guidance\nKeep this line exactly.\n';
+    const hooks = {
+      description: 'custom hooks',
+      custom: { keep: true },
+      hooks: {
+        PreToolUse: [{
+          matcher: 'CustomTool',
+          hooks: [{ type: 'command', command: 'echo custom-hook' }],
+        }],
+      },
+    };
+    const sharedConfig = { custom: { keep: true }, features: { skillScaffolding: false } };
+    const customSkill = '---\nname: custom\n---\nKeep me.\n';
+    const customToml = 'model = "custom"\n\n[mcp_servers.custom]\ncommand = "custom-server"\n';
+
+    writeFileSync(join(TMP, 'AGENTS.md'), agents);
+    mkdirSync(join(TMP, '.codex'), { recursive: true });
+    writeFileSync(join(TMP, '.codex', 'hooks.json'), JSON.stringify(hooks, null, 2) + '\n');
+    writeFileSync(join(TMP, '.codex', 'config.toml'), customToml);
+    mkdirSync(join(TMP, '.agents', 'skills', 'custom'), { recursive: true });
+    writeFileSync(join(TMP, '.agents', 'skills', 'custom', 'SKILL.md'), customSkill);
+    mkdirSync(join(TMP, '.claude', '.omh'), { recursive: true });
+    writeFileSync(
+      join(TMP, '.claude', '.omh', 'harness.config.json'),
+      JSON.stringify(sharedConfig, null, 2) + '\n',
+    );
+
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+
+    const mergedAgents = readFileSync(join(TMP, 'AGENTS.md'), 'utf8');
+    assert.ok(mergedAgents.startsWith(agents));
+    assert.equal((mergedAgents.match(/<!-- HARNESS:START -->/g) || []).length, 1);
+    assert.ok(mergedAgents.includes('Codex quick'));
+
+    const mergedHooks = JSON.parse(readFileSync(join(TMP, '.codex', 'hooks.json'), 'utf8'));
+    assert.deepEqual(mergedHooks.custom, { keep: true });
+    assert.ok(JSON.stringify(mergedHooks).includes('echo custom-hook'));
+    assert.ok(JSON.stringify(mergedHooks).includes('.omh/runtime/hooks/codex/run.mjs'));
+
+    assert.equal(
+      readFileSync(join(TMP, '.agents', 'skills', 'custom', 'SKILL.md'), 'utf8'),
+      customSkill,
+    );
+    assert.deepEqual(
+      JSON.parse(readFileSync(join(TMP, '.claude', '.omh', 'harness.config.json'), 'utf8')),
+      sharedConfig,
+    );
+
+    const mergedToml = readFileSync(join(TMP, '.codex', 'config.toml'), 'utf8');
+    assert.ok(mergedToml.startsWith(customToml));
+    assert.equal((mergedToml.match(/# OH-MY-HARNESS:START/g) || []).length, 1);
+  });
+
+  it('installs user-scoped Codex registrations without touching project Codex files', () => {
+    const customToml = 'model = "custom"\n\n[mcp_servers.custom]\ncommand = "custom-server"\n';
+    mkdirSync(join(TEST_HOME, '.codex'), { recursive: true });
+    writeFileSync(join(TEST_HOME, '.codex', 'config.toml'), customToml);
+
+    runCli('init', '--runtime', 'codex', '--scope', 'user');
+
+    assert.ok(existsSync(join(TEST_HOME, '.codex', 'hooks.json')));
+    assert.ok(existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
+    assert.ok(existsSync(join(TEST_HOME, '.codex', 'AGENTS.md')));
+    assert.ok(existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop', 'SKILL.md')));
+    assert.ok(!existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TMP, 'AGENTS.md')));
+    assert.ok(existsSync(join(TEST_HOME, '.claude', '.omh', 'harness.config.json')));
+    assert.ok(existsSync(join(TEST_HOME, '.claude', '.omh', 'runtime', 'hooks', 'codex', 'run.mjs')));
+    assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
+
+    const mergedToml = readFileSync(join(TEST_HOME, '.codex', 'config.toml'), 'utf8');
+    assert.ok(mergedToml.startsWith(customToml));
+    assert.ok(mergedToml.includes('[agents.quick]'));
+
+    const hooks = readFileSync(join(TEST_HOME, '.codex', 'hooks.json'), 'utf8');
+    assert.ok(hooks.includes(join(TEST_HOME, '.claude', '.omh', 'runtime')));
+  });
 });
 
 describe('cli reset', () => {
@@ -154,6 +287,65 @@ describe('cli reset', () => {
     const gi = readFileSync(join(TMP, '.gitignore'), 'utf8');
     assert.ok(!gi.includes('.claude/.omh/'));
   });
+
+  it('removes only managed Codex files and preserves shared state when Claude remains', () => {
+    const agents = '# Existing guidance\n';
+    const customSkill = 'custom skill\n';
+    const customRole = 'model = "custom"\n';
+    const customToml = 'model = "custom"\n';
+    const hooks = {
+      hooks: {
+        PreToolUse: [{
+          matcher: 'CustomTool',
+          hooks: [{ type: 'command', command: 'echo custom-hook' }],
+        }],
+      },
+    };
+
+    writeFileSync(join(TMP, 'AGENTS.md'), agents);
+    mkdirSync(join(TMP, '.codex', 'agents'), { recursive: true });
+    writeFileSync(join(TMP, '.codex', 'hooks.json'), JSON.stringify(hooks, null, 2) + '\n');
+    writeFileSync(join(TMP, '.codex', 'config.toml'), customToml);
+    writeFileSync(join(TMP, '.codex', 'agents', 'custom.toml'), customRole);
+    mkdirSync(join(TMP, '.agents', 'skills', 'custom'), { recursive: true });
+    writeFileSync(join(TMP, '.agents', 'skills', 'custom', 'SKILL.md'), customSkill);
+
+    runCli('init', '--runtime', 'both');
+    runCli('reset', '--runtime', 'codex');
+
+    assert.ok(existsSync(join(TMP, '.claude', '.omh', 'harness.config.json')));
+    assert.ok(existsSync(join(TMP, '.claude', 'settings.local.json')));
+    assert.ok(!existsSync(join(TMP, '.claude', '.omh', 'runtime')));
+    assert.ok(!existsSync(join(TMP, '.agents', 'skills', 'omh-loop')));
+    assert.equal(
+      readFileSync(join(TMP, '.agents', 'skills', 'custom', 'SKILL.md'), 'utf8'),
+      customSkill,
+    );
+    assert.ok(!existsSync(join(TMP, '.codex', 'agents', 'quick.toml')));
+    assert.equal(readFileSync(join(TMP, '.codex', 'agents', 'custom.toml'), 'utf8'), customRole);
+    assert.equal(readFileSync(join(TMP, 'AGENTS.md'), 'utf8'), agents);
+    assert.equal(readFileSync(join(TMP, '.codex', 'config.toml'), 'utf8'), customToml);
+
+    const cleanedHooks = readFileSync(join(TMP, '.codex', 'hooks.json'), 'utf8');
+    assert.ok(cleanedHooks.includes('echo custom-hook'));
+    assert.ok(!cleanedHooks.includes('.omh/runtime/hooks/codex/run.mjs'));
+  });
+
+  it('reset both removes both registrations and shared state non-interactively', () => {
+    runCli('init', '--runtime', 'both');
+    assert.ok(existsSync(join(TMP, 'AGENTS.md')));
+    runCli('reset', '--runtime', 'both');
+
+    assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TMP, '.claude', 'commands', 'set-harness.md')));
+    assert.ok(!existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TMP, '.codex', 'agents', 'quick.toml')));
+    assert.ok(!existsSync(join(TMP, '.agents', 'skills', 'omh-loop')));
+    assert.ok(
+      !existsSync(join(TMP, 'AGENTS.md'))
+      || !readFileSync(join(TMP, 'AGENTS.md'), 'utf8').includes('<!-- HARNESS:START -->'),
+    );
+  });
 });
 
 describe('cli status', () => {
@@ -169,6 +361,15 @@ describe('cli status', () => {
   it('shows not initialized message when no config', () => {
     const output = runCli('status');
     assert.ok(output.includes('not initialized'));
+  });
+
+  it('shows separate runtime lines and shared features for both', () => {
+    runCli('init', '--runtime', 'both');
+    const output = runCli('status', '--runtime', 'both');
+    assert.match(output, /Claude\s*:.*installed/i);
+    assert.match(output, /Codex\s*:.*installed/i);
+    assert.ok(output.includes('Shared Features'));
+    assert.ok(output.includes('testEnforcement'));
   });
 });
 
@@ -186,6 +387,26 @@ describe('cli update', () => {
 
   it('fails when not initialized', () => {
     assert.throws(() => runCli('update'), /not initialized/);
+  });
+
+  it('refreshes managed Codex files while preserving custom files', () => {
+    runCli('init', '--runtime', 'codex');
+    const customSkillPath = join(TMP, '.agents', 'skills', 'custom', 'SKILL.md');
+    const managedSkillPath = join(TMP, '.agents', 'skills', 'omh-loop', 'SKILL.md');
+    assert.ok(existsSync(managedSkillPath));
+    mkdirSync(dirname(customSkillPath), { recursive: true });
+    writeFileSync(customSkillPath, 'custom\n');
+    writeFileSync(managedSkillPath, 'drifted\n');
+    writeFileSync(join(TMP, 'AGENTS.md'), '# Custom\n\n<!-- HARNESS:START -->\ndrifted\n<!-- HARNESS:END -->\n');
+
+    runCli('update', '--runtime', 'codex');
+
+    assert.equal(readFileSync(customSkillPath, 'utf8'), 'custom\n');
+    assert.notEqual(readFileSync(managedSkillPath, 'utf8'), 'drifted\n');
+    const agents = readFileSync(join(TMP, 'AGENTS.md'), 'utf8');
+    assert.ok(agents.startsWith('# Custom\n'));
+    assert.ok(agents.includes('Codex quick'));
+    assert.equal((agents.match(/<!-- HARNESS:START -->/g) || []).length, 1);
   });
 });
 
@@ -211,5 +432,7 @@ describe('cli unknown command', () => {
     assert.ok(output.includes('oh-my-harness'));
     assert.ok(output.includes('init'));
     assert.ok(output.includes('usage'));
+    assert.ok(output.includes('--runtime claude|codex|both'));
+    assert.match(output, /default.*claude/i);
   });
 });
