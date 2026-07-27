@@ -13,13 +13,31 @@ describe('scaffold-skills', () => {
   afterEach(() => { rmSync(TMP, { recursive: true, force: true }); });
 
   describe('scaffoldProjectSkills', () => {
-    it('should scaffold 3 skills for Node project', () => {
+    it('should scaffold 3 Claude-only skills for Node project by default', () => {
       const conventions = { language: 'node', testFramework: 'vitest', linter: 'eslint', formatter: 'prettier', buildTool: 'vite' };
       const result = scaffoldProjectSkills(TMP, conventions);
       assert.equal(result.created.length, 3);
       assert.ok(existsSync(join(TMP, '.claude', 'skills', 'code-review', 'SKILL.md')));
       assert.ok(existsSync(join(TMP, '.claude', 'skills', 'test-write', 'SKILL.md')));
       assert.ok(existsSync(join(TMP, '.claude', 'skills', 'lint-fix', 'SKILL.md')));
+      assert.ok(!existsSync(join(TMP, '.agents', 'skills', 'code-review', 'SKILL.md')));
+    });
+
+    it('should scaffold and qualify reporting for both runtimes', () => {
+      const conventions = { language: 'node', testFramework: 'vitest', linter: 'eslint', formatter: 'prettier', buildTool: 'vite' };
+      const both = scaffoldProjectSkills(TMP, conventions, { runtime: 'both' });
+
+      assert.ok(existsSync(join(TMP, '.claude', 'skills', 'code-review', 'SKILL.md')));
+      assert.ok(existsSync(join(TMP, '.agents', 'skills', 'code-review', 'SKILL.md')));
+      assert.equal(both.created.length, 6);
+      assert.deepEqual(both.created, [
+        'claude:code-review',
+        'claude:test-write',
+        'claude:lint-fix',
+        'codex:code-review',
+        'codex:test-write',
+        'codex:lint-fix',
+      ]);
     });
 
     it('should scaffold for Python project', () => {
