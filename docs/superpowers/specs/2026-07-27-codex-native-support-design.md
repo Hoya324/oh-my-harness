@@ -1,7 +1,7 @@
 # Codex Native Support Design
 
-**Date:** 2026-07-27  
-**Status:** Approved  
+**Date:** 2026-07-27
+**Status:** Approved
 **Scope:** Add first-class Codex CLI and Codex desktop support without regressing Claude Code support.
 
 ## Goals
