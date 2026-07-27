@@ -324,7 +324,7 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><td><strong>① Hooks</strong> (<code>hooks/</code>)</td><td data-i18n="docs.architecture.l1">11 shared scripts (9 guards/observers + 2 gates) and 2 Codex bridge modules</td></tr>
           <tr><td><strong>② Pure Core</strong> (<code>lib/</code>)</td><td data-i18n="docs.architecture.l2">All decision logic as pure functions (no fs / git / time) — fully unit-tested</td></tr>
           <tr><td><strong>③ Skills</strong> (<code>skills/</code>)</td><td data-i18n="docs.architecture.l3">13 Claude Code skills and 14 Codex skills</td></tr>
-          <tr><td><strong>④ Agents</strong> (<code>agents/</code>)</td><td data-i18n="docs.architecture.l4">Model routing — haiku / sonnet / opus by task weight</td></tr>
+          <tr><td><strong>④ Agents</strong> (<code>agents/</code>)</td><td data-i18n="docs.architecture.l4">Routed roles — Claude uses haiku/sonnet/opus; Codex uses profile preferences</td></tr>
         </tbody>
       </table>
 
@@ -369,21 +369,23 @@ oh-my-harness update --runtime codex</code></pre>
 
       <table>
         <thead>
-          <tr><th data-i18n="docs.skills.th.command">Command</th><th data-i18n="docs.skills.th.description">Description</th></tr>
+          <tr><th data-i18n="docs.skills.th.command">Command</th><th data-i18n="docs.skills.th.availability">Availability</th><th data-i18n="docs.skills.th.description">Description</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>/omh-spec [goal]</code></td><td data-i18n="docs.skills.r11">Author a machine-checkable SPEC.md with EARS acceptance criteria</td></tr>
-          <tr><td><code>/omh-loop [SPEC.md] | stop</code></td><td data-i18n="docs.skills.r12">Run the autonomous loop until the spec is met; <code>stop</code> aborts</td></tr>
-          <tr><td><code>/harness-setup</code></td><td data-i18n="docs.skills.r1">Initialize oh-my-harness with interactive onboarding</td></tr>
-          <tr><td><code>/set-harness [path] [value]</code></td><td data-i18n="docs.skills.r2">View or modify harness settings</td></tr>
-          <tr><td><code>/init-project</code></td><td data-i18n="docs.skills.r3">Detect conventions and scaffold project skills</td></tr>
-          <tr><td><code>/agent-spawn [N] [task]</code></td><td data-i18n="docs.skills.r4">Spawn N selected-runtime agents in tmux</td></tr>
-          <tr><td><code>/agent-status</code></td><td data-i18n="docs.skills.r5">Check status of running agents</td></tr>
-          <tr><td><code>/agent-apply [id|all]</code></td><td data-i18n="docs.skills.r6">Preview diffs and merge agent worktree changes</td></tr>
-          <tr><td><code>/agent-stop [id|all]</code></td><td data-i18n="docs.skills.r7">Stop agents and cleanup worktrees</td></tr>
-          <tr><td><code>/team-spawn [template|N] [task]</code></td><td data-i18n="docs.skills.r8">Create native team with teammates</td></tr>
-          <tr><td><code>/team-status</code></td><td data-i18n="docs.skills.r9">Check team and task progress</td></tr>
-          <tr><td><code>/team-stop</code></td><td data-i18n="docs.skills.r10">Shutdown team and cleanup</td></tr>
+          <tr data-skill="omh-spec" data-runtimes="claude codex"><td><code>/omh-spec [goal]</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r11">Author a machine-checkable SPEC.md with EARS acceptance criteria</td></tr>
+          <tr data-skill="omh-loop" data-runtimes="claude codex"><td><code>/omh-loop [SPEC.md] | stop</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n-html="docs.skills.r12">Run the autonomous loop until the spec is met; <code>stop</code> aborts</td></tr>
+          <tr data-skill="omh-verify" data-runtimes="claude codex"><td><code>/omh-verify</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r13">Run independent multi-model verification rounds and persist high-confidence findings</td></tr>
+          <tr data-skill="omh-status" data-runtimes="codex"><td><code>omh-status</code></td><td data-i18n="docs.skills.availability.codex">Codex only</td><td data-i18n="docs.skills.r14">Show Codex harness tier, loop, verification, usage, and memory state</td></tr>
+          <tr data-skill="harness-setup" data-runtimes="claude codex"><td><code>/harness-setup</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r1">Initialize oh-my-harness with interactive onboarding</td></tr>
+          <tr data-skill="set-harness" data-runtimes="claude codex"><td><code>/set-harness [path] [value]</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r2">View or modify harness settings</td></tr>
+          <tr data-skill="init-project" data-runtimes="claude codex"><td><code>/init-project</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r3">Detect conventions and scaffold project skills</td></tr>
+          <tr data-skill="agent-spawn" data-runtimes="claude codex"><td><code>/agent-spawn [N] [task]</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r4">Spawn N selected-runtime agents in tmux</td></tr>
+          <tr data-skill="agent-status" data-runtimes="claude codex"><td><code>/agent-status</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r5">Check status of running agents</td></tr>
+          <tr data-skill="agent-apply" data-runtimes="claude codex"><td><code>/agent-apply [id|all]</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r6">Preview diffs and merge agent worktree changes</td></tr>
+          <tr data-skill="agent-stop" data-runtimes="claude codex"><td><code>/agent-stop [id|all]</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r7">Stop agents and cleanup worktrees</td></tr>
+          <tr data-skill="team-spawn" data-runtimes="claude codex"><td><code>/team-spawn [template|N] [task]</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r8">Create native team with teammates</td></tr>
+          <tr data-skill="team-status" data-runtimes="claude codex"><td><code>/team-status</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r9">Check team and task progress</td></tr>
+          <tr data-skill="team-stop" data-runtimes="claude codex"><td><code>/team-stop</code></td><td data-i18n="docs.skills.availability.both">Claude + Codex</td><td data-i18n="docs.skills.r10">Shutdown team and cleanup</td></tr>
         </tbody>
       </table>
 
@@ -393,14 +395,15 @@ oh-my-harness update --runtime codex</code></pre>
 
       <table>
         <thead>
-          <tr><th data-i18n="docs.agents.th.agent">Agent</th><th data-i18n="docs.agents.th.model">Model</th><th data-i18n="docs.agents.th.useFor">Use For</th></tr>
+          <tr><th data-i18n="docs.agents.th.agent">Role</th><th data-i18n="docs.agents.th.claude">Claude identifier / model</th><th data-i18n="docs.agents.th.codex">Codex profile preference</th><th data-i18n="docs.agents.th.useFor">Use For</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>harness:quick</code></td><td>Haiku</td><td data-i18n="docs.agents.r1">File lookups, simple questions, exploration</td></tr>
-          <tr><td><code>harness:standard</code></td><td>Sonnet</td><td data-i18n="docs.agents.r2">Implementation, bug fixes, debugging</td></tr>
-          <tr><td><code>harness:architect</code></td><td>Opus</td><td data-i18n="docs.agents.r3">Architecture, complex analysis, security review</td></tr>
+          <tr data-role="quick"><td><code>quick</code></td><td data-i18n-html="docs.agents.quick.claude"><code>harness:quick</code> · Haiku</td><td data-i18n-html="docs.agents.quick.codex"><code>quick</code> · preferred <code>gpt-5.6-luna</code> / low reasoning</td><td data-i18n="docs.agents.r1">File lookups, simple questions, exploration</td></tr>
+          <tr data-role="standard"><td><code>standard</code></td><td data-i18n-html="docs.agents.standard.claude"><code>harness:standard</code> · Sonnet</td><td data-i18n-html="docs.agents.standard.codex"><code>standard</code> · preferred <code>gpt-5.6-terra</code> / medium reasoning</td><td data-i18n="docs.agents.r2">Implementation, bug fixes, debugging</td></tr>
+          <tr data-role="architect"><td><code>architect</code></td><td data-i18n-html="docs.agents.architect.claude"><code>harness:architect</code> · Opus</td><td data-i18n-html="docs.agents.architect.codex"><code>architect</code> · preferred <code>gpt-5.6-sol</code> / xhigh reasoning</td><td data-i18n="docs.agents.r3">Architecture, complex analysis, security review</td></tr>
         </tbody>
       </table>
+      <p data-i18n="docs.agents.preferenceNote">Codex profile model and reasoning values are preferences from the bundled profiles, not availability guarantees.</p>
 
       <!-- Model Routing -->
       <h2 id="model-routing" data-i18n="docs.modelRouting.title">Model Routing</h2>

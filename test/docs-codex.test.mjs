@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -313,5 +313,65 @@ test('root collaboration docs match selectable tmux and native runtime contracts
     const body = read(file);
     assert.doesNotMatch(body, /frontend \(sonnet\)|reviewer \(opus\)|researcher \(haiku\)/);
     assert.match(body, /available-profile preferences|프로필 선호도/);
+  }
+});
+
+test('rendered skills table is complete against both installed skill directories', () => {
+  const html = read('docs/docs.html');
+  const table = html.match(/<h2 id="skills"[\s\S]*?<\/table>/)?.[0] || '';
+  const installed = (dir) => new Set(
+    readdirSync(join(root, dir), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && existsSync(join(root, dir, entry.name, 'SKILL.md')))
+      .map((entry) => entry.name),
+  );
+  const claude = installed('skills');
+  const codex = installed('codex/skills');
+  const documented = new Map(
+    [...table.matchAll(/<tr data-skill="([^"]+)" data-runtimes="([^"]+)">/g)]
+      .map((match) => [match[1], new Set(match[2].split(' '))]),
+  );
+
+  assert.deepEqual([...documented.keys()].sort(), [...new Set([...claude, ...codex])].sort());
+  for (const skill of claude) assert.ok(documented.get(skill)?.has('claude'), `${skill}: Claude availability`);
+  for (const skill of codex) assert.ok(documented.get(skill)?.has('codex'), `${skill}: Codex availability`);
+  assert.deepEqual(documented.get('omh-status'), new Set(['codex']));
+});
+
+test('rendered agents table matches Claude definitions and Codex profile preferences', () => {
+  const html = read('docs/docs.html');
+  const table = html.match(/<h2 id="agents"[\s\S]*?<\/table>/)?.[0] || '';
+  const claudeRoles = new Map(
+    readdirSync(join(root, 'agents'))
+      .filter((name) => name.endsWith('.md'))
+      .map((name) => {
+        const body = read(`agents/${name}`);
+        return [name.replace(/\.md$/, ''), body.match(/^model:\s*(\S+)/m)?.[1]];
+      }),
+  );
+  const codexRoles = new Map(
+    readdirSync(join(root, 'codex/agents'))
+      .filter((name) => name.endsWith('.toml'))
+      .map((name) => {
+        const body = read(`codex/agents/${name}`);
+        return [name.replace(/\.toml$/, ''), {
+          model: body.match(/^model = "([^"]+)"/m)?.[1],
+          effort: body.match(/^model_reasoning_effort = "([^"]+)"/m)?.[1],
+        }];
+      }),
+  );
+  const rows = new Map(
+    [...table.matchAll(/<tr data-role="([^"]+)">([\s\S]*?)<\/tr>/g)]
+      .map((match) => [match[1], match[2]]),
+  );
+
+  assert.deepEqual([...rows.keys()].sort(), [...claudeRoles.keys()].sort());
+  assert.deepEqual([...rows.keys()].sort(), [...codexRoles.keys()].sort());
+  for (const [role, model] of claudeRoles) {
+    assert.match(rows.get(role), new RegExp(`harness:${role}`));
+    assert.match(rows.get(role), new RegExp(model, 'i'));
+  }
+  for (const [role, profile] of codexRoles) {
+    assert.match(rows.get(role), new RegExp(profile.model.replaceAll('.', '\\.')));
+    assert.match(rows.get(role), new RegExp(profile.effort));
   }
 });
