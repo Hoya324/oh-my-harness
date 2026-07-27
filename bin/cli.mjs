@@ -1125,11 +1125,15 @@ function status(root, runtime) {
 }
 
 // --- RESET ---
-function resetClaude(root) {
+function resetClaude(root, { preserveShared = false } = {}) {
   const omh = omhDir(root);
   if (existsSync(omh)) {
-    rmSync(omh, { recursive: true });
-    logDone('Removed .claude/.omh/');
+    if (preserveShared) {
+      logInfo('Shared .claude/.omh/ state preserved for Codex');
+    } else {
+      rmSync(omh, { recursive: true });
+      logDone('Removed .claude/.omh/');
+    }
   }
   logInfo('Project skills (.claude/skills/) preserved — user-owned');
   // Remove commands
@@ -1166,9 +1170,13 @@ function resetClaude(root) {
   }
   logDone('Cleaned settings');
 
-  // Clean .gitignore
-  updateGitignore(root, 'remove');
-  logDone('Cleaned .gitignore');
+  // Clean .gitignore unless the shared state is still used by Codex
+  if (preserveShared) {
+    logInfo('.gitignore preserved for shared Codex state');
+  } else {
+    updateGitignore(root, 'remove');
+    logDone('Cleaned .gitignore');
+  }
 
   log(`\n  ${BOLD}oh-my-harness removed.${RESET}\n`);
 }
@@ -1245,9 +1253,18 @@ function resetCodex(root, scope, { preserveShared = false } = {}) {
   log(`\n  ${BOLD}oh-my-harness Codex runtime removed.${RESET}\n`);
 }
 
+function codexRegistrationUsesStateRoot(root, stateRoot) {
+  return ['project', 'user'].some(scope =>
+    codexRegisteredAt(root, scope)
+    && resolve(codexStateRoot(root, scope)) === resolve(stateRoot)
+  );
+}
+
 function reset(root, runtime) {
   if (runtime === 'claude') {
-    resetClaude(root);
+    resetClaude(root, {
+      preserveShared: codexRegistrationUsesStateRoot(root, root),
+    });
     return;
   }
   const scope = selectedCodexScope(root);

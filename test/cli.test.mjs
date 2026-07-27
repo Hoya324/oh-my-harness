@@ -42,6 +42,32 @@ function runCliResult(args, cwd = TMP) {
   });
 }
 
+function assertInstalledDangerousHookDenies(installRoot, cwd = TMP) {
+  const installedHooks = JSON.parse(
+    readFileSync(join(installRoot, '.codex', 'hooks.json'), 'utf8'),
+  );
+  const dangerousHandler = installedHooks.hooks.PreToolUse
+    .flatMap(group => group.hooks)
+    .find(handler => handler.command.includes('dangerous-guard.mjs'));
+  assert.ok(dangerousHandler, 'dangerous guard hook should be installed');
+
+  const hookRun = spawnSync('sh', ['-c', dangerousHandler.command], {
+    cwd,
+    input: JSON.stringify({
+      session_id: 'reverse-lifecycle-test',
+      turn_id: 'turn-1',
+      tool_name: 'Bash',
+      tool_input: { command: 'rm -rf build' },
+    }),
+    encoding: 'utf8',
+    timeout: 10000,
+    env: cliEnv(),
+  });
+  assert.equal(hookRun.status, 0, hookRun.stderr);
+  const response = JSON.parse(hookRun.stdout);
+  assert.equal(response.hookSpecificOutput.permissionDecision, 'deny');
+}
+
 beforeEach(() => {
   mkdirSync(TMP, { recursive: true });
   mkdirSync(TEST_HOME, { recursive: true });
@@ -447,6 +473,64 @@ describe('cli reset', () => {
 
     assert.ok(!existsSync(join(TEST_HOME, '.claude', '.omh')));
     assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TEST_HOME, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
+    assert.ok(!existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop')));
+  });
+
+  it('reset Claude preserves project Codex state until Codex is reset', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'project');
+
+    runCli('reset', '--runtime', 'claude', '--scope', 'project');
+
+    const sharedRoot = join(TMP, '.claude', '.omh');
+    assert.ok(existsSync(join(sharedRoot, 'harness.config.json')));
+    assert.ok(existsSync(join(sharedRoot, 'runtime', 'hooks', 'codex', 'run.mjs')));
+    assert.ok(existsSync(join(sharedRoot, 'codex-ownership.json')));
+    assert.ok(existsSync(join(TMP, '.codex', 'agents', 'quick.toml')));
+    assert.ok(existsSync(join(TMP, '.agents', 'skills', 'omh-loop', 'SKILL.md')));
+    assert.ok(readFileSync(join(TMP, '.gitignore'), 'utf8').includes('.claude/.omh/'));
+
+    const settings = JSON.parse(
+      readFileSync(join(TMP, '.claude', 'settings.local.json'), 'utf8'),
+    );
+    assert.ok(!settings.hooks);
+    assert.ok(!settings.agents);
+    assert.ok(!readFileSync(join(TMP, '.claude', 'CLAUDE.md'), 'utf8')
+      .includes('<!-- HARNESS:START -->'));
+    assert.ok(!existsSync(join(TMP, '.claude', 'commands', 'set-harness.md')));
+    assertInstalledDangerousHookDenies(TMP);
+
+    runCli('update', '--runtime', 'codex', '--scope', 'project');
+    assertInstalledDangerousHookDenies(TMP);
+    runCli('reset', '--runtime', 'codex', '--scope', 'project');
+
+    assert.ok(!existsSync(sharedRoot));
+    assert.ok(!existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TMP, '.codex', 'agents', 'quick.toml')));
+    assert.ok(!existsSync(join(TMP, '.agents', 'skills', 'omh-loop')));
+    assert.ok(!readFileSync(join(TMP, '.gitignore'), 'utf8').includes('.claude/.omh/'));
+  });
+
+  it('reset Claude leaves user-scoped Codex lifecycle operational', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'user');
+
+    runCli('reset', '--runtime', 'claude', '--scope', 'user');
+
+    const sharedRoot = join(TEST_HOME, '.claude', '.omh');
+    assert.ok(existsSync(join(sharedRoot, 'harness.config.json')));
+    assert.ok(existsSync(join(sharedRoot, 'runtime', 'hooks', 'codex', 'run.mjs')));
+    assert.ok(existsSync(join(sharedRoot, 'codex-ownership.json')));
+    assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
+    assert.ok(existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
+    assert.ok(existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop', 'SKILL.md')));
+    assertInstalledDangerousHookDenies(TEST_HOME);
+
+    runCli('update', '--runtime', 'codex', '--scope', 'user');
+    assertInstalledDangerousHookDenies(TEST_HOME);
+    runCli('reset', '--runtime', 'codex', '--scope', 'user');
+
+    assert.ok(!existsSync(sharedRoot));
     assert.ok(!existsSync(join(TEST_HOME, '.codex', 'hooks.json')));
     assert.ok(!existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
     assert.ok(!existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop')));
