@@ -12,6 +12,10 @@ const expectedCodexSkills = [
   'omh-status', 'omh-verify', 'set-harness',
   'team-spawn', 'team-status', 'team-stop',
 ];
+const forbiddenClaudeToolNames = [
+  'TeamCreate', 'TaskCreate', 'TaskUpdate', 'AskUserQuestion',
+  'TaskList', 'SendMessage', 'TeamDelete',
+];
 
 test('Codex plugin package declares its installable runtime surfaces', () => {
   const packageManifest = readJson('package.json');
@@ -61,10 +65,17 @@ test('every bundled Codex skill has valid required frontmatter', () => {
   for (const directory of skillDirectories) {
     const skill = readFileSync(join(directory, 'SKILL.md'), 'utf8');
     assert.match(skill, /^---\nname: [^\n]+\ndescription: [^\n]+\n---\n/m, `${directory} frontmatter`);
-    for (const forbidden of ['TeamCreate', 'TaskCreate', 'TaskUpdate', 'AskUserQuestion']) {
+    for (const forbidden of forbiddenClaudeToolNames) {
       assert.ok(!skill.includes(forbidden), `${directory}: ${forbidden}`);
     }
   }
+});
+
+test('Codex skill contracts reject the complete known Claude-only tool surface', () => {
+  assert.deepEqual(forbiddenClaudeToolNames, [
+    'TeamCreate', 'TaskCreate', 'TaskUpdate', 'AskUserQuestion',
+    'TaskList', 'SendMessage', 'TeamDelete',
+  ]);
 });
 
 test('Codex runtime mapping documents real operations and shared state', () => {
@@ -187,6 +198,72 @@ test('Codex loop and verification skills preserve objective safety contracts', (
     /verify\.autoFix.*ordinary in-scope, reversible fixes/is,
     'autoFix preserves automatic ordinary fixes while destructive changes remain gated',
   );
+});
+
+test('Codex loop startup uses current time and reconciles existing loop state', () => {
+  const loop = readFileSync(join(root, 'codex/skills/omh-loop/SKILL.md'), 'utf8');
+
+  assert.ok(!loop.includes('"startedAt": 0'), 'startedAt is never the Unix epoch');
+  assert.match(loop, /startedAt.*Date\.now\(\).*current epoch milliseconds/is);
+  for (const term of [
+    '.claude/.omh/STOP',
+    'active',
+    'malformed',
+    'unresolved',
+    'continuation',
+    'replacement',
+    'explicit confirmation',
+  ]) assert.ok(loop.includes(term), `loop startup reconciliation contains ${term}`);
+  assert.match(loop, /clear.*\.claude\/\.omh\/STOP.*before.*activ/is);
+  assert.match(loop, /continuation.*preserve/is);
+});
+
+test('Codex workflows resolve project and global config like hooks', () => {
+  for (const name of ['harness-setup', 'omh-loop', 'omh-verify']) {
+    const skill = readFileSync(join(root, `codex/skills/${name}/SKILL.md`), 'utf8');
+    assert.ok(skill.includes('.claude/.omh/harness.config.json'), `${name}: project config`);
+    assert.ok(skill.includes('~/.claude/.omh/harness.config.json'), `${name}: global fallback`);
+    assert.match(skill, /project.*wins/is, `${name}: project precedence`);
+    assert.match(skill, /deep-merge.*defaults/is, `${name}: deep-merge defaults`);
+    assert.match(skill, /preserve.*user.*keys/is, `${name}: preserve user keys`);
+  }
+
+  const setup = readFileSync(join(root, 'codex/skills/harness-setup/SKILL.md'), 'utf8');
+  assert.match(setup, /global scope.*write.*~\/\.claude\/\.omh\/harness\.config\.json/is);
+  assert.match(setup, /global scope.*must not.*project config/is);
+});
+
+test('agent lifecycle contracts protect task files and observed shutdown state', () => {
+  const spawn = readFileSync(join(root, 'codex/skills/agent-spawn/SKILL.md'), 'utf8');
+  const stop = readFileSync(join(root, 'codex/skills/agent-stop/SKILL.md'), 'utf8');
+  const apply = readFileSync(join(root, 'codex/skills/agent-apply/SKILL.md'), 'utf8');
+
+  assert.match(spawn, /preflight.*TASK\.md.*every target workdir/is);
+  assert.match(spawn, /prefer abort/is);
+  assert.match(spawn, /tracked|user-owned/i);
+  assert.match(spawn, /exact collision disclosure/is);
+  assert.match(spawn, /explicit overwrite.*restoration authorization/is);
+  assert.match(spawn, /preserve.*original content.*restore/is);
+  assert.match(apply, /protected `TASK\.md` backup.*restore.*before.*merge/is);
+  assert.match(apply, /verify.*recorded hash/is);
+
+  assert.match(stop, /persist.*interrupt result/is);
+  assert.match(stop, /recheck.*tmux pane.*process liveness/is);
+  assert.match(stop, /observed termination/is);
+  assert.match(stop, /failed|partial stop/i);
+  assert.match(stop, /retain.*state.*resources/is);
+  assert.match(stop, /recovery commands/is);
+});
+
+test('team spawn protects every unresolved team state before replacement', () => {
+  const team = readFileSync(join(root, 'codex/skills/team-spawn/SKILL.md'), 'utf8');
+
+  for (const term of ['starting', 'partial', 'malformed', 'unresolved', 'list_agents']) {
+    assert.ok(team.includes(term), `team-spawn protects ${term} state`);
+  }
+  assert.match(team, /cleanup.*resume.*explicit/is);
+  assert.match(team, /never overwrite.*recovery ids/is);
+  assert.match(team, /replacement.*explicit confirmation/is);
 });
 
 test('harness setup resolves the bundled defaults from the installed skill location', () => {

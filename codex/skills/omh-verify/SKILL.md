@@ -5,9 +5,12 @@ description: Use when independently reviewing a Git diff in configured OMH verif
 
 # Verify with independent lenses
 
-Read `.claude/.omh/harness.config.json` and use `verify.rounds`, `verify.stopWhenClean`,
-`verify.autoFix`, and `verify.lenses`. Treat a positive positional integer as a proposed round
-override: show the configured and requested values and ask before using the override.
+Resolve config exactly like the hooks: try project `.claude/.omh/harness.config.json`, then the
+global fallback `~/.claude/.omh/harness.config.json`; the project config wins. Use the first
+parseable candidate and deep-merge it with bundled defaults. Preserve all user keys, including
+unknown future keys. Use `verify.rounds`, `verify.stopWhenClean`, `verify.autoFix`, and
+`verify.lenses`. Treat a positive positional integer as a proposed round override: show the
+configured and requested values and ask before using the override.
 
 ## Plan
 

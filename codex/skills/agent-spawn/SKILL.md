@@ -46,6 +46,16 @@ Create each worktree from the recorded base branch. More than one agent with
 `useWorktree: false` must be rejected because every launch would share the checkout and root
 `TASK.md`. Permit a single shared checkout agent only for an explicitly non-conflicting assignment.
 
+Preflight `TASK.md` in every target workdir before writing. Prefer abort on any collision. Treat a
+tracked or user-owned `TASK.md` as protected: show its exact path, ownership/tracked status, and
+content hash as an exact collision disclosure. Never overwrite it without explicit overwrite and
+restoration authorization for that exact file.
+
+If overwrite and restoration are authorized, preserve the original content byte-for-byte in a
+private recorded backup, store its path and hash in `agents.json`, and restore the original content
+before apply or cleanup. Verify the restored hash and retain the backup/state on any mismatch.
+Never place task text in a tracked backup or commit it.
+
 Write the complete task text to `{worktree}/TASK.md` with a file-writing operation. Never interpolate
 task text, newlines, quotes, substitutions, backticks, or shell metacharacters into a command. The
 fixed prompt may name `TASK.md`; the task itself must appear only in `TASK.md`. Do not use shell

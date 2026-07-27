@@ -11,10 +11,13 @@ Resolve only recorded agent ids and branch names. Never auto-merge.
 For every requested agent:
 
 1. Check pane status and warn if it is still running.
-2. Determine the recorded base/integration branch and verify the current branch and worktree are
+2. If state records a protected `TASK.md` backup, restore its exact bytes before diff preview or
+   merge and verify the recorded hash. On missing backup or mismatch, stop, retain state, and do
+   not merge.
+3. Determine the recorded base/integration branch and verify the current branch and worktree are
    suitable. Do not assume `main`.
-3. Show commits, full diff summary, dirty worktree state, and whether the branch has diverged.
-4. Run relevant read-only checks or report that verification is absent.
+4. Show commits, full diff summary, dirty worktree state, and whether the branch has diverged.
+5. Run relevant read-only checks or report that verification is absent.
 
 Present the exact merge targets and commands. Obtain explicit confirmation for the selected agents
 before merging. Approval for one agent does not authorize another.

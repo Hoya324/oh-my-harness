@@ -20,14 +20,21 @@ When unmerged or uncommitted work exists, require one explicit choice per target
 - `discard`: authorize the named unmerged commits/files and exact cleanup targets;
 - `cancel`: do nothing.
 
-Never infer discard from a generic “stop.” Interrupt only the confirmed panes. Kill the tmux
-session only when all recorded panes in it are confirmed stopped.
+Never infer discard from a generic “stop.” Interrupt only the confirmed panes. After each
+interrupt attempt, atomically persist the interrupt result and timestamp in `agents.json`, then
+recheck tmux pane and underlying process liveness. User confirmation or a sent interrupt is not
+proof of termination. Mark an agent stopped only after observed termination. Kill the tmux session
+only after every recorded pane and process is observed terminal.
 
-With `useWorktree: true`, remove only validated, recorded worktree paths. Use forced removal or
-branch deletion only after the explicit `discard` authorization named that target. With
-`useWorktree: false`, do not run branch or worktree cleanup.
+With `useWorktree: true`, remove only validated, recorded worktree paths after observed termination.
+Restore any protected `TASK.md` backup and verify its recorded hash before apply or cleanup. Use
+forced removal or branch deletion only after the explicit `discard` authorization named that
+target. With `useWorktree: false`, do not run branch or worktree cleanup.
 
 Atomically update `.claude/.omh/agents.json`: preserve kept resources and partial-stop entries; set
 stopped status when resources remain. Remove the state file only after all agents are stopped and
 all recorded resources are either cleaned with confirmation or deliberately preserved elsewhere.
-Report what was stopped, kept, removed, and whether removed work can be recovered.
+On a failed or partial stop, retain state and resources, record the last observed liveness, and
+report recovery commands such as `tmux attach -t "<session>"`, `/agent-status`, and
+`/agent-stop <id>`. Report what was stopped, kept, removed, and whether removed work can be
+recovered.

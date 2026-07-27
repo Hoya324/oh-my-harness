@@ -16,11 +16,31 @@ then require explicit confirmation before creating `.claude/.omh/STOP` and atomi
 
 ## Start gate
 
-Read `.claude/.omh/harness.config.json`, including `features.autonomousLoop`, `modelRouting`, and the
-full `loop` block. Stop if disabled. Resolve `loop.specPath` (default `SPEC.md`) and refuse to start
-when it is missing or contains `[NEEDS CLARIFICATION]`. Invoke `/omh-spec` behavior first for a bare
-or vague goal. Resolve the human log from `loop.logFile` (default `PROGRESS.md`) and the learning
-cache from `loop.learningsFile` (default `.claude/.omh/loop-learnings.md`); use those resolved paths
+Resolve config exactly like the hooks: try project `.claude/.omh/harness.config.json`, then the
+global fallback `~/.claude/.omh/harness.config.json`; the project config wins. Use the first
+parseable candidate and deep-merge it with bundled defaults. Preserve all user keys, including
+unknown future keys. Read `features.autonomousLoop`, `modelRouting`, and the full `loop` block.
+Stop if disabled.
+
+Before planning a new loop, inspect both `.claude/.omh/STOP` and
+`.claude/.omh/loop-state.json`. Treat any active, malformed, partial, or otherwise unresolved state
+as protected:
+
+- For continuation, preserve the existing state exactly and continue only when its session,
+  spec, and stop intent are consistent. A STOP sentinel beside active state is unresolved; do not
+  silently clear it.
+- For replacement or restart, show the existing goal/state and require explicit confirmation.
+  Preserve malformed raw state for recovery until the user authorizes exact cleanup.
+- For cancel, change nothing.
+
+Never overwrite protected state. After a confirmed new start or replacement, clear a stale
+`.claude/.omh/STOP` before activating the new state. Stop-command behavior remains the separate
+explicit flow above.
+
+Resolve `loop.specPath` (default `SPEC.md`) and refuse to start when it is missing or contains
+`[NEEDS CLARIFICATION]`. Invoke `/omh-spec` behavior first for a bare or vague goal. Resolve the
+human log from `loop.logFile` (default `PROGRESS.md`) and the learning cache from
+`loop.learningsFile` (default `.claude/.omh/loop-learnings.md`); use those resolved paths
 throughout instead of hardcoded filenames.
 
 Choose the initial tier with this precedence:
@@ -63,12 +83,14 @@ Atomically write `.claude/.omh/loop-state.json` with:
   "iteration": 0,
   "totalIterations": 0,
   "deepVerifies": 0,
-  "startedAt": 0,
+  "startedAt": "<Date.now() current epoch milliseconds>",
   "history": []
 }
 ```
 
 Seed the resolved `loop.logFile` from the spec and retain the resolved `loop.learningsFile`.
+Capture `startedAt` from `Date.now()` immediately before the atomic activation write; never reuse a
+prior loop's timestamp or the Unix epoch.
 
 ## One iteration
 

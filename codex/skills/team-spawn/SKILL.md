@@ -19,7 +19,19 @@ composition plus a concrete task. Read `.claude/.omh/harness.config.json`:
 - treat `modelRouting` and agent profiles as preferences, not availability guarantees.
 
 Require the team name to match `^[a-zA-Z0-9_-]+$`; ask for another name instead of silently
-changing user input. Read `.claude/.omh/teams.json` and stop when it records an active team.
+changing user input. Treat any existing `.claude/.omh/teams.json` as protected, including
+`starting`, active, partial, malformed, failed, stopped-but-unclean, or otherwise unresolved state.
+Call `list_agents` and reconcile exact persisted canonical tasks and opaque agent ids when parsing
+is possible. Preserve malformed raw state for recovery.
+
+Present cleanup and resume choices and require an explicit decision before any replacement:
+
+- `resume`: preserve the file and recovery ids, then continue only the reconciled existing team;
+- `cleanup`: use `/team-stop` behavior and wait for observed terminal agents before changing state;
+- `cancel`: change nothing.
+
+Never overwrite recovery ids. Replacement requires explicit confirmation after cleanup is observed
+complete; a malformed or partial file is not permission to initialize a new team.
 
 Ask necessary questions directly in chat when “review,” “fix,” or another goal lacks files,
 acceptance criteria, or compatibility boundaries. Decompose the task into concrete, bounded

@@ -10,9 +10,12 @@ setup. Read `../../references/runtime-map.md` before adapting runtime actions.
 
 ## First-run gate
 
-Check `.claude/.omh/harness.config.json`.
+Resolve existing configuration exactly like the hooks: try the project
+`.claude/.omh/harness.config.json` first, then `~/.claude/.omh/harness.config.json` as the global
+fallback; the project config wins. Use the first parseable candidate. Deep-merge it with bundled
+defaults. Preserve all user keys, including unknown future keys.
 
-- If it exists, summarize it and ask whether to merge current defaults, reset after confirmation,
+- If a config exists, identify its scope, summarize it, and ask whether to merge current defaults, reset after confirmation,
   or cancel. Preserve user values during a merge. Treat reset as destructive and require explicit
   confirmation before overwriting.
 - If it is absent, welcome the user and ask directly in chat for installation scope, convention
@@ -52,6 +55,11 @@ Apply choices:
   `verify.autoFix` at the explicit choice.
 - Verifier lenses: include only selected, available runtimes. Mark a same-model Codex lens as
   non-independent later; never imply that a configured lens guarantees separation.
+
+For project scope, write `.claude/.omh/harness.config.json`. For global scope, write
+`~/.claude/.omh/harness.config.json`; global scope must not create or change the project config.
+Warn when an existing project config will continue to win over the global fallback. Deep-merge
+updates without dropping user-defined or unknown keys.
 
 If `.gitignore` lacks `.claude/.omh/`, show the proposed addition and ask before changing it.
 For durable Codex guidance, propose an `AGENTS.md` change and require explicit confirmation before
