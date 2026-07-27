@@ -313,13 +313,13 @@ Automatically generates project-specific skills from detected conventions. Claud
 
 **How it works:**
 
-1. Run `/init-project` or `oh-my-harness init`
+1. Run `/init-project` or `oh-my-harness init --runtime <claude|codex|both>`
 2. OMH detects your project's language and tools
 3. Skill templates are rendered with your specific tools (e.g., "vitest" not "test runner")
 4. Skills are written to the selected runtime destination for native discovery
 5. Customize freely — OMH never overwrites existing skills
 
-> Skills are user-owned files. `oh-my-harness reset` will NOT delete them.
+> Skills are user-owned files. `oh-my-harness reset --runtime claude`, `--runtime codex`, and `--runtime both` do NOT delete them. A bare reset defaults to Claude only.
 
 **Session hint:**
 
@@ -335,7 +335,7 @@ If no project skills are detected, OMH shows a hint on session start:
 }
 ```
 
-Set to `false` to disable scaffold hints and skip skill generation during init.
+Set `features.skillScaffolding` to `false` to disable scaffold hints and skip skill generation during init.
 
 ### 12. Native Team
 
@@ -520,7 +520,7 @@ A disk-anchored `STATE.md` under `.claude/.omh/` holds goal, current phase, key 
 
 **MCP:** `omh-memory` (knowledge graph) · **Default:** ON
 
-A cross-session, **cross-runtime** knowledge graph, backed by the reference `@modelcontextprotocol/server-memory` and stored at `~/.omh/memory/graph.jsonl` — **one store shared by Claude Code and Codex**. A launcher (`bin/omh-memory.sh`) points every runtime at the same file; Claude Code auto-loads it via the plugin's `.mcp.json`, Codex via a `[mcp_servers.omh-memory]` block.
+A cross-session, **cross-runtime** knowledge graph, backed by the reference `@modelcontextprotocol/server-memory` and stored at `~/.omh/memory/graph.jsonl` — **one store shared by Claude Code and Codex**. Claude Code auto-loads it via the plugin's `.mcp.json`. Local Codex init installs `.claude/.omh/runtime/bin/omh-memory.sh` and `.claude/.omh/runtime/lib/memory.mjs`, and manages a `[mcp_servers.omh-memory]` block that points at that launcher.
 
 - **Read** — before planning, `/omh-loop` and `/omh-spec` query the graph for prior learnings, already-verified `quickCheck`/`verify` commands, and known pitfalls.
 - **Write** — a failed iteration's Reflexion becomes a `Learning`; a green verify appends the verified commands to the `Project`; `/omh-verify` persists high-confidence findings (2+ model consensus).

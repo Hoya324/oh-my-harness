@@ -14,7 +14,7 @@ oh-my-harness status --runtime both
 oh-my-harness reset --runtime codex
 ```
 
-Codex 프로젝트 설치는 `.codex/hooks.json`, `.codex/agents/`, `.agents/skills/`, `AGENTS.md`의 표시 블록을 사용합니다. Claude와 Codex는 계속 `.claude/.omh/harness.config.json`과 모든 프로젝트 상태를 공유합니다. 업데이트는 관리되는 훅, 역할, 내장 스킬, 표시된 지침만 갱신하며 사용자 설정, 커스텀 스킬, 무관한 훅, 표시 밖 지침을 보존합니다. 한 런타임만 reset하면 다른 런타임이 등록된 동안 공유 상태를 보존합니다. Reset은 사용되지 않는 `.claude/.omh/` 프로젝트 상태를 제거할 수 있지만 별도 장기 메모리 저장소 `~/.omh/memory/graph.jsonl`은 삭제하지 않습니다.
+Codex 프로젝트 설치는 `.codex/hooks.json`, `.codex/agents/`, `.agents/skills/`, `AGENTS.md`의 표시 블록을 사용합니다. Claude와 Codex는 계속 `.claude/.omh/harness.config.json`과 모든 프로젝트 상태를 공유합니다. Codex update는 관리되는 훅, 역할, 내장 스킬, 표시된 지침과 프로젝트 로컬 메모리 런타임/등록을 갱신합니다. Claude 플러그인은 `claude plugin update`와 `/harness-setup` 흐름을 계속 사용하며 관리 payload가 다릅니다. 사용자 설정, 커스텀 스킬, 무관한 훅, 표시 밖 지침은 보존됩니다. 한 런타임만 reset하면 다른 런타임이 등록된 동안 공유 상태를 보존합니다. Reset은 사용되지 않는 `.claude/.omh/` 프로젝트 상태를 제거할 수 있지만 별도 장기 메모리 저장소 `~/.omh/memory/graph.jsonl`은 삭제하지 않습니다.
 
 Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 조건이 아닙니다:
 
@@ -300,14 +300,24 @@ DISABLE_HARNESS=1 claude
 # 플러그인 모드 — 삭제
 claude plugin uninstall oh-my-harness@oh-my-harness
 
-# npm 모드 — 완전 제거
-oh-my-harness reset
+# 로컬 CLI — Claude만 (bare reset의 기본값)
+oh-my-harness reset --runtime claude
+
+# 로컬 CLI — Codex만
+oh-my-harness reset --runtime codex
+
+# 로컬 CLI — 두 런타임 등록 모두 제거
+oh-my-harness reset --runtime both
+
+# 필요하면 전역 링크/설치된 CLI도 제거
 npm uninstall -g oh-my-harness
 ```
+
+인자 없는 `oh-my-harness reset`은 Claude만 대상으로 하며 dual-runtime 제거가 아닙니다. 사용자 소유 프로젝트 스킬과 별도 메모리 그래프 `~/.omh/memory/graph.jsonl`은 보존됩니다.
 
 ## 요구사항
 
 - **Node.js** >= 18
-- **Claude Code** CLI
+- **Claude Code** CLI 및/또는 **Codex** CLI/데스크톱
 - **tmux** — 멀티 에이전트 전용 (`brew install tmux`)
 - **git** — worktree 격리용

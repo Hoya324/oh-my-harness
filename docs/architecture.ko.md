@@ -4,7 +4,7 @@ OMH는 네이티브 **Claude Code 또는 Codex 플러그인**(권장), 또는 **
 
 ## Codex 지원
 
-OMH는 런타임 중립 공유 코어와 얇은 네이티브 어댑터를 사용합니다. 기존 `.claude-plugin` 패키지와 Claude 훅은 그대로 유지되고, [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json)은 Codex가 `codex/skills/`, `.mcp.json`, `hooks/codex/hooks.json`을 사용하도록 연결합니다. Codex 브리지는 이벤트 입력을 정규화하고 동일한 훅과 `lib/` 판단을 실행한 뒤 Codex 네이티브 출력으로 직렬화합니다.
+OMH는 런타임 중립 공유 코어와 얇은 네이티브 어댑터를 사용합니다. 기존 `.claude-plugin` 패키지와 Claude 훅은 그대로 유지되고, [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json)은 Codex가 `codex/skills/`, `.mcp.json`, `hooks/codex/hooks.json`을 사용하도록 연결합니다. 두 모듈 `hooks/codex/adapter.mjs`와 `hooks/codex/run.mjs`로 된 Codex 브리지가 이벤트 입력을 정규화하고 동일한 훅과 `lib/` 판단을 실행한 뒤 Codex 네이티브 출력으로 직렬화합니다.
 
 런타임별 등록은 분리되지만 프로젝트 상태는 분리되지 않습니다. 두 런타임은 `.claude/.omh/harness.config.json`, `STATE.md`, `loop-state.json`, 학습, 컨벤션, 사용량을 함께 읽습니다. `~/.omh/memory/graph.jsonl`도 공유합니다. 이번 호환성 릴리스에서 `.claude/.omh/`를 유지해 상태 마이그레이션을 피합니다.
 
@@ -23,12 +23,12 @@ OMH는 네 개의 계층으로 구성됩니다. 설계 원칙은 이렇습니다
 
 | 계층 | 구성 요소 | 역할 |
 |------|-----------|------|
-| **① 훅** | Claude Code 생명주기 이벤트 위의 9개 `.mjs` (`hooks/`) | 얇은 **fail-open** 래퍼 — 부수효과 신호를 모아 판단을 출력; 오류가 나도 세션을 가두지 않고 조용히 통과 |
+| **① 훅** | 등록된 공유 스크립트 11개: 생명주기 가드/관측기 9개 + `plan-gate.mjs`, `verify-gate.mjs`; Codex 브리지 모듈 2개 추가 | 얇은 **fail-open** 래퍼 — 부수효과 신호를 모아 판단을 출력; 오류가 나도 세션을 가두지 않고 조용히 통과 |
 | **② 순수 코어** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | 판단 로직을 **순수 함수**(fs / git / `Date.now` / child_process 없음)로 → 완전한 단위 테스트 |
 | **③ 스킬** | Claude 스킬 13개 (`skills/`) / Codex 스킬 14개 (`codex/skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 / Codex 상태 |
 | **④ 에이전트** | `quick` / `standard` / `architect` (`agents/`) | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
 
-각 Claude Code 생명주기 이벤트는 정확히 하나의 훅을 트리거합니다 (`Stop` 이벤트가 자율 루프가 사는 곳):
+생명주기 이벤트는 순서가 있는 여러 훅을 실행할 수 있습니다. `PreToolUse`, `PostToolUse`, `Stop`은 의도적으로 둘 이상을 실행하며, 자율 루프는 `Stop` 체인에 있습니다:
 
 | 생명주기 이벤트 | 훅 | 동작 |
 |-----------------|-----|------|

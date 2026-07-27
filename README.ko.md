@@ -53,7 +53,7 @@ graph LR
 그 외의 모든 곳에서 OMH는 거의 의식하지 못할 만큼 가벼운 하네스로 남습니다 — 경고로 안내하는 스마트 기본값과, 감지된 스택에서 자동 스캐폴딩되어 직접 소유하고 커스터마이즈하는 **프로젝트 전용 스킬**(테스트 컨벤션, 리뷰 체크리스트, 린트 워크플로우)이 그것입니다.
 
 - **내장 스킬**(에이전트 관리, 설정)은 플러그인에 남습니다
-- **프로젝트 스킬**(code-review, test-write, lint-fix)은 `.claude/skills/`에 위치합니다 — 당신의 프로젝트, 당신의 규칙
+- **프로젝트 스킬**(code-review, test-write, lint-fix)은 Claude Code의 `.claude/skills/`와 Codex의 `.agents/skills/`에 위치하며, `--runtime both`는 둘 다 생성합니다 — 당신의 프로젝트, 당신의 규칙
 - `/init-project`로 스캐폴딩한 뒤 자유롭게 커스터마이즈하세요
 
 ---
@@ -85,7 +85,7 @@ oh-my-harness init --runtime codex
 oh-my-harness init --runtime both
 ```
 
-위 Codex 명령은 마켓플레이스 소스를 등록합니다. 사용 중인 Codex CLI 또는 데스크톱 빌드가 제공하는 마켓플레이스 흐름에서 `oh-my-harness`를 설치하거나 활성화하세요. 로컬 CLI 기본값은 계속 `--runtime claude`입니다. `--runtime both`는 두 런타임을 등록하되 하나의 설정과 상태 저장소를 공유합니다. 플러그인 설치 후에는 **별도 설정이 필요 없습니다**. `/harness-setup`은 `harness.config.json`을 조정할 때만 사용하는 선택 사항입니다.
+위 Codex 명령은 마켓플레이스 소스를 등록합니다. **Codex CLI**를 실행하고 `/plugins`를 입력한 뒤, 구성된 마켓플레이스에서 `oh-my-harness`를 설치하고 **새 세션**을 시작하세요. **Codex 데스크톱**에서는 **Plugins**를 열고 **Personal** 아래의 구성된 마켓플레이스에서 설치한 뒤 새 채팅을 여세요. [공식 Codex 플러그인 가이드](https://developers.openai.com/codex/plugins)도 참고하세요. 로컬 CLI 기본값은 계속 `--runtime claude`입니다. `--runtime both`는 두 런타임을 등록하되 하나의 설정과 상태 저장소를 공유합니다. 플러그인 설치 후에는 **별도 설정이 필요 없습니다**. `/harness-setup`은 `harness.config.json`을 조정할 때만 사용하는 선택 사항입니다.
 
 ## Codex 지원
 
@@ -123,7 +123,7 @@ claude plugin update oh-my-harness@oh-my-harness
 oh-my-harness update --runtime codex
 ```
 
-> **참고:** 런타임별 업데이트는 OMH가 관리하는 훅, 내장 스킬, 역할, 표시된 지침 블록만 갱신합니다. 사용자 설정, 공유 상태, 무관한 훅, 커스텀 스킬, 표시 블록 밖의 `AGENTS.md` / `CLAUDE.md` 내용은 보존됩니다. `reset --runtime codex`는 관리되는 Codex 등록을 제거하되 Claude가 남아 있으면 공유 프로젝트 상태를 보존합니다. `reset --runtime both`는 두 등록을 제거하고, 남은 등록이 사용하지 않을 때만 `.claude/.omh/`를 제거합니다. 두 reset 모두 별도 장기 메모리 저장소 `~/.omh/memory/graph.jsonl`은 삭제하지 않습니다.
+> **참고:** Codex update는 OMH가 관리하는 훅, 내장 스킬, 역할, 표시된 지침과 프로젝트 로컬 메모리 런타임/등록을 갱신합니다. Claude 플러그인 업데이트는 별도의 플러그인 설정 흐름을 따르며 관리 payload가 다릅니다. 사용자 설정, 공유 상태, 무관한 훅, 커스텀 스킬, 표시 블록 밖의 `AGENTS.md` / `CLAUDE.md` 내용은 보존됩니다. `reset --runtime codex`는 관리되는 Codex 등록을 제거하되 Claude가 남아 있으면 공유 프로젝트 상태를 보존합니다. `reset --runtime both`는 두 등록을 제거하고, 남은 등록이 사용하지 않을 때만 `.claude/.omh/`를 제거합니다. 두 reset 모두 별도 장기 메모리 저장소 `~/.omh/memory/graph.jsonl`은 삭제하지 않습니다.
 
 ---
 
@@ -219,7 +219,7 @@ node ~/.omh/lib/memory.mjs search "<project>"   # 이 프로젝트가 하네스�
 node ~/.omh/lib/memory.mjs stats                 # 엔티티 / 관계 / 스토어 경로
 ```
 
-- **백엔드** — 레퍼런스 지식그래프 서버(`@modelcontextprotocol/server-memory`): 로컬, API 키 불필요, JSONL 파일에 엔티티+관계+observation. 런처(`bin/omh-memory.sh`)가 모든 런타임을 동일한 `~/.omh/memory/graph.jsonl`로 향하게 합니다.
+- **백엔드** — 레퍼런스 지식그래프 서버(`@modelcontextprotocol/server-memory`): 로컬, API 키 불필요, JSONL 파일에 엔티티+관계+observation. Claude 플러그인 모드는 `.mcp.json`을 사용합니다. 로컬 Codex init은 `.claude/.omh/runtime/bin/omh-memory.sh`와 `.claude/.omh/runtime/lib/memory.mjs`를 설치하고 Codex 설정의 `[mcp_servers.omh-memory]`를 관리합니다. 둘 다 `~/.omh/memory/graph.jsonl`을 가리킵니다.
 - **루프가 읽음** — 계획 전에 `/omh-loop`·`/omh-spec`이 그래프에서 과거 학습·이미 검증된 `quickCheck`/`verify` 커맨드·기존 함정을 조회해 계획에 반영합니다(이미 아는 것을 재탐지하지 않음).
 - **루프가 씀** — 실패한 iteration의 Reflexion은 `Learning` 엔티티가 되고, 통과한 verify는 검증된 커맨드를 `Project`에 적립하며, `/omh-verify`는 **고신뢰 findings**(2+ 모델 합의)를 영속화해 다음 실행이 재발견하지 않게 합니다.
 - **에이전트 + 프로그래매틱 접근** — 에이전트는 MCP 툴을 실시간으로, 훅/CLI는 `lib/memory.mjs`(원자적 쓰기, 서버와 포맷 호환)로 결정론적으로 접근합니다.
@@ -227,14 +227,31 @@ node ~/.omh/lib/memory.mjs stats                 # 엔티티 / 관계 / 스토�
 
 > **동시성 주의.** 지식그래프 서버는 인메모리 복사본을 두고 mutation마다 파일 전체를 다시 쓰므로, 한 번에 한 writer를 전제로 설계됐습니다. 개인용(한 번에 한 에이전트)엔 무해하나, Claude Code와 Codex가 동시에 대량 쓰기하는 것은 피하세요.
 
-**설정** — Claude Code는 플러그인의 `.mcp.json`에서 서버를 자동 로드합니다. Codex는 `~/.codex/config.toml`에 추가하세요:
+**설정** — Claude Code는 플러그인의 `.mcp.json`에서 서버를 자동 로드합니다. `oh-my-harness init --runtime codex`(또는 `both`)는 프로젝트 런처를 프로비저닝하고 다음 Codex 등록을 자동 관리합니다:
 
 ```toml
 [mcp_servers.omh-memory]
 command = "bash"
-args = ["/ABSOLUTE/PATH/TO/.omh/bin/omh-memory.sh"]
+args = ["/ABSOLUTE/PROJECT/.claude/.omh/runtime/bin/omh-memory.sh"]
 startup_timeout_sec = 60
 ```
+
+---
+
+## 무게 인식 하네스 (Weight-Aware Harness)
+
+모든 프롬프트에 같은 검증 비용을 쓸 필요는 없습니다. OMH는 요청 무게를 **Tier 1**(가벼움), **Tier 2**(표준), **Tier 3**(무겁거나 위험함)으로 분류하고 가드레일을 비례 적용합니다.
+
+```bash
+/omh-verify add JWT auth with refresh tokens   # N-라운드 독립 멀티모델 검증 + 수정
+```
+
+- **무게 라우팅** — `UserPromptSubmit` 훅이 티어를 판정하며 Tier 3은 완료 전에 검증을 강제합니다.
+- **N-라운드 검증** — `/omh-verify`가 Claude → GPT/codex → Gemini 렌즈를 순환합니다. 외부 검증자는 read-only로 비평만 합니다.
+- **Living state 앵커** — `STATE.md`가 목표·단계·결정·진행을 디스크에 유지하고 `SessionStart`/`PreCompact`에서 재주입됩니다.
+- **전역 설정 폴백** — 프로젝트 `harness.config.json`을 우선하고 없으면 전역 `~/.claude/.omh` 설정을 사용합니다.
+
+자세한 정책은 [docs/verify.ko.md](docs/verify.ko.md)에 있습니다.
 
 ---
 
@@ -246,7 +263,7 @@ OMH는 **네 개의 계층**으로 구성됩니다. 핵심 판단 로직은 순�
 
 | 계층 | 구성 요소 | 역할 |
 |------|-----------|------|
-| **① 훅** | Claude Code 생명주기 이벤트 위의 9개 `.mjs` | 얇은 **fail-open** 래퍼 — 부수효과 신호(git, 시간, stdin)를 모아 판단을 출력 |
+| **① 훅** | 공유 스크립트 11개(생명주기 가드/관측기 9개 + 게이트 2개), Codex 브리지 모듈 2개 | 얇은 **fail-open** 래퍼 — 부수효과 신호(git, 시간, stdin)를 모아 판단을 출력 |
 | **② 순수 코어** (`lib/`) | `loop` · `tier` · `detect` · `config` · `verify` · `state` · `dictionary` | 모든 판단 로직을 **순수 함수**(fs / git / 시간 없음)로 → 완전한 단위 테스트 |
 | **③ 스킬** | Claude 13개 / Codex 14개 스킬 | 사용자 호출 워크플로우 (`/omh-loop`, `/omh-verify`, `/team-spawn`, `omh-status`, …) |
 | **④ 에이전트** | `quick` · `standard` · `architect` | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
@@ -306,7 +323,7 @@ graph TB
 
 ## 훅 파이프라인
 
-각 Claude Code 생명주기 이벤트가 OMH 훅 하나를 트리거합니다 — `Stop` 이벤트가 자율 루프가 사는 곳입니다:
+생명주기 이벤트는 순서가 있는 OMH 훅 체인을 실행할 수 있습니다. `PreToolUse`, `PostToolUse`, `Stop`은 의도적으로 둘 이상을 실행하며 자율 루프는 `Stop` 체인에 있습니다:
 
 | 생명주기 이벤트 | 훅 | 동작 |
 |-----------------|-----|------|

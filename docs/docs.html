@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Docs — Oh My Harness</title>
-  <meta name="description" content="Documentation for Oh My Harness — a spec-driven autonomous loop and smart defaults for Claude Code.">
+  <meta name="description" content="Documentation for Oh My Harness — a spec-driven autonomous loop and smart defaults for Claude Code and Codex.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -48,7 +48,7 @@
     <aside class="docs-sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title">Oh My Harness</div>
-        <div class="sidebar-version">v0.4.5</div>
+        <div class="sidebar-version">v0.5.0</div>
       </div>
 
       <div class="sidebar-external">
@@ -157,20 +157,34 @@
     <!-- Content -->
     <main class="docs-content">
       <h1 data-i18n="docs.title">Oh My Harness</h1>
-      <p class="doc-subtitle" data-i18n="docs.subtitle">Lightweight Claude Code harness. Zero config, instant boost. Smart defaults, test enforcement, model routing, and multi-agent orchestration — all through native hooks.</p>
+      <p class="doc-subtitle" data-i18n="docs.subtitle">Native Claude Code and Codex harness with a spec-driven autonomous loop, safety guards, model routing, and multi-agent orchestration.</p>
 
       <!-- Installation -->
       <h2 id="installation" data-i18n="docs.installation.title">Installation</h2>
 
-      <pre><code>claude plugin marketplace add Hoya324/oh-my-harness
-claude plugin install oh-my-harness@oh-my-harness</code></pre>
+      <pre><code># Claude Code
+claude plugin marketplace add Hoya324/oh-my-harness
+claude plugin install oh-my-harness@oh-my-harness
+
+# Codex marketplace source
+codex plugin marketplace add Hoya324/oh-my-harness
+
+# Local project install
+oh-my-harness init --runtime codex
+oh-my-harness init --runtime both</code></pre>
+
+      <p>For the <strong>Codex CLI</strong>, start Codex, enter <code>/plugins</code>, choose the configured marketplace, install <code>oh-my-harness</code>, and start a new session. In <strong>Codex desktop</strong>, open <strong>Plugins</strong>, choose the configured marketplace under <strong>Personal</strong>, install it, and open a new chat. See the <a href="https://developers.openai.com/codex/plugins">official Codex plugin guide</a>.</p>
+      <p>After installation, review OMH hooks in <code>/hooks</code>. Codex keeps its native trust boundary. Use <code>omh-status</code> for tier, loop, verification, usage, and memory state.</p>
 
       <blockquote><p data-i18n="docs.installation.note">Zero setup required — harness features (including the autonomous loop) activate automatically. <code>/harness-setup</code> is optional.</p></blockquote>
 
       <h3 data-i18n="docs.installation.updating">Updating</h3>
       <pre><code>claude plugin update oh-my-harness@oh-my-harness
-/harness-setup</code></pre>
-      <blockquote><p data-i18n="docs.installation.updateNote">Updating preserves your existing <code>harness.config.json</code>. Only hooks, commands, and CLAUDE.md instructions are refreshed.</p></blockquote>
+/harness-setup
+
+oh-my-harness update --runtime codex</code></pre>
+      <blockquote><p data-i18n="docs.installation.updateNote">Updates preserve <code>harness.config.json</code> and user-owned skills. Codex update refreshes managed hooks, skills, roles, guidance, and memory runtime; Claude plugin update follows its plugin setup flow.</p></blockquote>
+      <p>Claude plugin mode loads memory through <code>.mcp.json</code>. Local Codex init provisions <code>.claude/.omh/runtime/bin/omh-memory.sh</code> and <code>.claude/.omh/runtime/lib/memory.mjs</code>, and manages <code>[mcp_servers.omh-memory]</code>. Both use <code>~/.omh/memory/graph.jsonl</code>.</p>
 
       <!-- Quick Start -->
       <h2 id="quick-start" data-i18n="docs.quickStart.title">Quick Start</h2>
@@ -350,7 +364,7 @@ claude plugin install oh-my-harness@oh-my-harness</code></pre>
 
       <!-- Skills -->
       <h2 id="skills" data-i18n="docs.skills.title">Skills</h2>
-      <p data-i18n="docs.skills.intro">OMH provides 12 built-in slash commands:</p>
+      <p data-i18n="docs.skills.intro">OMH provides 13 Claude Code skills and 14 Codex skills (including <code>omh-status</code>):</p>
 
       <table>
         <thead>
@@ -697,10 +711,12 @@ claude plugin install oh-my-harness@oh-my-harness</code></pre>
 
       <!-- CLI Commands -->
       <h2 id="cli-commands" data-i18n="docs.cliCommands.title">CLI Commands</h2>
-      <pre><code>oh-my-harness init      # Set up harness in current project
-oh-my-harness update    # Regenerate settings from config
+      <pre><code>oh-my-harness init --runtime claude|codex|both
+oh-my-harness update --runtime claude|codex|both
 oh-my-harness status    # Show current configuration
-oh-my-harness reset     # Remove all harness files (clean uninstall)</code></pre>
+oh-my-harness reset --runtime claude  # Bare reset has the same Claude-only default
+oh-my-harness reset --runtime codex   # Remove only managed Codex registration
+oh-my-harness reset --runtime both    # Remove both managed registrations</code></pre>
 
       <!-- Compatibility -->
       <h2 id="compatibility" data-i18n="docs.compatibility.title">OMC Compatibility</h2>
@@ -726,14 +742,22 @@ DISABLE_HARNESS=1 claude
 # Plugin mode — uninstall
 claude plugin uninstall oh-my-harness
 
-# npm mode — full removal
-oh-my-harness reset
+# Local CLI — Claude only (bare reset default)
+oh-my-harness reset --runtime claude
+
+# Local CLI — Codex only
+oh-my-harness reset --runtime codex
+
+# Local CLI — full dual-runtime removal
+oh-my-harness reset --runtime both
 npm uninstall -g oh-my-harness</code></pre>
+
+      <p>User-owned project skills and the separate memory graph at <code>~/.omh/memory/graph.jsonl</code> are preserved.</p>
 
       <h3 data-i18n="docs.uninstall.requirements">Requirements</h3>
       <ul>
         <li><strong>Node.js</strong> >= 18</li>
-        <li><strong>Claude Code</strong> CLI</li>
+        <li><strong>Claude Code</strong> and/or <strong>Codex</strong> CLI/desktop</li>
         <li><strong>tmux</strong> — for multi-agent only</li>
         <li><strong>git</strong> — for worktree isolation</li>
       </ul>

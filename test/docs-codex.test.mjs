@@ -88,3 +88,105 @@ test('the documentation site exposes localized Codex install, parity, trust, and
   assert.ok(html.includes('npm link'));
   assert.ok(!html.includes('codex plugin install '));
 });
+
+test('the rendered docs page is a current dual-runtime 0.5.0 guide', () => {
+  const html = read('docs/docs.html');
+  const i18n = read('docs/i18n.js');
+
+  for (const fact of [
+    'v0.5.0',
+    'Codex CLI',
+    'Codex desktop',
+    '/plugins',
+    'oh-my-harness init --runtime codex',
+    'oh-my-harness init --runtime both',
+    'oh-my-harness reset --runtime codex',
+    'oh-my-harness reset --runtime both',
+    'omh-status',
+    'https://developers.openai.com/codex/plugins',
+  ]) {
+    assert.ok(html.includes(fact), `docs/docs.html: missing ${fact}`);
+  }
+
+  for (const stale of ['v0.4.5', '12 built-in slash commands', 'Lightweight Claude Code harness']) {
+    assert.ok(!html.includes(stale), `docs/docs.html: stale copy ${stale}`);
+    assert.ok(!i18n.includes(stale), `docs/i18n.js: stale copy ${stale}`);
+  }
+  assert.ok(!html.includes('codex plugin install '), 'unsupported Codex install command');
+});
+
+test('install, memory, update, and removal claims match the supported runtime contracts', () => {
+  const installDocs = ['README.md', 'README.ko.md'];
+  for (const file of installDocs) {
+    const body = read(file);
+    assert.ok(body.includes('https://developers.openai.com/codex/plugins'), `${file}: official Codex plugin guide`);
+    assert.ok(body.includes('/plugins'), `${file}: CLI marketplace flow`);
+    assert.ok(body.includes('new session') || body.includes('새 세션'), `${file}: new-session activation`);
+    assert.ok(body.includes('Plugins'), `${file}: desktop Plugins flow`);
+    assert.ok(body.includes('.claude/.omh/runtime/bin/omh-memory.sh'), `${file}: managed Codex memory launcher`);
+    assert.ok(body.includes('[mcp_servers.omh-memory]'), `${file}: managed Codex MCP registration`);
+    assert.ok(body.includes('.mcp.json'), `${file}: Claude plugin MCP registration`);
+  }
+
+  for (const file of ['docs/configuration.md', 'docs/configuration.ko.md']) {
+    const body = read(file);
+    for (const command of [
+      'oh-my-harness reset --runtime claude',
+      'oh-my-harness reset --runtime codex',
+      'oh-my-harness reset --runtime both',
+    ]) {
+      assert.ok(body.includes(command), `${file}: missing ${command}`);
+    }
+  }
+});
+
+test('English and Korean guides preserve meaningful structural and fact parity', () => {
+  for (const file of ['README.md', 'README.ko.md']) {
+    const body = read(file);
+    for (const fact of ['Tier 1', 'Tier 2', 'Tier 3', '/omh-verify', 'STATE.md']) {
+      assert.ok(body.includes(fact), `${file}: Weight-Aware section missing ${fact}`);
+    }
+  }
+
+  for (const file of ['docs/loop.md', 'docs/loop.ko.md']) {
+    const body = read(file);
+    const ordered = ['/omh-spec', '/omh-loop SPEC.md', '/omh-loop stop', 'quickCheck', 'PASS | FAIL | INCONCLUSIVE', 'maxTotalIterations', 'SPEC.md', 'PROGRESS.md'];
+    let cursor = -1;
+    for (const fact of ordered) {
+      const next = body.indexOf(fact, cursor + 1);
+      assert.ok(next > cursor, `${file}: missing or out-of-order ${fact}`);
+      cursor = next;
+    }
+  }
+
+  for (const file of ['docs/features.md', 'docs/features.ko.md']) {
+    const body = read(file);
+    for (const fact of [
+      '.claude/skills/',
+      '.agents/skills/',
+      '--runtime both',
+      'code-review',
+      'test-write',
+      'lint-fix',
+      'Node.js',
+      'Python',
+      'Go',
+      'Rust',
+      'Java',
+      'Kotlin',
+      '[omh:skill-hint]',
+      'features.skillScaffolding',
+    ]) {
+      assert.ok(body.includes(fact), `${file}: skill scaffolding missing ${fact}`);
+    }
+  }
+});
+
+test('architecture describes shared scripts and Codex bridge without one-hook contradiction', () => {
+  for (const file of ['docs/architecture.md', 'docs/architecture.ko.md']) {
+    const body = read(file);
+    assert.ok(body.includes('adapter.mjs'), `${file}: missing adapter bridge`);
+    assert.ok(body.includes('run.mjs'), `${file}: missing bridge runner`);
+    assert.ok(!body.includes('exactly one hook'), `${file}: stale one-hook claim`);
+  }
+});

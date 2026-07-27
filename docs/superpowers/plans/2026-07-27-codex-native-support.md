@@ -713,10 +713,9 @@ Run:
 ```bash
 codex plugin marketplace add /Users/hoyana/Documents/Codex/2026-07-27/https-developers-openai-com-codex-app/work/oh-my-harness-codex
 codex plugin marketplace list
-codex plugin install oh-my-harness@oh-my-harness
 ```
 
-If the installed CLI exposes a different exact install subcommand, use `codex plugin --help` as the source of truth, record the command used, and do not edit user config manually unless the CLI lacks installation support.
+Then start Codex, enter `/plugins`, choose the configured marketplace, install `oh-my-harness`, and start a new session. In Codex desktop, open **Plugins**, choose the configured marketplace under **Personal**, install it, and open a new chat. Follow the [official Codex plugin guide](https://developers.openai.com/codex/plugins); do not invent a `codex plugin install` subcommand.
 
 Expected: marketplace and plugin are listed and enabled.
 

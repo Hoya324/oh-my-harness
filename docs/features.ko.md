@@ -292,12 +292,52 @@ Plan 모드를 제안합니다 — 강제하지 않습니다.
 
 감지된 컨벤션을 바탕으로 프로젝트 전용 `code-review`, `test-write`, `lint-fix` 스킬을 자동 생성합니다. Claude Code는 `.claude/skills/`, Codex는 `.agents/skills/`를 사용하며 `--runtime both`는 두 위치를 모두 생성합니다.
 
+**생성되는 스킬:**
+
+| 스킬 | 역할 |
+|------|------|
+| `code-review` | 언어별 리뷰 체크리스트 |
+| `test-write` | 감지된 프레임워크의 테스트 작성 규칙 |
+| `lint-fix` | 린트 검사와 자동 수정 워크플로우 |
+
+**지원 언어:**
+
+| 언어 | 테스트 프레임워크 | 린터 | 참고 |
+|------|------------------|-------|------|
+| Node.js | vitest / jest / mocha | eslint / biome | TypeScript 자동 감지 |
+| Python | pytest | ruff / flake8 | black / ruff 포매팅 |
+| Go | go test | golangci-lint | 테이블 주도 테스트 패턴 |
+| Rust | cargo test | clippy | rustfmt 포매팅 |
+| Java | junit | — | Gradle / Maven 빌드 |
+| Kotlin | kotest / junit5 | ktlint / detekt | null 안전성 검사 |
+
+**동작 순서:**
+
 1. `/init-project` 또는 `oh-my-harness init --runtime <runtime>` 실행
 2. 프로젝트 언어, 테스트 도구, 린터 감지
 3. 감지된 도구 이름으로 템플릿 렌더링
-4. 기존 사용자 스킬은 덮어쓰지 않고 새 스킬만 생성
+4. 선택한 런타임의 네이티브 탐색 위치에 스킬 기록
+5. 기존 사용자 스킬은 덮어쓰지 않으므로 자유롭게 수정
 
-Node.js, Python, Go, Rust, Java, Kotlin을 지원합니다. `features.skillScaffolding`을 `false`로 설정하면 세션 힌트와 init 스캐폴딩을 비활성화합니다.
+> 스킬은 사용자 소유 파일입니다. `oh-my-harness reset --runtime claude`, `--runtime codex`, `--runtime both` 모두 삭제하지 않습니다. 인자 없는 reset은 Claude만 기본 대상으로 합니다.
+
+**세션 힌트:**
+
+프로젝트 스킬이 없으면 세션 시작 시 다음 힌트를 표시합니다:
+
+```text
+[omh:skill-hint] No project skills found. Run /init-project to scaffold.
+```
+
+**설정:**
+
+```json
+{
+  "features": { "skillScaffolding": true }
+}
+```
+
+`features.skillScaffolding`을 `false`로 설정하면 세션 힌트와 init 스캐폴딩을 비활성화합니다.
 
 ### 12. 네이티브 팀
 
@@ -466,7 +506,7 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 **MCP:** `omh-memory` (지식그래프) · **기본값:** ON
 
-세션·런타임을 넘나드는 지식그래프. 레퍼런스 `@modelcontextprotocol/server-memory` 기반, 스토어는 `~/.omh/memory/graph.jsonl` — **Claude Code와 Codex가 공유하는 하나의 스토어**. 런처(`bin/omh-memory.sh`)가 모든 런타임을 같은 파일로 향하게 하며, Claude Code는 플러그인 `.mcp.json`으로 자동 로드, Codex는 `[mcp_servers.omh-memory]` 블록으로 연결.
+세션·런타임을 넘나드는 지식그래프. 레퍼런스 `@modelcontextprotocol/server-memory` 기반, 스토어는 `~/.omh/memory/graph.jsonl` — **Claude Code와 Codex가 공유하는 하나의 스토어**. Claude Code는 플러그인 `.mcp.json`으로 자동 로드합니다. 로컬 Codex init은 `.claude/.omh/runtime/bin/omh-memory.sh`와 `.claude/.omh/runtime/lib/memory.mjs`를 설치하고 그 런처를 가리키는 `[mcp_servers.omh-memory]` 블록을 관리합니다.
 
 - **읽기** — 계획 전에 `/omh-loop`·`/omh-spec`이 과거 학습·이미 검증된 `quickCheck`/`verify` 커맨드·기존 함정을 조회.
 - **쓰기** — 실패한 iteration의 Reflexion은 `Learning`이 되고, 통과한 verify는 검증된 커맨드를 `Project`에 적립, `/omh-verify`는 고신뢰 findings(2+ 모델 합의)를 영속화.

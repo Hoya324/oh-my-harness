@@ -14,7 +14,7 @@ oh-my-harness status --runtime both
 oh-my-harness reset --runtime codex
 ```
 
-Codex project installs use `.codex/hooks.json`, `.codex/agents/`, `.agents/skills/`, and a marked block in `AGENTS.md`. Claude and Codex still share `.claude/.omh/harness.config.json` and all project state. Updates refresh only managed hooks, roles, built-in skills, and marked guidance; user config, custom skills, unrelated hooks, and unmarked guidance are preserved. A single-runtime reset preserves shared state while the other runtime remains registered. Reset can remove unused `.claude/.omh/` project state, but it never deletes the separate long-term memory store at `~/.omh/memory/graph.jsonl`.
+Codex project installs use `.codex/hooks.json`, `.codex/agents/`, `.agents/skills/`, and a marked block in `AGENTS.md`. Claude and Codex still share `.claude/.omh/harness.config.json` and all project state. A Codex update refreshes managed hooks, roles, built-in skills, marked guidance, and the project-local memory runtime/registration. Claude plugin updates continue through `claude plugin update` plus `/harness-setup`; their managed payload differs. User config, custom skills, unrelated hooks, and unmarked guidance are preserved. A single-runtime reset preserves shared state while the other runtime remains registered. Reset can remove unused `.claude/.omh/` project state, but it never deletes the separate long-term memory store at `~/.omh/memory/graph.jsonl`.
 
 Codex role defaults are overrideable configuration, not workflow invariants:
 
@@ -324,14 +324,24 @@ DISABLE_HARNESS=1 claude
 # Plugin mode — uninstall
 claude plugin uninstall oh-my-harness@oh-my-harness
 
-# npm mode — full removal
-oh-my-harness reset
+# Local CLI — Claude only (also the bare reset default)
+oh-my-harness reset --runtime claude
+
+# Local CLI — Codex only
+oh-my-harness reset --runtime codex
+
+# Local CLI — remove both runtime registrations
+oh-my-harness reset --runtime both
+
+# Then remove the globally linked/installed CLI if desired
 npm uninstall -g oh-my-harness
 ```
+
+The bare `oh-my-harness reset` defaults to Claude only; it is not a dual-runtime uninstall. Project skills are user-owned and preserved. The separate memory graph at `~/.omh/memory/graph.jsonl` is also preserved.
 
 ## Requirements
 
 - **Node.js** >= 18
-- **Claude Code** CLI
+- **Claude Code** CLI and/or **Codex** CLI/desktop
 - **tmux** — for multi-agent only (`brew install tmux`)
 - **git** — for worktree isolation

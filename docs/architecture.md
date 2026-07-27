@@ -4,7 +4,7 @@ OMH installs as a native **Claude Code or Codex plugin** (recommended), or throu
 
 ## Codex Support
 
-OMH uses a shared runtime-neutral core with thin native adapters. The existing `.claude-plugin` package and Claude hooks remain intact; [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json) points Codex at `codex/skills/`, `.mcp.json`, and `hooks/codex/hooks.json`. The Codex bridge normalizes event input, invokes the same hook and `lib/` decisions, then serializes Codex-native output.
+OMH uses a shared runtime-neutral core with thin native adapters. The existing `.claude-plugin` package and Claude hooks remain intact; [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json) points Codex at `codex/skills/`, `.mcp.json`, and `hooks/codex/hooks.json`. The two-module Codex bridge — `hooks/codex/adapter.mjs` and `hooks/codex/run.mjs` — normalizes event input, invokes the same hook and `lib/` decisions, then serializes Codex-native output.
 
 Runtime-specific registrations remain separate, but project state does not. Both runtimes read `.claude/.omh/harness.config.json`, `STATE.md`, `loop-state.json`, learnings, conventions, and usage. They also share `~/.omh/memory/graph.jsonl`. Retaining `.claude/.omh/` avoids a state migration in this compatibility release.
 
@@ -23,12 +23,12 @@ OMH is built in four layers. The design rule: **all decision logic lives in pure
 
 | Layer | Components | Role |
 |-------|-----------|------|
-| **① Hooks** | 9 `.mjs` on Claude Code lifecycle events (`hooks/`) | Thin **fail-open** wrappers — gather impure signals and emit decisions; any error stays silent rather than trapping the session |
+| **① Hooks** | 11 registered shared scripts: 9 lifecycle guards/observers plus `plan-gate.mjs` and `verify-gate.mjs`; Codex adds 2 bridge modules | Thin **fail-open** wrappers — gather impure signals and emit decisions; any error stays silent rather than trapping the session |
 | **② Pure Core** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | Decision logic as **pure functions** (no fs / git / `Date.now` / child_process) → fully unit-tested |
 | **③ Skills** | 13 Claude skills (`skills/`) / 14 Codex skills (`codex/skills/`) | User-invoked workflows: setup, agents, teams, spec / loop / verify / Codex status |
 | **④ Agents** | `quick` / `standard` / `architect` (`agents/`) | Model routing — haiku / sonnet / opus by task weight |
 
-Each Claude Code lifecycle event triggers exactly one hook (the `Stop` event is where the autonomous loop lives):
+Lifecycle events can run an ordered chain of hooks; `PreToolUse`, `PostToolUse`, and `Stop` deliberately run more than one. The `Stop` chain is where the autonomous loop lives:
 
 | Lifecycle event | Hook | What it does |
 |-----------------|------|-------------|

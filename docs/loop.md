@@ -294,6 +294,23 @@ The loop is controlled by `features.autonomousLoop` (default `true`) plus a `loo
 
 ---
 
+## Commands
+
+| Command | Meaning |
+|---------|---------|
+| `/omh-spec [goal]` | Author a machine-checkable `SPEC.md` with EARS criteria and verify commands; refuse unresolved ambiguity |
+| `/omh-loop [SPEC.md\|goal]` | Classify tier, confirm, then iterate one task through the ladder and append to `PROGRESS.md` |
+| `/omh-loop stop` | Activate the kill switch (equivalent to `.claude/.omh/STOP`) |
+
+## Feature tags
+
+```text
+[omh:loop]          → continuation or stop decision
+[omh:cross-verify]  → independent criterion-level verdict
+```
+
+---
+
 ## The research behind it
 
 The Autonomous Loop is an OMH-native synthesis of well-studied agentic-loop and verification techniques. The design references them where they apply:

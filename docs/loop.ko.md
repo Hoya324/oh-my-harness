@@ -16,12 +16,6 @@ Codex는 Claude Code와 동일한 스펙, 티어 예산, 저렴한 것부터 실
 
 목표를 `SPEC.md`에 한 번 적어두면, OMH가 **구현 → 자가 검증(self-verify) → 교차 검증(cross-verify)** 을 반복하며 SPEC이 충족될 때까지 작업을 이어갑니다. 루프는 네이티브 Claude Code 또는 Codex 훅 어댑터를 통해 동작하므로, **언제 계속하고 언제 멈출지는 하네스가 소유**합니다 — 모델의 자기 판단이 아닙니다.
 
-```bash
-/omh-spec add JWT auth with refresh tokens   # 기계 검증 가능한 SPEC.md 작성
-/omh-loop SPEC.md                             # 자율적으로 루프 실행
-/omh-loop stop                                # 킬 스위치 (또는 .claude/.omh/STOP 생성)
-```
-
 ---
 
 ## 철학: "진짜 벽이 있는 자율성"
@@ -36,7 +30,19 @@ Codex는 Claude Code와 동일한 스펙, 티어 예산, 저렴한 것부터 실
 
 ---
 
-## 동작 방식
+## 빠른 시작
+
+```bash
+/omh-spec add JWT auth with refresh tokens   # 기계 검증 가능한 SPEC.md 작성
+/omh-loop SPEC.md                             # 자율적으로 루프 실행
+/omh-loop stop                                # 킬 스위치 (또는 .claude/.omh/STOP 생성)
+```
+
+`/omh-spec`은 EARS 인수 기준과 verify 명령이 있는 내구적 `SPEC.md`를 작성하고, `[NEEDS CLARIFICATION]`이 남으면 시작을 거부합니다. `/omh-loop`는 티어를 분류하고 확인한 뒤 한 반복에 한 작업씩 실행합니다.
+
+---
+
+## Stop 훅 루프 엔진의 동작 방식
 
 Stop 훅(`loop-guard`)이 루프 엔진이자 안전 집행자입니다.
 

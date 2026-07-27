@@ -53,7 +53,7 @@ Earlier OMH was "warnings instead of walls." The autonomous loop changes that wh
 Everywhere else, OMH stays the harness you barely notice — smart defaults that guide with warnings, and **project-specific skills** auto-scaffolded from your detected stack (test conventions, review checklists, lint workflows) that you own and customize.
 
 - **Built-in skills** (agent management, setup) stay in the plugin
-- **Project skills** (code-review, test-write, lint-fix) live in `.claude/skills/` — your project, your rules
+- **Project skills** (code-review, test-write, lint-fix) live in `.claude/skills/` for Claude Code and `.agents/skills/` for Codex; `--runtime both` scaffolds both — your project, your rules
 - Run `/init-project` to scaffold, then customize freely
 
 ---
@@ -85,7 +85,7 @@ oh-my-harness init --runtime codex
 oh-my-harness init --runtime both
 ```
 
-The Codex command above registers the marketplace source; install or enable `oh-my-harness` from the resulting marketplace listing in the Codex CLI or desktop flow available in your build. The local CLI default remains `--runtime claude`; `--runtime both` registers both runtimes while sharing one configuration and state store. **Zero setup is required** after plugin installation. `/harness-setup` is optional and only needed to tune `harness.config.json`.
+The Codex command above registers the marketplace source. In the **Codex CLI**, start Codex, enter `/plugins`, choose the configured marketplace, install `oh-my-harness`, then start a **new session**. In **Codex desktop**, open **Plugins**, select the configured marketplace under **Personal**, install `oh-my-harness`, then open a new chat. See the [official Codex plugin guide](https://developers.openai.com/codex/plugins). The local CLI default remains `--runtime claude`; `--runtime both` registers both runtimes while sharing one configuration and state store. **Zero setup is required** after plugin installation. `/harness-setup` is optional and only needed to tune `harness.config.json`.
 
 ## Codex Support
 
@@ -123,7 +123,7 @@ claude plugin update oh-my-harness@oh-my-harness
 oh-my-harness update --runtime codex
 ```
 
-> **Note:** runtime-aware updates refresh only OMH-managed hooks, built-in skills, roles, and marked guidance blocks. User config, shared state, unrelated hooks, custom skills, and unmarked `AGENTS.md` / `CLAUDE.md` content are preserved. `reset --runtime codex` removes managed Codex registration while preserving shared project state when Claude remains installed; `reset --runtime both` removes both registrations and removes `.claude/.omh/` only when no remaining registration uses it. Neither reset deletes the separate long-term memory store at `~/.omh/memory/graph.jsonl`.
+> **Note:** a Codex update refreshes OMH-managed hooks, built-in skills, roles, marked guidance, and the project-local memory runtime/registration. Claude plugin updates continue through their plugin setup flow and manage a different payload. User config, shared state, unrelated hooks, custom skills, and unmarked `AGENTS.md` / `CLAUDE.md` content are preserved. `reset --runtime codex` removes managed Codex registration while preserving shared project state when Claude remains installed; `reset --runtime both` removes both registrations and removes `.claude/.omh/` only when no remaining registration uses it. Neither reset deletes the separate long-term memory store at `~/.omh/memory/graph.jsonl`.
 
 ---
 
@@ -219,7 +219,7 @@ node ~/.omh/lib/memory.mjs search "<project>"   # what has this project already 
 node ~/.omh/lib/memory.mjs stats                 # entities / relations / store path
 ```
 
-- **Backend** — the reference knowledge-graph server (`@modelcontextprotocol/server-memory`): local, no API key, entities + relations + observations in a JSONL file. A launcher (`bin/omh-memory.sh`) points every runtime at the same `~/.omh/memory/graph.jsonl`.
+- **Backend** — the reference knowledge-graph server (`@modelcontextprotocol/server-memory`): local, no API key, entities + relations + observations in a JSONL file. Claude plugin mode uses `.mcp.json`; local Codex init installs `.claude/.omh/runtime/bin/omh-memory.sh` and `.claude/.omh/runtime/lib/memory.mjs`, then manages `[mcp_servers.omh-memory]` in Codex config. Both point at `~/.omh/memory/graph.jsonl`.
 - **The loop reads it** — before planning, `/omh-loop` and `/omh-spec` query the graph for prior learnings, already-verified `quickCheck`/`verify` commands, and known pitfalls, and fold them into the plan (no re-detecting what's already known).
 - **The loop writes it** — a failed iteration's Reflexion becomes a `Learning` entity; a green verify appends the verified commands to the `Project`; `/omh-verify` persists **high-confidence findings** (2+ models agree) so the next run doesn't rediscover them.
 - **Agent + programmatic access** — the agent uses the MCP tools live; hooks/CLI use `lib/memory.mjs` (atomic writes, format-compatible with the server) for deterministic access.
@@ -227,12 +227,12 @@ node ~/.omh/lib/memory.mjs stats                 # entities / relations / store 
 
 > **Concurrency note.** The knowledge-graph server keeps an in-memory copy and rewrites the whole file per mutation, so it is designed for one writer at a time. For personal single-agent use this is fine; avoid heavy simultaneous writes from Claude Code and Codex at the same instant.
 
-**Setup** — Claude Code auto-loads the server from the plugin's `.mcp.json`. For Codex, add to `~/.codex/config.toml`:
+**Setup** — Claude Code auto-loads the server from the plugin's `.mcp.json`. `oh-my-harness init --runtime codex` (or `both`) provisions the project-local launcher and manages this Codex registration automatically:
 
 ```toml
 [mcp_servers.omh-memory]
 command = "bash"
-args = ["/ABSOLUTE/PATH/TO/.omh/bin/omh-memory.sh"]
+args = ["/ABSOLUTE/PROJECT/.claude/.omh/runtime/bin/omh-memory.sh"]
 startup_timeout_sec = 60
 ```
 
@@ -263,7 +263,7 @@ OMH is built in **four layers**, so the load-bearing decision logic stays pure a
 
 | Layer | Components | Role |
 |-------|-----------|------|
-| **① Hooks** | 9 `.mjs` on Claude Code lifecycle events | Thin **fail-open** wrappers — gather impure signals (git, time, stdin) and emit decisions |
+| **① Hooks** | 11 shared scripts (9 lifecycle guards/observers + 2 gates) and 2 Codex bridge modules | Thin **fail-open** wrappers — gather impure signals (git, time, stdin) and emit decisions |
 | **② Pure Core** (`lib/`) | `loop` · `tier` · `detect` · `config` · `verify` · `state` · `dictionary` | All decision logic as **pure functions** (no fs / git / time) → fully unit-tested |
 | **③ Skills** | 13 Claude / 14 Codex skills | User-invoked workflows (`/omh-loop`, `/omh-verify`, `/team-spawn`, `omh-status`, …) |
 | **④ Agents** | `quick` · `standard` · `architect` | Model routing — haiku / sonnet / opus by task weight |
@@ -327,7 +327,7 @@ graph TB
 
 ## Hook Pipeline
 
-Each Claude Code lifecycle event triggers one OMH hook — the `Stop` event is where the autonomous loop lives:
+Lifecycle events can trigger an ordered OMH hook chain; `PreToolUse`, `PostToolUse`, and `Stop` deliberately run more than one. The autonomous loop lives in the `Stop` chain:
 
 | Lifecycle event | Hook | What it does |
 |-----------------|------|-------------|
