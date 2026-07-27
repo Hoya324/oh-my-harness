@@ -1,0 +1,113 @@
+{
+  "description": "oh-my-harness Codex hooks — convention detection, test enforcement, guard rails",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" session-start.mjs",
+            "timeout": 10,
+            "statusMessage": "oh-my-harness: loading project conventions"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" pre-prompt.mjs",
+            "timeout": 3,
+            "statusMessage": "oh-my-harness: evaluating request"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" dangerous-guard.mjs",
+            "timeout": 3,
+            "statusMessage": "oh-my-harness: checking command safety"
+          },
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" plan-gate.mjs",
+            "timeout": 5,
+            "statusMessage": "oh-my-harness: checking plan gate"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" commit-convention.mjs",
+            "timeout": 3,
+            "statusMessage": "oh-my-harness: checking commit convention"
+          },
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" scope-guard.mjs",
+            "timeout": 3,
+            "statusMessage": "oh-my-harness: checking scope"
+          },
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" usage-tracker.mjs",
+            "timeout": 3,
+            "statusMessage": "oh-my-harness: recording usage"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" pre-compact.mjs",
+            "timeout": 5,
+            "statusMessage": "oh-my-harness: saving context"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" loop-guard.mjs",
+            "timeout": 600,
+            "statusMessage": "oh-my-harness: evaluating loop"
+          },
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" verify-gate.mjs",
+            "timeout": 600,
+            "statusMessage": "oh-my-harness: verifying completion"
+          },
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" post-task.mjs",
+            "timeout": 5,
+            "statusMessage": "oh-my-harness: checking task completion"
+          }
+        ]
+      }
+    ]
+  }
+}
