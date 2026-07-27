@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -10,18 +10,35 @@ const TMP = join(__dirname, '__tmp_cli');
 const TEST_HOME = join(TMP, 'home');
 const CLI = join(__dirname, '..', 'bin', 'cli.mjs');
 
-function runCli(...args) {
+function cliEnv() {
+  return {
+    ...process.env,
+    HOME: TEST_HOME,
+    USERPROFILE: TEST_HOME,
+    NODE_TEST_CONTEXT: '',
+    OMH_SKIP_GLOBAL: '',
+  };
+}
+
+function runCliIn(cwd, ...args) {
   return execFileSync('node', [CLI, ...args], {
-    cwd: TMP,
+    cwd,
     encoding: 'utf8',
     timeout: 10000,
-    env: {
-      ...process.env,
-      HOME: TEST_HOME,
-      USERPROFILE: TEST_HOME,
-      NODE_TEST_CONTEXT: '',
-      OMH_SKIP_GLOBAL: '',
-    },
+    env: cliEnv(),
+  });
+}
+
+function runCli(...args) {
+  return runCliIn(TMP, ...args);
+}
+
+function runCliResult(args, cwd = TMP) {
+  return spawnSync('node', [CLI, ...args], {
+    cwd,
+    encoding: 'utf8',
+    timeout: 10000,
+    env: cliEnv(),
   });
 }
 
@@ -255,6 +272,80 @@ describe('cli runtime matrix', () => {
     const hooks = readFileSync(join(TEST_HOME, '.codex', 'hooks.json'), 'utf8');
     assert.ok(hooks.includes(join(TEST_HOME, '.claude', '.omh', 'runtime')));
   });
+
+  it('quotes installed hook paths as literal shell data', () => {
+    const project = join(
+      TMP,
+      "literal $(touch DOLLAR_EXECUTED) `touch BACKTICK_EXECUTED` $HOME ' path",
+    );
+    mkdirSync(project, { recursive: true });
+
+    runCliIn(project, 'init', '--runtime', 'codex', '--scope', 'project');
+
+    const installedHooks = JSON.parse(
+      readFileSync(join(project, '.codex', 'hooks.json'), 'utf8'),
+    );
+    const dangerousHandler = installedHooks.hooks.PreToolUse
+      .flatMap(group => group.hooks)
+      .find(handler => handler.command.includes('dangerous-guard.mjs'));
+    assert.ok(dangerousHandler, 'dangerous guard hook should be installed');
+
+    const hookRun = spawnSync('sh', ['-c', dangerousHandler.command], {
+      cwd: project,
+      input: JSON.stringify({
+        session_id: 'shell-path-test',
+        turn_id: 'turn-1',
+        tool_name: 'Bash',
+        tool_input: { command: 'rm -rf build' },
+      }),
+      encoding: 'utf8',
+      timeout: 10000,
+      env: cliEnv(),
+    });
+
+    assert.equal(hookRun.status, 0, hookRun.stderr);
+    const response = JSON.parse(hookRun.stdout);
+    assert.equal(response.hookSpecificOutput.permissionDecision, 'deny');
+    assert.ok(!existsSync(join(project, 'DOLLAR_EXECUTED')));
+    assert.ok(!existsSync(join(project, 'BACKTICK_EXECUTED')));
+  });
+
+  it('preserves same-name user roles and skills through init, update, and reset', () => {
+    const quick = 'model = "user-quick"\n';
+    const loop = '---\nname: user-omh-loop\n---\nUser-owned skill.\n';
+    const quickPath = join(TMP, '.codex', 'agents', 'quick.toml');
+    const loopPath = join(TMP, '.agents', 'skills', 'omh-loop', 'SKILL.md');
+    mkdirSync(dirname(quickPath), { recursive: true });
+    mkdirSync(dirname(loopPath), { recursive: true });
+    writeFileSync(quickPath, quick);
+    writeFileSync(loopPath, loop);
+
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+    assert.equal(readFileSync(quickPath, 'utf8'), quick);
+    assert.equal(readFileSync(loopPath, 'utf8'), loop);
+    assert.ok(existsSync(join(TMP, '.codex', 'agents', 'standard.toml')));
+    assert.ok(existsSync(join(TMP, '.agents', 'skills', 'omh-spec', 'SKILL.md')));
+    const ownership = JSON.parse(
+      readFileSync(join(TMP, '.claude', '.omh', 'codex-ownership.json'), 'utf8'),
+    );
+    assert.ok(!ownership.roles.includes('quick'));
+    assert.ok(ownership.roles.includes('standard'));
+    assert.ok(!ownership.skills.includes('omh-loop'));
+    assert.ok(ownership.skills.includes('omh-spec'));
+    const config = readFileSync(join(TMP, '.codex', 'config.toml'), 'utf8');
+    assert.ok(!config.includes('[agents.quick]'));
+    assert.ok(config.includes('[agents.standard]'));
+
+    runCli('update', '--runtime', 'codex', '--scope', 'project');
+    assert.equal(readFileSync(quickPath, 'utf8'), quick);
+    assert.equal(readFileSync(loopPath, 'utf8'), loop);
+
+    runCli('reset', '--runtime', 'codex', '--scope', 'project');
+    assert.equal(readFileSync(quickPath, 'utf8'), quick);
+    assert.equal(readFileSync(loopPath, 'utf8'), loop);
+    assert.ok(!existsSync(join(TMP, '.codex', 'agents', 'standard.toml')));
+    assert.ok(!existsSync(join(TMP, '.agents', 'skills', 'omh-spec')));
+  });
 });
 
 describe('cli reset', () => {
@@ -346,6 +437,20 @@ describe('cli reset', () => {
       || !readFileSync(join(TMP, 'AGENTS.md'), 'utf8').includes('<!-- HARNESS:START -->'),
     );
   });
+
+  it('reset both at user scope removes user and project shared state', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'user');
+    assert.ok(existsSync(join(TEST_HOME, '.claude', '.omh')));
+    assert.ok(existsSync(join(TMP, '.claude', '.omh')));
+
+    runCli('reset', '--runtime', 'both', '--scope', 'user');
+
+    assert.ok(!existsSync(join(TEST_HOME, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TEST_HOME, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
+    assert.ok(!existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop')));
+  });
 });
 
 describe('cli status', () => {
@@ -370,6 +475,21 @@ describe('cli status', () => {
     assert.match(output, /Codex\s*:.*installed/i);
     assert.ok(output.includes('Shared Features'));
     assert.ok(output.includes('testEnforcement'));
+  });
+
+  it('reads user shared config for explicit user-scoped Codex status', () => {
+    runCli('init', '--runtime', 'codex', '--scope', 'user');
+    const userConfig = join(TEST_HOME, '.claude', '.omh', 'harness.config.json');
+    writeFileSync(userConfig, JSON.stringify({ features: { userScopeFeature: true } }, null, 2));
+    mkdirSync(join(TMP, '.claude', '.omh'), { recursive: true });
+    writeFileSync(
+      join(TMP, '.claude', '.omh', 'harness.config.json'),
+      JSON.stringify({ features: { projectScopeFeature: true } }, null, 2),
+    );
+
+    const output = runCli('status', '--runtime', 'codex', '--scope', 'user');
+    assert.ok(output.includes('userScopeFeature'));
+    assert.ok(!output.includes('projectScopeFeature'));
   });
 });
 
@@ -407,6 +527,74 @@ describe('cli update', () => {
     assert.ok(agents.startsWith('# Custom\n'));
     assert.ok(agents.includes('Codex quick'));
     assert.equal((agents.match(/<!-- HARNESS:START -->/g) || []).length, 1);
+  });
+
+  it('does not install Codex from Claude shared config alone', () => {
+    runCli('init');
+
+    const result = runCliResult(['update', '--runtime', 'codex', '--scope', 'project']);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /Codex.*not installed/i);
+    assert.ok(!existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TMP, 'AGENTS.md')));
+  });
+
+  it('does not reinstall Codex after Codex reset while Claude remains', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'project');
+    runCli('reset', '--runtime', 'codex', '--scope', 'project');
+    assert.ok(existsSync(join(TMP, '.claude', '.omh', 'harness.config.json')));
+
+    const result = runCliResult(['update', '--runtime', 'codex', '--scope', 'project']);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /Codex.*not installed/i);
+    assert.ok(!existsSync(join(TMP, '.codex', 'hooks.json')));
+  });
+
+  it('fails before changing files when Codex hooks JSON is invalid', () => {
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+    const hooksPath = join(TMP, '.codex', 'hooks.json');
+    const rolePath = join(TMP, '.codex', 'agents', 'standard.toml');
+    writeFileSync(hooksPath, '{ invalid\n');
+    writeFileSync(rolePath, 'drifted\n');
+
+    const result = runCliResult(['update', '--runtime', 'codex', '--scope', 'project']);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /invalid.*hooks.*JSON|hooks.*invalid.*JSON/i);
+    assert.ok(!(result.stdout + result.stderr).includes('runtime updated'));
+    assert.equal(readFileSync(hooksPath, 'utf8'), '{ invalid\n');
+    assert.equal(readFileSync(rolePath, 'utf8'), 'drifted\n');
+  });
+
+  it('fails before changing files when AGENTS managed markers are incomplete', () => {
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+    const agentsPath = join(TMP, 'AGENTS.md');
+    const rolePath = join(TMP, '.codex', 'agents', 'standard.toml');
+    const malformed = '# Custom\n<!-- HARNESS:START -->\nunterminated\n';
+    writeFileSync(agentsPath, malformed);
+    writeFileSync(rolePath, 'drifted\n');
+
+    const result = runCliResult(['update', '--runtime', 'codex', '--scope', 'project']);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /incomplete.*markers/i);
+    assert.ok(!(result.stdout + result.stderr).includes('runtime updated'));
+    assert.equal(readFileSync(agentsPath, 'utf8'), malformed);
+    assert.equal(readFileSync(rolePath, 'utf8'), 'drifted\n');
+  });
+
+  it('fails before changing files when config TOML managed markers are incomplete', () => {
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+    const configPath = join(TMP, '.codex', 'config.toml');
+    const rolePath = join(TMP, '.codex', 'agents', 'standard.toml');
+    const malformed = 'model = "custom"\n# OH-MY-HARNESS:START\nunterminated\n';
+    writeFileSync(configPath, malformed);
+    writeFileSync(rolePath, 'drifted\n');
+
+    const result = runCliResult(['update', '--runtime', 'codex', '--scope', 'project']);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /incomplete.*markers/i);
+    assert.ok(!(result.stdout + result.stderr).includes('runtime updated'));
+    assert.equal(readFileSync(configPath, 'utf8'), malformed);
+    assert.equal(readFileSync(rolePath, 'utf8'), 'drifted\n');
   });
 });
 

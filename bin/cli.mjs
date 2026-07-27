@@ -1,5 +1,14 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, existsSync, mkdirSync, cpSync, rmSync, readdirSync } from 'fs';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  cpSync,
+  rmSync,
+  readdirSync,
+  renameSync,
+} from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
@@ -15,6 +24,7 @@ const CLAUDE_MD = '.claude/CLAUDE.md';
 const SETTINGS_PROJECT = '.claude/settings.local.json';
 const CODEX_HOOKS = '.codex/hooks.json';
 const CODEX_CONFIG = '.codex/config.toml';
+const CODEX_OWNERSHIP = 'codex-ownership.json';
 const CODEX_ROLES = ['quick', 'standard', 'architect'];
 const AGENTS_START = '<!-- HARNESS:START -->';
 const AGENTS_END = '<!-- HARNESS:END -->';
@@ -262,9 +272,17 @@ function codexStateRoot(root, scope) {
   return scope === 'user' ? getUserHome() : root;
 }
 
+function codexOwnershipPath(root, scope) {
+  return join(omhDir(codexStateRoot(root, scope)), CODEX_OWNERSHIP);
+}
+
 function codexGuidancePath(root, scope) {
   if (scope === 'user') return join(codexInstallRoot(root, scope), '.codex', 'AGENTS.md');
   return join(root, 'AGENTS.md');
+}
+
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\"'\"'")}'`;
 }
 
 function managedBlockBounds(content, startMarker, endMarker) {
@@ -371,11 +389,16 @@ function installedCodexHooks(runtimeRoot) {
   const source = JSON.parse(
     readFileSync(join(PKG_ROOT, 'hooks', 'codex', 'hooks.json'), 'utf8'),
   );
+  const sourceRunner = '"${PLUGIN_ROOT}/hooks/codex/run.mjs"';
+  const installedRunner = shellQuote(join(runtimeRoot, 'hooks', 'codex', 'run.mjs'));
   for (const groups of Object.values(source.hooks || {})) {
     for (const group of groups) {
       for (const handler of group.hooks || []) {
         if (typeof handler.command === 'string') {
-          handler.command = handler.command.replaceAll('${PLUGIN_ROOT}', runtimeRoot);
+          handler.command = handler.command.replace(sourceRunner, installedRunner);
+          if (handler.command.includes('${PLUGIN_ROOT}')) {
+            throw new Error(`Unsupported Codex hook command template: ${handler.command}`);
+          }
         }
       }
     }
@@ -427,27 +450,89 @@ function managedCodexSkillNames() {
     .sort();
 }
 
-function installCodexSkills(root, scope) {
-  const skillsRoot = join(codexInstallRoot(root, scope), '.agents', 'skills');
-  mkdirSync(skillsRoot, { recursive: true });
-  for (const skill of managedCodexSkillNames()) {
-    cpSync(
-      join(PKG_ROOT, 'codex', 'skills', skill),
-      join(skillsRoot, skill),
-      { recursive: true, force: true },
-    );
+function emptyCodexOwnership() {
+  return { version: 1, roles: [], skills: [] };
+}
+
+function parseCodexOwnership(root, scope) {
+  const manifestPath = codexOwnershipPath(root, scope);
+  if (!existsSync(manifestPath)) {
+    return { ok: true, ownership: emptyCodexOwnership() };
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    if (
+      parsed?.version !== 1
+      || !Array.isArray(parsed.roles)
+      || !Array.isArray(parsed.skills)
+    ) {
+      return { ok: false, ownership: emptyCodexOwnership() };
+    }
+    const allowedRoles = new Set(CODEX_ROLES);
+    const allowedSkills = new Set(managedCodexSkillNames());
+    if (
+      parsed.roles.some(role => typeof role !== 'string' || !allowedRoles.has(role))
+      || parsed.skills.some(skill => typeof skill !== 'string' || !allowedSkills.has(skill))
+    ) {
+      return { ok: false, ownership: emptyCodexOwnership() };
+    }
+    return {
+      ok: true,
+      ownership: {
+        version: 1,
+        roles: [...new Set(parsed.roles)].sort(),
+        skills: [...new Set(parsed.skills)].sort(),
+      },
+    };
+  } catch {
+    return { ok: false, ownership: emptyCodexOwnership() };
   }
 }
 
-function installCodexRoles(root, scope) {
+function writeCodexOwnership(root, scope, ownership) {
+  const manifestPath = codexOwnershipPath(root, scope);
+  const temporaryPath = `${manifestPath}.${process.pid}.tmp`;
+  mkdirSync(dirname(manifestPath), { recursive: true });
+  writeFileSync(temporaryPath, JSON.stringify({
+    version: 1,
+    roles: [...new Set(ownership.roles)].sort(),
+    skills: [...new Set(ownership.skills)].sort(),
+  }, null, 2) + '\n');
+  renameSync(temporaryPath, manifestPath);
+}
+
+function installCodexSkills(root, scope, ownership) {
+  const skillsRoot = join(codexInstallRoot(root, scope), '.agents', 'skills');
+  mkdirSync(skillsRoot, { recursive: true });
+  const owned = new Set(ownership.skills);
+  for (const skill of managedCodexSkillNames()) {
+    const destination = join(skillsRoot, skill);
+    if (existsSync(destination) && !owned.has(skill)) continue;
+    cpSync(
+      join(PKG_ROOT, 'codex', 'skills', skill),
+      destination,
+      { recursive: true, force: true },
+    );
+    owned.add(skill);
+  }
+  ownership.skills = [...owned].sort();
+}
+
+function installCodexRoles(root, scope, ownership) {
   const rolesRoot = join(codexInstallRoot(root, scope), '.codex', 'agents');
   mkdirSync(rolesRoot, { recursive: true });
+  const owned = new Set(ownership.roles);
   for (const role of CODEX_ROLES) {
+    const destination = join(rolesRoot, `${role}.toml`);
+    if (existsSync(destination) && !owned.has(role)) continue;
     cpSync(
       join(PKG_ROOT, 'codex', 'agents', `${role}.toml`),
-      join(rolesRoot, `${role}.toml`),
+      destination,
     );
+    owned.add(role);
   }
+  ownership.roles = [...owned].sort();
 }
 
 function withoutBlock(content, startMarker, endMarker) {
@@ -456,7 +541,7 @@ function withoutBlock(content, startMarker, endMarker) {
   return content.slice(0, bounds.start) + content.slice(bounds.end);
 }
 
-function mergeCodexConfig(root, scope) {
+function mergeCodexConfig(root, scope, ownership) {
   const configPath = join(codexInstallRoot(root, scope), CODEX_CONFIG);
   const existing = existsSync(configPath) ? readFileSync(configPath, 'utf8') : '';
   const userOwned = withoutBlock(existing, TOML_START, TOML_END);
@@ -467,6 +552,7 @@ function mergeCodexConfig(root, scope) {
   };
   const lines = [TOML_START];
   for (const role of CODEX_ROLES) {
+    if (!ownership.roles.includes(role)) continue;
     const declaration = new RegExp(`^\\s*\\[agents\\.${role}\\]\\s*$`, 'm');
     if (declaration.test(userOwned)) continue;
     lines.push('');
@@ -486,6 +572,77 @@ function installCodexGuidance(root, scope) {
     AGENTS_START,
     AGENTS_END,
   );
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateCodexHooks(root, scope) {
+  const hooksPath = join(codexInstallRoot(root, scope), CODEX_HOOKS);
+  if (!existsSync(hooksPath)) return true;
+
+  let hooks;
+  try {
+    hooks = JSON.parse(readFileSync(hooksPath, 'utf8'));
+  } catch {
+    console.error(`  ${WARN} Cannot refresh Codex: invalid hooks JSON at ${hooksPath}.`);
+    return false;
+  }
+
+  if (!isPlainObject(hooks) || (hooks.hooks !== undefined && !isPlainObject(hooks.hooks))) {
+    console.error(`  ${WARN} Cannot refresh Codex: hooks JSON must contain an object at ${hooksPath}.`);
+    return false;
+  }
+  for (const groups of Object.values(hooks.hooks || {})) {
+    if (
+      !Array.isArray(groups)
+      || groups.some(group => !isPlainObject(group) || !Array.isArray(group.hooks))
+    ) {
+      console.error(`  ${WARN} Cannot refresh Codex: invalid hooks JSON structure at ${hooksPath}.`);
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateManagedMarkers(filePath, startMarker, endMarker) {
+  if (!existsSync(filePath)) return true;
+  const content = readFileSync(filePath, 'utf8');
+  const startCount = content.split(startMarker).length - 1;
+  const endCount = content.split(endMarker).length - 1;
+  const hasNoMarkers = startCount === 0 && endCount === 0;
+  const hasOneOrderedBlock = startCount === 1
+    && endCount === 1
+    && content.indexOf(startMarker) < content.indexOf(endMarker);
+  if (hasNoMarkers || hasOneOrderedBlock) return true;
+  console.error(
+    `  ${WARN} Cannot refresh Codex: incomplete oh-my-harness markers in ${filePath}.`,
+  );
+  return false;
+}
+
+function preflightCodex(root, scope) {
+  if (!validateCodexHooks(root, scope)) return false;
+  if (!validateManagedMarkers(
+    join(codexInstallRoot(root, scope), CODEX_CONFIG),
+    TOML_START,
+    TOML_END,
+  )) return false;
+  if (!validateManagedMarkers(
+    codexGuidancePath(root, scope),
+    AGENTS_START,
+    AGENTS_END,
+  )) return false;
+
+  const parsedOwnership = parseCodexOwnership(root, scope);
+  if (!parsedOwnership.ok) {
+    console.error(
+      `  ${WARN} Cannot refresh Codex: invalid ownership manifest at ${codexOwnershipPath(root, scope)}.`,
+    );
+    return false;
+  }
+  return true;
 }
 
 async function scaffoldCodexProjectSkills(root, scope) {
@@ -509,12 +666,16 @@ async function scaffoldCodexProjectSkills(root, scope) {
 }
 
 function refreshCodex(root, scope) {
+  if (!preflightCodex(root, scope)) return false;
+  const { ownership } = parseCodexOwnership(root, scope);
   const runtimeRoot = installCodexRuntime(root, scope);
-  mergeCodexHooks(root, scope, runtimeRoot);
-  installCodexSkills(root, scope);
-  installCodexRoles(root, scope);
-  mergeCodexConfig(root, scope);
-  installCodexGuidance(root, scope);
+  if (!mergeCodexHooks(root, scope, runtimeRoot)) return false;
+  installCodexSkills(root, scope, ownership);
+  installCodexRoles(root, scope, ownership);
+  if (!mergeCodexConfig(root, scope, ownership)) return false;
+  if (!installCodexGuidance(root, scope)) return false;
+  writeCodexOwnership(root, scope, ownership);
+  return true;
 }
 
 async function initCodex(root, scope) {
@@ -522,9 +683,16 @@ async function initCodex(root, scope) {
   log(`\n  ${BOLD}Installing oh-my-harness for Codex${RESET} ${DIM}v${getVersion()}${RESET}`);
   log(`  ${GRAY}Scope: ${RESET}${BOLD}${scopeLabel}${RESET}`);
 
+  if (!preflightCodex(root, scope)) {
+    process.exitCode = 1;
+    return false;
+  }
   const configResult = ensureSharedConfig(root, scope);
   logDone(`Shared config ${configResult}`);
-  refreshCodex(root, scope);
+  if (!refreshCodex(root, scope)) {
+    process.exitCode = 1;
+    return false;
+  }
   await scaffoldCodexProjectSkills(root, scope);
   if (scope === 'project') updateGitignore(root, 'add');
 
@@ -533,6 +701,7 @@ async function initCodex(root, scope) {
   logDone('AGENTS.md harness guidance installed');
   logInfo('Review and trust the installed lifecycle hooks in Codex with /hooks.');
   log('');
+  return true;
 }
 
 async function init(root, scope, runtime) {
@@ -804,6 +973,32 @@ function codexInstalledAt(root, scope) {
   }
 }
 
+function codexRegisteredAt(root, scope) {
+  if (codexInstalledAt(root, scope)) return true;
+  if (existsSync(codexOwnershipPath(root, scope))) return true;
+
+  const configPath = join(codexInstallRoot(root, scope), CODEX_CONFIG);
+  if (existsSync(configPath)) {
+    const bounds = managedBlockBounds(
+      readFileSync(configPath, 'utf8'),
+      TOML_START,
+      TOML_END,
+    );
+    if (bounds && !bounds.malformed) return true;
+  }
+
+  const guidancePath = codexGuidancePath(root, scope);
+  if (existsSync(guidancePath)) {
+    const bounds = managedBlockBounds(
+      readFileSync(guidancePath, 'utf8'),
+      AGENTS_START,
+      AGENTS_END,
+    );
+    if (bounds && !bounds.malformed) return true;
+  }
+  return false;
+}
+
 function claudeInstalled(root) {
   const mdPath = join(root, CLAUDE_MD);
   if (existsSync(mdPath) && readFileSync(mdPath, 'utf8').includes(AGENTS_START)) return true;
@@ -824,19 +1019,32 @@ function claudeInstalled(root) {
 function selectedCodexScope(root) {
   const explicit = parseScope();
   if (explicit) return explicit;
-  if (codexInstalledAt(root, 'project')) return 'project';
-  if (codexInstalledAt(root, 'user')) return 'user';
+  if (codexRegisteredAt(root, 'project')) return 'project';
+  if (codexRegisteredAt(root, 'user')) return 'user';
   return 'project';
 }
 
 function updateCodex(root, scope) {
+  if (!codexRegisteredAt(root, scope)) {
+    console.error(
+      `  ${WARN} oh-my-harness Codex runtime is not installed for ${scope} scope. `
+      + `Run: ${BOLD}oh-my-harness init --runtime codex --scope ${scope}${RESET}`,
+    );
+    process.exitCode = 1;
+    return false;
+  }
   if (!existsSync(join(omhDir(codexStateRoot(root, scope)), 'harness.config.json'))) {
     console.error(`  ${WARN} oh-my-harness not initialized. Run: ${BOLD}oh-my-harness init --runtime codex${RESET}`);
-    process.exit(1);
+    process.exitCode = 1;
+    return false;
   }
-  refreshCodex(root, scope);
+  if (!refreshCodex(root, scope)) {
+    process.exitCode = 1;
+    return false;
+  }
   if (scope === 'project') updateGitignore(root, 'add');
   log(`  ${CHECK} oh-my-harness Codex runtime updated from config.`);
+  return true;
 }
 
 function update(root, runtime) {
@@ -881,12 +1089,9 @@ function runtimeInstallLabel(installed, scope) {
   return `${GREEN}installed${RESET}${scope ? ` ${DIM}(${scope})${RESET}` : ''}`;
 }
 
-function statusRuntimes(root, runtime) {
-  const projectCodex = codexInstalledAt(root, 'project');
-  const userCodex = codexInstalledAt(root, 'user');
-  const projectConfig = join(omhDir(root), 'harness.config.json');
-  const userConfig = join(omhDir(getUserHome()), 'harness.config.json');
-  const configPath = existsSync(projectConfig) ? projectConfig : userConfig;
+function statusRuntimes(root, runtime, scope) {
+  const codexInstalled = codexInstalledAt(root, scope);
+  const configPath = join(omhDir(codexStateRoot(root, scope)), 'harness.config.json');
 
   log(`\n  ${BOLD}oh-my-harness${RESET} ${DIM}v${getVersion()}${RESET}`);
   log('');
@@ -895,8 +1100,7 @@ function statusRuntimes(root, runtime) {
     log(`    Claude: ${runtimeInstallLabel(claudeInstalled(root), 'project')}`);
   }
   if (runtimeIncludes(runtime, 'codex')) {
-    const scope = projectCodex ? 'project' : userCodex ? 'user' : '';
-    log(`    Codex : ${runtimeInstallLabel(projectCodex || userCodex, scope)}`);
+    log(`    Codex : ${runtimeInstallLabel(codexInstalled, codexInstalled ? scope : '')}`);
   }
 
   log('');
@@ -917,7 +1121,7 @@ function statusRuntimes(root, runtime) {
 
 function status(root, runtime) {
   if (runtime === 'claude') statusClaude(root);
-  else statusRuntimes(root, runtime);
+  else statusRuntimes(root, runtime, selectedCodexScope(root));
 }
 
 // --- RESET ---
@@ -999,19 +1203,25 @@ function resetCodex(root, scope, { preserveShared = false } = {}) {
   const installRoot = codexInstallRoot(root, scope);
   const codexRoot = join(installRoot, '.codex');
   const skillsRoot = join(installRoot, '.agents', 'skills');
+  const ownershipResult = parseCodexOwnership(root, scope);
+  const ownership = ownershipResult.ok
+    ? ownershipResult.ownership
+    : emptyCodexOwnership();
 
   cleanCodexHooksFile(join(installRoot, CODEX_HOOKS));
   removeManagedBlock(join(installRoot, CODEX_CONFIG), TOML_START, TOML_END);
   removeManagedBlock(codexGuidancePath(root, scope), AGENTS_START, AGENTS_END);
 
-  for (const role of CODEX_ROLES) {
+  for (const role of ownership.roles) {
     const rolePath = join(codexRoot, 'agents', `${role}.toml`);
     if (existsSync(rolePath)) rmSync(rolePath);
   }
-  for (const skill of managedCodexSkillNames()) {
+  for (const skill of ownership.skills) {
     const skillPath = join(skillsRoot, skill);
     if (existsSync(skillPath)) rmSync(skillPath, { recursive: true });
   }
+  const ownershipPath = codexOwnershipPath(root, scope);
+  if (existsSync(ownershipPath)) rmSync(ownershipPath);
 
   removeEmptyDirectory(join(codexRoot, 'agents'));
   removeEmptyDirectory(codexRoot);
@@ -1047,6 +1257,11 @@ function reset(root, runtime) {
   }
   resetCodex(root, scope, { preserveShared: true });
   resetClaude(root);
+  const selectedSharedState = omhDir(codexStateRoot(root, scope));
+  if (existsSync(selectedSharedState)) {
+    rmSync(selectedSharedState, { recursive: true });
+    logDone('Removed selected-scope shared .claude/.omh/ state');
+  }
 }
 
 function cleanSettings(settingsPath) {
