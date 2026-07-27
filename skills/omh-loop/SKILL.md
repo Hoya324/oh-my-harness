@@ -70,21 +70,20 @@ Example: /omh-loop stop   (abort the active loop)
 
 omh persists cross-session learnings to the **`omh-memory` MCP server** — a knowledge graph at
 `~/.omh/memory/graph.jsonl`, **shared with Codex** (one store, both runtimes). Use the MCP tools when
-connected; fall back to the CLI helper otherwise; **skip silently if neither is available**
+connected; **skip silently if the server is unavailable**
 (graceful degrade — LTM must never block the loop).
 
 - **Read (during step 6/7, before pulling work):** retrieve prior learnings, verified build/test
   commands, and known pitfalls for this project/goal and fold them into the plan / PROGRESS.md.
   - MCP: `search_nodes({query: "<project> <goal keywords>"})`
-  - CLI: `node ~/.omh/lib/memory.mjs search "<keywords>"`
 - **Write (step 7.5, on outcome):**
   - failure/Reflexion → a `Learning` entity ("attempt N failed because X; root cause Y; next Z"),
     related `about` → the `Project`.
-    - MCP: `create_entities` + `create_relations`  ·  CLI: `node ~/.omh/lib/memory.mjs add-learning "<project>" "<reflexion>"`
+    - MCP: `create_entities` + `create_relations`
   - verify pass → append the verified `quickCheck`/`verify` commands and durable facts to the `Project` entity.
-    - MCP: `add_observations`  ·  CLI: `node ~/.omh/lib/memory.mjs add-observation "<project>" "<fact>"`
-- Prefer MCP tools for live in-session writes (the server owns the file); use the CLI for
-  hook/non-session writes. Avoid heavy concurrent writes from both runtimes at once.
+    - MCP: `add_observations`
+- Prefer MCP tools for live in-session writes (the server owns the file). Avoid heavy concurrent
+  writes from both runtimes at once.
 
 ## Policies
 - **Always confirm before starting** — never auto-start a loop.

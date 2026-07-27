@@ -260,7 +260,7 @@ oh-my-harness reset [--runtime claude|codex|both]
 | `/harness-setup` | oh-my-harness 초기화 (플러그인 모드) |
 | `/set-harness [경로] [값]` | 하네스 설정 보기 또는 수정 |
 | `/init-project` | 컨벤션 감지 및 테스트 인프라 설정 |
-| `/agent-spawn [N] [작업]` | N개의 병렬 Claude 에이전트를 tmux에서 실행 |
+| `/agent-spawn [N] [작업]` | 선택한 Claude Code 또는 Codex 런타임 워커 N개를 tmux에서 실행 |
 | `/agent-status` | 실행 중인 에이전트 상태 확인 |
 | `/agent-apply [id\|all]` | 에이전트 worktree 변경사항 머지 |
 | `/agent-stop [id\|all]` | 에이전트 중지 및 정리 |

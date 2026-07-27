@@ -162,19 +162,20 @@
       <!-- Installation -->
       <h2 id="installation" data-i18n="docs.installation.title">Installation</h2>
 
-      <pre><code># Claude Code
+      <pre><code><span data-i18n="docs.installation.code.claude"># Claude Code</span>
 claude plugin marketplace add Hoya324/oh-my-harness
 claude plugin install oh-my-harness@oh-my-harness
 
-# Codex marketplace source
+<span data-i18n="docs.installation.code.codexSource"># Codex marketplace source</span>
 codex plugin marketplace add Hoya324/oh-my-harness
 
-# Local project install
+<span data-i18n="docs.installation.code.localProject"># Local project install</span>
 oh-my-harness init --runtime codex
 oh-my-harness init --runtime both</code></pre>
 
-      <p>For the <strong>Codex CLI</strong>, start Codex, enter <code>/plugins</code>, choose the configured marketplace, install <code>oh-my-harness</code>, and start a new session. In <strong>Codex desktop</strong>, open <strong>Plugins</strong>, choose the configured marketplace under <strong>Personal</strong>, install it, and open a new chat. See the <a href="https://developers.openai.com/codex/plugins">official Codex plugin guide</a>.</p>
-      <p>After installation, review OMH hooks in <code>/hooks</code>. Codex keeps its native trust boundary. Use <code>omh-status</code> for tier, loop, verification, usage, and memory state.</p>
+      <p data-i18n-html="docs.installation.codexCli">For the <strong>Codex CLI</strong>, start Codex, enter <code>/plugins</code>, choose the configured marketplace, install <code>oh-my-harness</code>, and start a new session. See the <a href="https://developers.openai.com/codex/plugins">official Codex plugin guide</a>.</p>
+      <p data-i18n-html="docs.installation.codexDesktop">In <strong>Codex desktop</strong>, open <strong>Plugins</strong>, choose the configured marketplace under <strong>Personal</strong>, install it, and open a new chat.</p>
+      <p data-i18n-html="docs.installation.trust">After installation, review OMH hooks in <code>/hooks</code>. Codex keeps its native trust boundary. Use <code>omh-status</code> for tier, loop, verification, usage, and memory state.</p>
 
       <blockquote><p data-i18n="docs.installation.note">Zero setup required — harness features (including the autonomous loop) activate automatically. <code>/harness-setup</code> is optional.</p></blockquote>
 
@@ -184,7 +185,7 @@ oh-my-harness init --runtime both</code></pre>
 
 oh-my-harness update --runtime codex</code></pre>
       <blockquote><p data-i18n="docs.installation.updateNote">Updates preserve <code>harness.config.json</code> and user-owned skills. Codex update refreshes managed hooks, skills, roles, guidance, and memory runtime; Claude plugin update follows its plugin setup flow.</p></blockquote>
-      <p>Claude plugin mode loads memory through <code>.mcp.json</code>. Local Codex init provisions <code>.claude/.omh/runtime/bin/omh-memory.sh</code> and <code>.claude/.omh/runtime/lib/memory.mjs</code>, and manages <code>[mcp_servers.omh-memory]</code>. Both use <code>~/.omh/memory/graph.jsonl</code>.</p>
+      <p data-i18n-html="docs.installation.memory">Claude plugin mode loads memory through <code>.mcp.json</code> and exposes MCP tools. Local Codex init provisions <code>.claude/.omh/runtime/bin/omh-memory.sh</code> and <code>.claude/.omh/runtime/lib/memory.mjs</code>, and manages <code>[mcp_servers.omh-memory]</code>. User-scoped init uses <code>~/.claude/.omh/runtime/</code>. Both use <code>~/.omh/memory/graph.jsonl</code>.</p>
 
       <!-- Quick Start -->
       <h2 id="quick-start" data-i18n="docs.quickStart.title">Quick Start</h2>
@@ -320,16 +321,16 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><th data-i18n="docs.architecture.th.layer">Layer</th><th data-i18n="docs.architecture.th.role">Role</th></tr>
         </thead>
         <tbody>
-          <tr><td><strong>① Hooks</strong> (<code>hooks/</code>)</td><td data-i18n="docs.architecture.l1">9 thin fail-open wrappers on lifecycle events — gather signals, emit decisions</td></tr>
+          <tr><td><strong>① Hooks</strong> (<code>hooks/</code>)</td><td data-i18n="docs.architecture.l1">11 shared scripts (9 guards/observers + 2 gates) and 2 Codex bridge modules</td></tr>
           <tr><td><strong>② Pure Core</strong> (<code>lib/</code>)</td><td data-i18n="docs.architecture.l2">All decision logic as pure functions (no fs / git / time) — fully unit-tested</td></tr>
-          <tr><td><strong>③ Skills</strong> (<code>skills/</code>)</td><td data-i18n="docs.architecture.l3">12 user-invoked slash-command workflows</td></tr>
+          <tr><td><strong>③ Skills</strong> (<code>skills/</code>)</td><td data-i18n="docs.architecture.l3">13 Claude Code skills and 14 Codex skills</td></tr>
           <tr><td><strong>④ Agents</strong> (<code>agents/</code>)</td><td data-i18n="docs.architecture.l4">Model routing — haiku / sonnet / opus by task weight</td></tr>
         </tbody>
       </table>
 
       <!-- Hooks -->
       <h2 id="hooks" data-i18n="docs.hooks.title">Hooks</h2>
-      <p data-i18n="docs.hooks.intro">OMH hooks into Claude Code's lifecycle at every stage. All hooks run automatically — no manual intervention needed.</p>
+      <p data-i18n="docs.hooks.intro">OMH hooks into the native Claude Code or Codex lifecycle. Ordered event chains share the same decision core; Codex uses two bridge modules.</p>
 
       <table>
         <thead>
@@ -376,7 +377,7 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><td><code>/harness-setup</code></td><td data-i18n="docs.skills.r1">Initialize oh-my-harness with interactive onboarding</td></tr>
           <tr><td><code>/set-harness [path] [value]</code></td><td data-i18n="docs.skills.r2">View or modify harness settings</td></tr>
           <tr><td><code>/init-project</code></td><td data-i18n="docs.skills.r3">Detect conventions and scaffold project skills</td></tr>
-          <tr><td><code>/agent-spawn [N] [task]</code></td><td data-i18n="docs.skills.r4">Spawn N parallel Claude agents in tmux</td></tr>
+          <tr><td><code>/agent-spawn [N] [task]</code></td><td data-i18n="docs.skills.r4">Spawn N selected-runtime agents in tmux</td></tr>
           <tr><td><code>/agent-status</code></td><td data-i18n="docs.skills.r5">Check status of running agents</td></tr>
           <tr><td><code>/agent-apply [id|all]</code></td><td data-i18n="docs.skills.r6">Preview diffs and merge agent worktree changes</td></tr>
           <tr><td><code>/agent-stop [id|all]</code></td><td data-i18n="docs.skills.r7">Stop agents and cleanup worktrees</td></tr>
@@ -403,7 +404,7 @@ oh-my-harness update --runtime codex</code></pre>
 
       <!-- Model Routing -->
       <h2 id="model-routing" data-i18n="docs.modelRouting.title">Model Routing</h2>
-      <p data-i18n-html="docs.modelRouting.intro">Claude automatically routes subagent work to the appropriate model tier based on task complexity. This is configured in <code>CLAUDE.md</code> and agent definitions.</p>
+      <p data-i18n-html="docs.modelRouting.intro">OMH routes subagent work through the native Claude Code agent definitions or Codex quick/standard/architect roles. Runtime model settings are preferences, not availability guarantees.</p>
       <p data-i18n-html="docs.modelRouting.announce">Announce with: <code>[omh:model-routing → &lt;model&gt;]</code></p>
       <pre><code># Customize model assignments
 /set-harness modelRouting.quick haiku
@@ -585,7 +586,7 @@ oh-my-harness update --runtime codex</code></pre>
 
       <!-- Multi-Agent -->
       <h2 id="multi-agent" data-i18n="docs.multiAgent.title">Multi-Agent System</h2>
-      <p data-i18n="docs.multiAgent.intro">Spawn parallel Claude Code instances in tmux panes, each with an isolated git worktree.</p>
+      <p data-i18n-html="docs.multiAgent.intro">Spawn parallel workers in isolated tmux/worktree lanes. The Claude edition launches Claude; the Codex edition honors <code>multiAgent.runtime</code> (<code>codex</code> or <code>claude</code>).</p>
 
       <h2 id="agent-commands" data-i18n="docs.agentCommands.title">Agent Commands</h2>
       <table>
@@ -625,12 +626,12 @@ oh-my-harness update --runtime codex</code></pre>
       <ul>
         <li data-i18n-html="docs.safetyPolicies.prereq.tmux"><strong>tmux</strong> — <code>brew install tmux</code> (macOS) / <code>apt install tmux</code> (Linux)</li>
         <li data-i18n-html="docs.safetyPolicies.prereq.git"><strong>git</strong> — for worktree isolation</li>
-        <li data-i18n-html="docs.safetyPolicies.prereq.claude"><strong>claude CLI</strong> — must be available in PATH</li>
+        <li data-i18n-html="docs.safetyPolicies.prereq.claude"><strong>Selected runtime CLI</strong> — <code>claude</code> or <code>codex</code> must be available in PATH</li>
       </ul>
 
       <!-- Native Team -->
       <h2 id="native-team" data-i18n="docs.nativeTeam.title">Native Team System</h2>
-      <p data-i18n="docs.nativeTeam.intro">Use Claude Code's built-in team orchestration — no tmux or worktree dependencies required.</p>
+      <p data-i18n="docs.nativeTeam.intro">Use native collaboration without tmux or worktrees: Claude Code uses TeamCreate/TaskCreate/Agent operations; Codex uses spawn_agent/list_agents/send_message/interrupt_agent.</p>
 
       <h2 id="team-commands" data-i18n="docs.teamCommands.title">Team Commands</h2>
       <table>
@@ -650,11 +651,12 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><th data-i18n="docs.teamTemplates.th.template">Template</th><th data-i18n="docs.teamTemplates.th.members">Members</th><th data-i18n="docs.teamTemplates.th.useFor">Use For</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>fullstack</code></td><td data-i18n="docs.teamTemplates.r1.members">frontend (sonnet) + backend (sonnet) + tester (sonnet)</td><td data-i18n="docs.teamTemplates.r1.useFor">Full-stack feature development</td></tr>
-          <tr><td><code>review</code></td><td data-i18n="docs.teamTemplates.r2.members">reviewer (opus) + tester (sonnet)</td><td data-i18n="docs.teamTemplates.r2.useFor">Code review and testing</td></tr>
-          <tr><td><code>research</code></td><td data-i18n="docs.teamTemplates.r3.members">researcher (haiku) + implementer (sonnet) + architect (opus)</td><td data-i18n="docs.teamTemplates.r3.useFor">Research-driven development</td></tr>
+          <tr><td><code>fullstack</code></td><td data-i18n="docs.teamTemplates.r1.members">frontend (standard) + backend (standard) + tester (standard)</td><td data-i18n="docs.teamTemplates.r1.useFor">Full-stack feature development</td></tr>
+          <tr><td><code>review</code></td><td data-i18n="docs.teamTemplates.r2.members">reviewer (architect) + tester (standard)</td><td data-i18n="docs.teamTemplates.r2.useFor">Code review and testing</td></tr>
+          <tr><td><code>research</code></td><td data-i18n="docs.teamTemplates.r3.members">researcher (quick) + implementer (standard) + architect (architect)</td><td data-i18n="docs.teamTemplates.r3.useFor">Research-driven development</td></tr>
         </tbody>
       </table>
+      <p data-i18n="docs.teamTemplates.runtimeNote">Claude maps these shared agent types to haiku/sonnet/opus. Codex treats them as available-profile preferences and does not guarantee a particular model.</p>
 
       <h2 id="team-vs-agent" data-i18n="docs.teamVsAgent.title">Multi-Agent vs Native Team</h2>
       <table>
@@ -662,10 +664,10 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><th></th><th data-i18n="docs.teamVsAgent.th.multiAgent">Multi-Agent (/agent-spawn)</th><th data-i18n="docs.teamVsAgent.th.nativeTeam">Native Team (/team-spawn)</th></tr>
         </thead>
         <tbody>
-          <tr><td data-i18n="docs.teamVsAgent.r1.label"><strong>Infrastructure</strong></td><td data-i18n="docs.teamVsAgent.r1.agent">tmux + git worktrees</td><td data-i18n="docs.teamVsAgent.r1.team">Claude Code built-in tools</td></tr>
-          <tr><td data-i18n="docs.teamVsAgent.r2.label"><strong>Prerequisites</strong></td><td data-i18n="docs.teamVsAgent.r2.agent">tmux, git, claude CLI</td><td data-i18n="docs.teamVsAgent.r2.team">None (built-in)</td></tr>
-          <tr><td data-i18n="docs.teamVsAgent.r3.label"><strong>Isolation</strong></td><td data-i18n="docs.teamVsAgent.r3.agent">Git branches per agent</td><td data-i18n="docs.teamVsAgent.r3.team">Shared repo (or Agent tool isolation)</td></tr>
-          <tr><td data-i18n="docs.teamVsAgent.r4.label"><strong>Communication</strong></td><td data-i18n="docs.teamVsAgent.r4.agent">Observe tmux panes</td><td data-i18n="docs.teamVsAgent.r4.team">SendMessage between teammates</td></tr>
+          <tr><td data-i18n="docs.teamVsAgent.r1.label"><strong>Infrastructure</strong></td><td data-i18n="docs.teamVsAgent.r1.agent">tmux + git worktrees</td><td data-i18n="docs.teamVsAgent.r1.team">Native Claude Code or Codex collaboration operations</td></tr>
+          <tr><td data-i18n="docs.teamVsAgent.r2.label"><strong>Prerequisites</strong></td><td data-i18n="docs.teamVsAgent.r2.agent">tmux, git, selected runtime CLI</td><td data-i18n="docs.teamVsAgent.r2.team">None (built-in)</td></tr>
+          <tr><td data-i18n="docs.teamVsAgent.r3.label"><strong>Isolation</strong></td><td data-i18n="docs.teamVsAgent.r3.agent">Git branches per agent</td><td data-i18n="docs.teamVsAgent.r3.team">Runtime-native subagent isolation</td></tr>
+          <tr><td data-i18n="docs.teamVsAgent.r4.label"><strong>Communication</strong></td><td data-i18n="docs.teamVsAgent.r4.agent">Observe tmux panes</td><td data-i18n="docs.teamVsAgent.r4.team">Claude messaging or Codex send_message</td></tr>
           <tr><td data-i18n="docs.teamVsAgent.r5.label"><strong>Best for</strong></td><td data-i18n="docs.teamVsAgent.r5.agent">Parallel code changes needing isolation</td><td data-i18n="docs.teamVsAgent.r5.team">Coordinated team workflows</td></tr>
         </tbody>
       </table>
@@ -712,11 +714,13 @@ oh-my-harness update --runtime codex</code></pre>
       <!-- CLI Commands -->
       <h2 id="cli-commands" data-i18n="docs.cliCommands.title">CLI Commands</h2>
       <pre><code>oh-my-harness init --runtime claude|codex|both
+oh-my-harness init --runtime codex --scope user
 oh-my-harness update --runtime claude|codex|both
-oh-my-harness status    # Show current configuration
-oh-my-harness reset --runtime claude  # Bare reset has the same Claude-only default
-oh-my-harness reset --runtime codex   # Remove only managed Codex registration
-oh-my-harness reset --runtime both    # Remove both managed registrations</code></pre>
+oh-my-harness status
+oh-my-harness reset --runtime claude
+oh-my-harness reset --runtime codex
+oh-my-harness reset --runtime both</code></pre>
+      <p data-i18n-html="docs.cliCommands.scopeNote">Use <code>--scope user</code> to provision user-scoped Codex configuration and memory runtime. A bare reset retains the Claude-only default.</p>
 
       <!-- Compatibility -->
       <h2 id="compatibility" data-i18n="docs.compatibility.title">OMC Compatibility</h2>
@@ -736,30 +740,30 @@ oh-my-harness reset --runtime both    # Remove both managed registrations</code>
 
       <!-- Uninstall -->
       <h2 id="uninstall" data-i18n="docs.uninstall.title">Disable / Uninstall</h2>
-      <pre><code># Temporarily disable
+      <pre><code><span data-i18n="docs.uninstall.code.disable"># Temporarily disable</span>
 DISABLE_HARNESS=1 claude
 
-# Plugin mode — uninstall
+<span data-i18n="docs.uninstall.code.plugin"># Plugin mode — uninstall</span>
 claude plugin uninstall oh-my-harness
 
-# Local CLI — Claude only (bare reset default)
+<span data-i18n="docs.uninstall.code.claude"># Local CLI — Claude only (bare reset default)</span>
 oh-my-harness reset --runtime claude
 
-# Local CLI — Codex only
+<span data-i18n="docs.uninstall.code.codex"># Local CLI — Codex only</span>
 oh-my-harness reset --runtime codex
 
-# Local CLI — full dual-runtime removal
+<span data-i18n="docs.uninstall.code.both"># Local CLI — full dual-runtime removal</span>
 oh-my-harness reset --runtime both
 npm uninstall -g oh-my-harness</code></pre>
 
-      <p>User-owned project skills and the separate memory graph at <code>~/.omh/memory/graph.jsonl</code> are preserved.</p>
+      <p data-i18n-html="docs.uninstall.preservation">User-owned project skills and the separate memory graph at <code>~/.omh/memory/graph.jsonl</code> are preserved.</p>
 
       <h3 data-i18n="docs.uninstall.requirements">Requirements</h3>
       <ul>
-        <li><strong>Node.js</strong> >= 18</li>
-        <li><strong>Claude Code</strong> and/or <strong>Codex</strong> CLI/desktop</li>
-        <li><strong>tmux</strong> — for multi-agent only</li>
-        <li><strong>git</strong> — for worktree isolation</li>
+        <li data-i18n-html="docs.requirements.node"><strong>Node.js</strong> &gt;= 18</li>
+        <li data-i18n-html="docs.requirements.runtime"><strong>Claude Code</strong> and/or <strong>Codex</strong> CLI/desktop</li>
+        <li data-i18n-html="docs.requirements.tmux"><strong>tmux</strong> — for multi-agent only</li>
+        <li data-i18n-html="docs.requirements.git"><strong>git</strong> — for worktree isolation</li>
       </ul>
     </main>
   </div>

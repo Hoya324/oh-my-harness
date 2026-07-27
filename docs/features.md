@@ -343,11 +343,13 @@ Orchestrate parallel work using Claude Code's built-in team system or Codex coll
 
 **Templates:**
 
-| Template | Members | Model Routing |
+| Template | Members | Agent Types |
 |----------|---------|---------------|
-| `fullstack` | frontend + backend + tester | All sonnet |
-| `review` | reviewer + tester | opus + sonnet |
-| `research` | researcher + implementer + architect | haiku + sonnet + opus |
+| `fullstack` | frontend + backend + tester | all `standard` |
+| `review` | reviewer + tester | `architect` + `standard` |
+| `research` | researcher + implementer + architect | `quick` + `standard` + `architect` |
+
+Claude maps these shared agent types to haiku/sonnet/opus. Codex treats them as available-profile preferences and does not promise a particular model.
 
 **Commands:**
 
@@ -524,11 +526,11 @@ A cross-session, **cross-runtime** knowledge graph, backed by the reference `@mo
 
 - **Read** — before planning, `/omh-loop` and `/omh-spec` query the graph for prior learnings, already-verified `quickCheck`/`verify` commands, and known pitfalls.
 - **Write** — a failed iteration's Reflexion becomes a `Learning`; a green verify appends the verified commands to the `Project`; `/omh-verify` persists high-confidence findings (2+ model consensus).
-- **Access** — agents use the MCP tools live; hooks/CLI use `lib/memory.mjs` (atomic, server-format-compatible: `read` / `search` / `add-learning` / `add-observation` / `stats`).
+- **Access** — plugin users use the MCP tools live. A local Codex project install can run `node .claude/.omh/runtime/lib/memory.mjs <command>`; after `oh-my-harness init --runtime codex --scope user`, user scope uses `node ~/.claude/.omh/runtime/lib/memory.mjs <command>`. Signatures: `read`; `search <query>`; `add-learning <project> <text...>`; `add-observation <entity> <text...>`; `stats`.
 - **Graceful degradation** — if the server is unavailable, LTM steps are skipped silently; the loop never blocks on memory.
 - **Concurrency** — the graph server is single-writer by design; fine for personal single-agent use, avoid heavy simultaneous writes from both runtimes at once.
 
-> Store: `~/.omh/memory/graph.jsonl`. Re-seed file memory with `node ~/.omh/bin/seed-from-claude-memory.mjs <memory-dir>`.
+> Store: `~/.omh/memory/graph.jsonl`. There is no bundled file-memory seed command; import observations through the live MCP tools or the installed scope-specific helper.
 
 ### Verify Gate
 

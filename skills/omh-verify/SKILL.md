@@ -24,13 +24,13 @@ description: Tier 3 작업 완료 전 N-라운드 독립검증·수정 루프. g
 ## 장기메모리 (LTM)
 
 `omh-memory` MCP(지식그래프 `~/.omh/memory/graph.jsonl`, **Claude·Codex 공유**)에 검증 결과를 영속화한다.
-연결 시 MCP 툴, 아니면 CLI 폴백, 둘 다 없으면 **조용히 스킵**(graceful degrade — 검증을 막지 않는다).
+연결 시 MCP 도구를 사용하고, 연결되지 않았으면 **조용히 스킵**한다(graceful degrade — 검증을 막지 않는다).
 
 - **읽기(시작 시):** 이 프로젝트의 과거 고신뢰 findings를 조회해 이번 검증 focus에 반영(재발견 방지).
-  - MCP: `search_nodes({query: "<project> finding"})`  ·  CLI: `node ~/.omh/lib/memory.mjs search "<project>"`
+  - MCP: `search_nodes({query: "<project> finding"})`
 - **쓰기(리포트 후):** **2개 이상 모델이 합의한 고신뢰 findings**를 `Finding`으로 적립(`about`→`Project`).
   다음 루프/세션이 같은 문제를 재발견하지 않게 한다.
-  - MCP: `create_entities`+`create_relations`  ·  CLI: `node ~/.omh/lib/memory.mjs add-learning "<project>" "high-conf: <finding>"`
+  - MCP: `create_entities` + `create_relations`
 
 ## 원칙
 - 각 라운드는 **독립**이다: 이전 라운드 결론을 검증자에게 주입하지 말 것(셀프 도장 방지).

@@ -80,7 +80,7 @@ cd oh-my-harness
 npm link
 cd /path/to/your-project
 
-# Local CLI installation into a project
+# 프로젝트에 로컬 CLI 설치
 oh-my-harness init --runtime codex
 oh-my-harness init --runtime both
 ```
@@ -157,8 +157,8 @@ OMH의 기능은 세 그룹으로 나뉩니다 — 모든 세션에서 자동으
 | 스펙 작성 | `/omh-spec` | ON | 기계가 검증 가능한 `SPEC.md`(EARS 수용 기준 → 검증 명령어)를 작성해 루프의 기준점으로 삼음 |
 | N-라운드 검증 | `/omh-verify` | — | 모델 로테이션(Claude → GPT/codex → Gemini)으로 N회 독립 검증+수정; 외부 검증자는 읽기 전용 |
 | **장기 메모리** | MCP `omh-memory` + `/omh-loop`, `/omh-verify` | ON | 세션·런타임을 넘나드는 지식그래프(Codex와 공유): 루프가 과거 학습을 읽고 reflexion·고신뢰 findings를 영속화 |
-| 네이티브 팀 | `/team-spawn` | ON | Claude Code 내장 팀 오케스트레이션 (템플릿 지원) |
-| 멀티 에이전트 | `/agent-spawn` | — | tmux + git worktree를 활용한 병렬 Claude 에이전트 |
+| 네이티브 팀 | `/team-spawn` | ON | Claude Code 또는 Codex 네이티브 협업 (템플릿 지원) |
+| 멀티 에이전트 | `/agent-spawn` | — | tmux + git worktree에서 런타임 선택 가능한 Claude Code 또는 Codex 워커 |
 
 ### C. 라우팅·스캐폴딩·관측
 
@@ -214,15 +214,19 @@ graph TD
 OMH는 학습한 것을 **지식그래프 메모리**에 영속화하며, 이 저장소는 **Claude Code와 Codex가 공유**합니다 — 하나의 스토어, 두 런타임 — 한 세션(과 한 에이전트)의 교훈이 다음으로 이어집니다.
 
 ```bash
-# `omh-memory` MCP 서버로 프로비저닝됨; 스토어는 ~/.omh/memory/graph.jsonl
-node ~/.omh/lib/memory.mjs search "<project>"   # 이 프로젝트가 하네스에 이미 가르친 것은?
-node ~/.omh/lib/memory.mjs stats                 # 엔티티 / 관계 / 스토어 경로
+# 플러그인 설치: 세션에서 omh-memory MCP 도구(예: search_nodes)를 사용하세요.
+# 로컬 Codex 프로젝트 범위:
+oh-my-harness init --runtime codex
+node .claude/.omh/runtime/lib/memory.mjs search "<project>"
+# 로컬 Codex 사용자 범위:
+oh-my-harness init --runtime codex --scope user
+node ~/.claude/.omh/runtime/lib/memory.mjs stats
 ```
 
 - **백엔드** — 레퍼런스 지식그래프 서버(`@modelcontextprotocol/server-memory`): 로컬, API 키 불필요, JSONL 파일에 엔티티+관계+observation. Claude 플러그인 모드는 `.mcp.json`을 사용합니다. 로컬 Codex init은 `.claude/.omh/runtime/bin/omh-memory.sh`와 `.claude/.omh/runtime/lib/memory.mjs`를 설치하고 Codex 설정의 `[mcp_servers.omh-memory]`를 관리합니다. 둘 다 `~/.omh/memory/graph.jsonl`을 가리킵니다.
 - **루프가 읽음** — 계획 전에 `/omh-loop`·`/omh-spec`이 그래프에서 과거 학습·이미 검증된 `quickCheck`/`verify` 커맨드·기존 함정을 조회해 계획에 반영합니다(이미 아는 것을 재탐지하지 않음).
 - **루프가 씀** — 실패한 iteration의 Reflexion은 `Learning` 엔티티가 되고, 통과한 verify는 검증된 커맨드를 `Project`에 적립하며, `/omh-verify`는 **고신뢰 findings**(2+ 모델 합의)를 영속화해 다음 실행이 재발견하지 않게 합니다.
-- **에이전트 + 프로그래매틱 접근** — 에이전트는 MCP 툴을 실시간으로, 훅/CLI는 `lib/memory.mjs`(원자적 쓰기, 서버와 포맷 호환)로 결정론적으로 접근합니다.
+- **에이전트 + 프로그래매틱 접근** — 플러그인 사용자는 `omh-memory` MCP 도구를 실시간으로 사용합니다. 로컬 Codex 설치는 위에 표시된 범위별 관리 `runtime/lib/memory.mjs` 도우미(원자적 쓰기, 서버와 포맷 호환)를 사용할 수 있습니다.
 - **Graceful degradation** — MCP 서버가 미연결(또는 오프라인)이면 LTM 단계는 조용히 스킵됩니다. 루프는 메모리 때문에 막히지 않습니다.
 
 > **동시성 주의.** 지식그래프 서버는 인메모리 복사본을 두고 mutation마다 파일 전체를 다시 쓰므로, 한 번에 한 writer를 전제로 설계됐습니다. 개인용(한 번에 한 에이전트)엔 무해하나, Claude Code와 Codex가 동시에 대량 쓰기하는 것은 피하세요.
@@ -288,6 +292,8 @@ graph TB
         HOOKS --> H7[pre-compact.mjs]
         HOOKS --> H8[post-task.mjs]
         HOOKS --> H9[loop-guard.mjs]
+        HOOKS --> H10[plan-gate.mjs]
+        HOOKS --> H11[verify-gate.mjs]
 
         SKILLS --> S1["/harness-setup"]
         SKILLS --> S2["/set-harness"]
@@ -316,6 +322,8 @@ graph TB
     H1 --> CONFIG
     H2 --> CONFIG
     H3 --> CONFIG
+    H10 --> CONFIG
+    H11 --> CONFIG
 
     style CC fill:#7C3AED,color:#fff
     style CONFIG fill:#f59e0b,color:#000
@@ -369,9 +377,10 @@ sequenceDiagram
 ```mermaid
 graph TD
     START["/agent-spawn 3 'TypeScript 에러 수정'"] --> CONFIG[multiAgent 설정 읽기]
-    CONFIG --> CONFIRM{"사용자 확인?"}
+    CONFIG --> RUNTIME{"Claude판: claude<br/>Codex판: multiAgent.runtime"}
+    RUNTIME --> CONFIRM{"사용자 확인?"}
     CONFIRM -->|취소| ABORT[중단]
-    CONFIRM -->|승인| CHECK["전제조건 확인: tmux, claude, git"]
+    CONFIRM -->|승인| CHECK["tmux, git, 선택한 런타임 CLI 확인"]
     CHECK --> WT{"useWorktree?"}
 
     WT -->|true| CREATE_WT["Worktree 생성<br/>.claude/.omh/worktrees/agent-1,2,3"]
@@ -380,7 +389,7 @@ graph TD
     CREATE_WT --> TMUX["tmux 세션 생성: omh-agents"]
     SHARED --> TMUX
 
-    TMUX --> LAUNCH["각 팬에서 claude 실행<br/>(--dangerously-skip-permissions)"]
+    TMUX --> LAUNCH["각 팬에서 선택한 런타임 실행<br/>Claude Code 또는 Codex"]
     LAUNCH --> STATE[agents.json에 상태 저장]
     STATE --> DONE[에이전트 병렬 실행 중]
 
@@ -391,6 +400,15 @@ graph TD
     style START fill:#7C3AED,color:#fff
     style CONFIRM fill:#f59e0b,color:#000
 ```
+
+Claude판은 Claude를 실행합니다. Codex판은 `multiAgent.runtime`을 따릅니다(기본 `codex`, 또는 `claude`). 고정 실행 명령은 다음과 같습니다:
+
+```bash
+claude --permission-mode bypassPermissions -p "Read TASK.md and complete its instructions."
+codex exec --sandbox workspace-write --cd "<worktree>" "Read TASK.md and complete its instructions."
+```
+
+Claude 권한 우회는 확인 게이트에서 고지하며 Codex는 workspace-write 샌드박스를 사용합니다. 작업 본문은 `TASK.md`에만 두고 두 명령 모두 셸에 본문을 보간하지 않습니다.
 
 ```mermaid
 gitGraph
@@ -417,17 +435,22 @@ gitGraph
 
 > 전체 내용: [docs/multi-agent.ko.md](docs/multi-agent.ko.md#네이티브-팀-시스템)
 
-tmux도, worktree도 필요 없습니다 — Claude Code의 내장 팀 오케스트레이션을 사용합니다.
+tmux와 worktree가 필요 없습니다. Claude Code는 `TeamCreate`, `TaskCreate`, `Agent`를 사용하고 Codex는 `spawn_agent`, `list_agents`, `send_message`, `interrupt_agent`를 사용합니다. 둘 다 실제 팀원을 만들기 전에 확인을 요구합니다.
 
 ```mermaid
 graph TD
     START["/team-spawn fullstack '인증 시스템 구축'"] --> CONFIG[nativeTeam 설정 읽기]
     CONFIG --> CONFIRM{"사용자 확인?"}
     CONFIRM -->|취소| ABORT[중단]
-    CONFIRM -->|승인| CREATE["TeamCreate + TaskCreate"]
-    CREATE --> SPAWN["Agent 도구로 팀원 생성"]
+    CONFIRM -->|승인| RUNTIME{"Claude Code 또는 Codex?"}
+    RUNTIME -->|Claude| CREATE["TeamCreate + TaskCreate"]
+    CREATE --> SPAWN["Agent"]
+    RUNTIME -->|Codex| CCREATE["확인된 작업 영속화"]
+    CCREATE --> CSPAWN["spawn_agent"]
+    CSPAWN --> CRECON["list_agents · send_message · interrupt_agent"]
     SPAWN --> ASSIGN["팀원에게 작업 할당"]
     ASSIGN --> RUNNING["팀 실행 중 — 메시지가 자동으로 도착"]
+    CRECON --> RUNNING
 
     RUNNING --> STATUS["/team-status"]
     RUNNING --> STOP["/team-stop"]
@@ -438,9 +461,11 @@ graph TD
 
 | 템플릿 | 구성원 | 적합한 용도 |
 |--------|--------|------------|
-| `fullstack` | frontend + backend + tester (모두 sonnet) | 풀스택 기능 개발 |
-| `review` | reviewer (opus) + tester (sonnet) | 코드 리뷰 |
-| `research` | researcher (haiku) + implementer (sonnet) + architect (opus) | 연구 기반 개발 |
+| `fullstack` | frontend + backend + tester (모두 `standard`) | 풀스택 기능 개발 |
+| `review` | reviewer (`architect`) + tester (`standard`) | 코드 리뷰 |
+| `research` | researcher (`quick`) + implementer (`standard`) + architect (`architect`) | 연구 기반 개발 |
+
+`quick`/`standard`/`architect`는 공유 에이전트 유형입니다. Claude판은 이를 haiku/sonnet/opus에 매핑하고, Codex판은 사용 가능한 프로필 선호도로 취급하며 특정 모델을 보장하지 않습니다.
 
 ---
 

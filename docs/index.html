@@ -56,18 +56,18 @@
     <div class="hero-install">
       <div class="install-box">
         <span class="install-prefix">$</span>
-        <code id="install-cmd">claude plugin install oh-my-harness@oh-my-harness</code>
+        <code id="install-cmd">codex plugin marketplace add Hoya324/oh-my-harness</code>
         <button class="copy-btn" onclick="copyInstall()" id="copy-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
       </div>
     </div>
     <div class="hero-actions">
-      <a href="docs.html" class="btn btn-primary" data-i18n="index.hero.getStarted">Get Started</a>
+      <a href="#codex" class="btn btn-primary" data-i18n="index.hero.getStarted">Get Started</a>
       <a href="docs.html#features" class="btn btn-outline" data-i18n="index.hero.explore">Explore Features</a>
     </div>
     <div class="hero-stats">
-      <div class="stat"><span class="stat-num">9</span><span class="stat-label" data-i18n="index.hero.stat.hooks">Hooks</span></div>
+      <div class="stat"><span class="stat-num">11+2</span><span class="stat-label" data-i18n="index.hero.stat.hooks">Shared + bridge scripts</span></div>
       <div class="stat-divider"></div>
       <div class="stat"><span class="stat-num">13/14</span><span class="stat-label" data-i18n="index.hero.stat.skills">Claude/Codex Skills</span></div>
       <div class="stat-divider"></div>
@@ -109,7 +109,8 @@
           <div class="feature-detail">
             <h3 data-i18n="index.codex.installCodex">Codex CLI / desktop local marketplace</h3>
             <code>codex plugin marketplace add Hoya324/oh-my-harness</code>
-            <p data-i18n="index.codex.marketplaceNote">This registers the source; install or enable oh-my-harness from the marketplace flow in your Codex build.</p>
+            <p data-i18n="index.codex.marketplaceNote">This registers the source. In Codex CLI, enter /plugins, choose the configured marketplace, install oh-my-harness, then start a new session.</p>
+            <p data-i18n="index.codex.desktopNote">In Codex desktop, open Plugins, choose the configured marketplace under Personal, install oh-my-harness, then open a new chat.</p>
           </div>
         </div>
         <div class="feature-row">
@@ -301,7 +302,7 @@
           <div class="feature-icon-col"><div class="feature-num">04</div></div>
           <div class="feature-detail">
             <h3 data-i18n="index.features.f3.title">Multi-Agent Orchestration</h3>
-            <p data-i18n="index.features.f3.desc">Spawn parallel Claude agents in tmux panes with git worktree isolation. Preview diffs, merge when ready.</p>
+            <p data-i18n="index.features.f3.desc">Spawn runtime-selectable Claude Code or Codex workers in tmux with git worktree isolation, or use each runtime's native collaboration operations.</p>
           </div>
           <div class="feature-tags">
             <span>/agent-spawn</span>
@@ -443,27 +444,29 @@
   <!-- Get Started -->
   <section class="cta-section" id="get-started">
     <div class="container">
-      <h2 class="section-title" data-i18n="index.cta.title">Get started in seconds</h2>
+      <h2 class="section-title" data-i18n="index.cta.title">Install in Codex</h2>
       <div class="cta-steps">
         <div class="cta-step">
           <div class="cta-step-num">1</div>
           <div>
-            <h3 data-i18n="index.cta.s1.title">Install</h3>
-            <code>claude plugin install oh-my-harness@oh-my-harness</code>
+            <h3 data-i18n="index.cta.s1.title">Add the source</h3>
+            <code>codex plugin marketplace add Hoya324/oh-my-harness</code>
+            <p data-i18n="index.cta.codexSource">Run this once to configure the marketplace source.</p>
           </div>
         </div>
         <div class="cta-step">
           <div class="cta-step-num">2</div>
           <div>
-            <h3 data-i18n="index.cta.s2.title">Setup</h3>
-            <code>/harness-setup</code>
+            <h3 data-i18n="index.cta.s2.title">Install the plugin</h3>
+            <code>/plugins</code>
+            <p data-i18n="index.cta.codexInstall">Choose the configured marketplace in CLI, or Plugins → Personal on desktop, then install oh-my-harness.</p>
           </div>
         </div>
         <div class="cta-step">
           <div class="cta-step-num">3</div>
           <div>
-            <h3 data-i18n="index.cta.s3.title">Build</h3>
-            <p data-i18n="index.cta.s3.desc">Smart defaults activate automatically.</p>
+            <h3 data-i18n="index.cta.s3.title">Activate</h3>
+            <p data-i18n="index.cta.codexActivate">Start a new CLI session or desktop chat. Review installed lifecycle hooks in /hooks before trusting them.</p>
           </div>
         </div>
       </div>

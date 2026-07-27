@@ -130,11 +130,11 @@ Claude Code 내장 팀 도구 또는 Codex 네이티브 협업 작업을 사용�
 
 | 템플릿 | 구성원 | 용도 |
 |--------|--------|------|
-| `fullstack` | frontend (sonnet) + backend (sonnet) + tester (sonnet) | 풀스택 기능 개발 |
-| `review` | reviewer (opus) + tester (sonnet) | 코드 리뷰 및 테스트 |
-| `research` | researcher (haiku) + implementer (sonnet) + architect (opus) | 연구 기반 개발 |
+| `fullstack` | frontend (`standard`) + backend (`standard`) + tester (`standard`) | 풀스택 기능 개발 |
+| `review` | reviewer (`architect`) + tester (`standard`) | 코드 리뷰 및 테스트 |
+| `research` | researcher (`quick`) + implementer (`standard`) + architect (`architect`) | 연구 기반 개발 |
 
-Claude는 표의 모델 이름을 사용합니다. Codex는 설정된 역할 모델로 동일한 quick/standard/architect 의미를 유지합니다.
+Claude는 이 공유 에이전트 유형을 haiku/sonnet/opus에 매핑합니다. Codex는 사용 가능한 프로필 선호도로 취급하며 특정 모델을 보장하지 않습니다.
 
 ## 워크플로우
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -188,5 +188,130 @@ test('architecture describes shared scripts and Codex bridge without one-hook co
     assert.ok(body.includes('adapter.mjs'), `${file}: missing adapter bridge`);
     assert.ok(body.includes('run.mjs'), `${file}: missing bridge runner`);
     assert.ok(!body.includes('exactly one hook'), `${file}: stale one-hook claim`);
+  }
+});
+
+test('landing page alone gives an actionable localized install journey', () => {
+  const html = read('docs/index.html');
+  const i18n = read('docs/i18n.js');
+  const keys = [
+    'index.codex.marketplaceNote',
+    'index.codex.desktopNote',
+    'index.cta.codexSource',
+    'index.cta.codexInstall',
+    'index.cta.codexActivate',
+  ];
+
+  assert.ok(html.includes('href="#codex"'), 'hero Get Started must lead to actionable install section');
+  for (const key of keys) {
+    assert.ok(html.includes(`data-i18n="${key}"`), `landing missing ${key}`);
+    const occurrences = i18n.match(new RegExp(`'${key.replaceAll('.', '\\.')}'\\s*:`, 'g')) || [];
+    assert.equal(occurrences.length, 2, `${key} must be localized in English and Korean`);
+  }
+  for (const fact of ['/plugins', 'Personal', 'new session']) {
+    assert.ok(html.includes(fact) || i18n.includes(fact), `landing install journey missing ${fact}`);
+  }
+  assert.ok(!html.includes('<span class="stat-num">9</span>'), 'landing stale hook count');
+  assert.ok(!html.includes('claude plugin install oh-my-harness@oh-my-harness</code>\n          </div>\n        </div>\n        <div class="cta-step">'), 'final CTA must not be Claude-only');
+});
+
+test('rendered docs localizes dual-runtime additions and rejects stale runtime copy', () => {
+  const html = read('docs/docs.html');
+  const i18n = read('docs/i18n.js');
+  const localizedVisibleKeys = [
+    'docs.installation.codexCli',
+    'docs.installation.codexDesktop',
+    'docs.installation.trust',
+    'docs.installation.memory',
+    'docs.uninstall.preservation',
+    'docs.requirements.node',
+    'docs.requirements.runtime',
+    'docs.requirements.tmux',
+    'docs.requirements.git',
+    'docs.installation.code.localProject',
+    'docs.cliCommands.scopeNote',
+    'docs.uninstall.code.codex',
+    'docs.teamTemplates.runtimeNote',
+  ];
+  for (const key of localizedVisibleKeys) {
+    assert.ok(html.includes(`data-i18n-html="${key}"`) || html.includes(`data-i18n="${key}"`), `docs page missing localized ${key}`);
+    const occurrences = i18n.match(new RegExp(`'${key.replaceAll('.', '\\.')}'\\s*:`, 'g')) || [];
+    assert.equal(occurrences.length, 2, `${key} must exist in en and ko`);
+  }
+  for (const stale of [
+    '9 thin fail-open wrappers',
+    '12 user-invoked slash-command workflows',
+    "OMH hooks into Claude Code's lifecycle",
+    'Spawn N parallel Claude agents in tmux',
+    'Spawn parallel Claude Code instances in tmux panes',
+    'Use Claude Code’s built-in team orchestration',
+    'frontend (sonnet)',
+    'reviewer (opus)',
+    'researcher (haiku)',
+  ]) {
+    assert.ok(!html.includes(stale), `docs HTML stale: ${stale}`);
+    assert.ok(!i18n.includes(stale), `i18n stale: ${stale}`);
+  }
+  assert.ok(
+    html.includes('data-i18n-html="docs.multiAgent.intro"'),
+    'multi-agent runtime markup must survive language switching',
+  );
+  assert.ok(html.includes('oh-my-harness init --runtime codex --scope user'));
+});
+
+test('memory commands point only to installed paths or MCP tools', () => {
+  const files = [
+    'README.md',
+    'README.ko.md',
+    'docs/features.md',
+    'docs/features.ko.md',
+    'docs/docs.html',
+    'skills/omh-spec/SKILL.md',
+    'skills/omh-loop/SKILL.md',
+    'skills/omh-verify/SKILL.md',
+  ];
+  for (const file of files) {
+    const body = read(file);
+    assert.ok(!body.includes('~/.omh/lib/memory.mjs'), `${file}: nonexistent global memory helper`);
+    assert.ok(!body.includes('~/.omh/bin/seed-from-claude-memory.mjs'), `${file}: nonexistent seed helper`);
+  }
+  for (const file of ['README.md', 'README.ko.md']) {
+    const body = read(file);
+    assert.ok(body.includes('node .claude/.omh/runtime/lib/memory.mjs'), `${file}: project-scope command`);
+    assert.ok(body.includes('node ~/.claude/.omh/runtime/lib/memory.mjs'), `${file}: user-scope command`);
+    assert.ok(body.includes('MCP'), `${file}: plugin-safe MCP guidance`);
+  }
+  assert.match(read('docs/features.md'), /search <query>.*add-learning <project> <text\.\.\.>/s);
+  assert.match(read('docs/features.ko.md'), /--runtime codex --scope user/);
+  assert.ok(existsSync(join(root, 'lib/memory.mjs')), 'documented memory helper source exists');
+  assert.ok(existsSync(join(root, 'bin/omh-memory.sh')), 'documented memory launcher source exists');
+  assert.ok(!existsSync(join(root, 'bin/seed-from-claude-memory.mjs')), 'removed workflow really is unsupported');
+});
+
+test('root collaboration docs match selectable tmux and native runtime contracts', () => {
+  for (const file of ['README.md', 'README.ko.md']) {
+    const body = read(file);
+    for (const fact of [
+      'multiAgent.runtime',
+      'claude --permission-mode bypassPermissions -p "Read TASK.md and complete its instructions."',
+      'codex exec --sandbox workspace-write --cd "<worktree>" "Read TASK.md and complete its instructions."',
+      'TeamCreate',
+      'TaskCreate',
+      'Agent',
+      'spawn_agent',
+      'list_agents',
+      'send_message',
+      'interrupt_agent',
+    ]) {
+      assert.ok(body.includes(fact), `${file}: collaboration contract missing ${fact}`);
+    }
+    assert.ok(!body.includes('Check prerequisites: tmux, claude, git'), `${file}: Claude-only tmux prerequisite`);
+    assert.ok(!body.includes('Launch claude in each pane'), `${file}: Claude-only tmux launch`);
+    assert.doesNotMatch(body, /all sonnet|모두 sonnet/);
+  }
+  for (const file of ['docs/features.md', 'docs/features.ko.md', 'docs/multi-agent.md', 'docs/multi-agent.ko.md']) {
+    const body = read(file);
+    assert.doesNotMatch(body, /frontend \(sonnet\)|reviewer \(opus\)|researcher \(haiku\)/);
+    assert.match(body, /available-profile preferences|프로필 선호도/);
   }
 });

@@ -345,11 +345,13 @@ Claude Code 내장 팀 시스템 또는 Codex 협업 작업을 사용하여 병�
 
 **템플릿:**
 
-| 템플릿 | 구성원 | 모델 라우팅 |
+| 템플릿 | 구성원 | 에이전트 유형 |
 |--------|--------|------------|
-| `fullstack` | frontend + backend + tester | 모두 sonnet |
-| `review` | reviewer + tester | opus + sonnet |
-| `research` | researcher + implementer + architect | haiku + sonnet + opus |
+| `fullstack` | frontend + backend + tester | 모두 `standard` |
+| `review` | reviewer + tester | `architect` + `standard` |
+| `research` | researcher + implementer + architect | `quick` + `standard` + `architect` |
+
+Claude는 이 공유 에이전트 유형을 haiku/sonnet/opus에 매핑합니다. Codex는 사용 가능한 프로필 선호도로 취급하며 특정 모델을 보장하지 않습니다.
 
 **명령어:**
 
@@ -510,11 +512,11 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 - **읽기** — 계획 전에 `/omh-loop`·`/omh-spec`이 과거 학습·이미 검증된 `quickCheck`/`verify` 커맨드·기존 함정을 조회.
 - **쓰기** — 실패한 iteration의 Reflexion은 `Learning`이 되고, 통과한 verify는 검증된 커맨드를 `Project`에 적립, `/omh-verify`는 고신뢰 findings(2+ 모델 합의)를 영속화.
-- **접근** — 에이전트는 MCP 툴을 실시간으로, 훅/CLI는 `lib/memory.mjs`(원자적, 서버와 포맷 호환: `read`/`search`/`add-learning`/`add-observation`/`stats`).
+- **접근** — 플러그인 사용자는 MCP 도구를 실시간으로 사용합니다. 로컬 Codex 프로젝트 설치는 `node .claude/.omh/runtime/lib/memory.mjs <command>`를 사용합니다. `oh-my-harness init --runtime codex --scope user` 실행 후 사용자 범위에서는 `node ~/.claude/.omh/runtime/lib/memory.mjs <command>`를 사용합니다. 시그니처는 `read`, `search <query>`, `add-learning <project> <text...>`, `add-observation <entity> <text...>`, `stats`입니다.
 - **Graceful degradation** — 서버 미연결 시 LTM 단계는 조용히 스킵, 루프는 메모리 때문에 막히지 않음.
 - **동시성** — 그래프 서버는 single-writer 설계. 개인용(한 번에 한 에이전트)엔 무해하나 양 런타임 동시 대량 쓰기는 피할 것.
 
-> 스토어: `~/.omh/memory/graph.jsonl`. 파일메모리 재시드: `node ~/.omh/bin/seed-from-claude-memory.mjs <memory-dir>`.
+> 스토어: `~/.omh/memory/graph.jsonl`. 번들된 파일 메모리 seed 명령은 없습니다. 라이브 MCP 도구 또는 설치된 범위별 도우미로 observation을 가져오세요.
 
 ### 검증 게이트
 

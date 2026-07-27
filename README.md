@@ -157,8 +157,8 @@ OMH's features fall into three groups — **automatic guards** that fire on ever
 | Spec Authoring | `/omh-spec` | ON | Writes a machine-checkable `SPEC.md` (EARS acceptance criteria → verify commands) to anchor the loop |
 | N-Round Verify | `/omh-verify` | — | N independent verify+fix rounds with model rotation (Claude → GPT/codex → Gemini); external verifiers run read-only |
 | **Long-Term Memory** | MCP `omh-memory` + `/omh-loop`, `/omh-verify` | ON | Cross-session, cross-runtime knowledge graph (shared with Codex): the loop reads prior learnings and persists reflexions & high-confidence findings |
-| Native Team | `/team-spawn` | ON | Native Claude Code team orchestration with templates |
-| Multi-Agent | `/agent-spawn` | — | Parallel Claude agents in tmux with git worktrees |
+| Native Team | `/team-spawn` | ON | Native Claude Code or Codex collaboration with templates |
+| Multi-Agent | `/agent-spawn` | — | Runtime-selectable Claude Code or Codex workers in tmux with git worktrees |
 
 ### C. Routing, scaffolding & observability
 
@@ -214,15 +214,19 @@ The design and the research behind it (Ralph Wiggum loop, Reflexion, Chain-of-Ve
 OMH persists what it learns to a **knowledge-graph memory** that is **shared across Claude Code and Codex** — one store, both runtimes — so lessons from one session (and one agent) carry into the next.
 
 ```bash
-# Provisioned as the `omh-memory` MCP server; store lives at ~/.omh/memory/graph.jsonl
-node ~/.omh/lib/memory.mjs search "<project>"   # what has this project already taught the harness?
-node ~/.omh/lib/memory.mjs stats                 # entities / relations / store path
+# Plugin install: use the omh-memory MCP tools (for example search_nodes) in-session.
+# Local Codex project scope:
+oh-my-harness init --runtime codex
+node .claude/.omh/runtime/lib/memory.mjs search "<project>"
+# Local Codex user scope:
+oh-my-harness init --runtime codex --scope user
+node ~/.claude/.omh/runtime/lib/memory.mjs stats
 ```
 
 - **Backend** — the reference knowledge-graph server (`@modelcontextprotocol/server-memory`): local, no API key, entities + relations + observations in a JSONL file. Claude plugin mode uses `.mcp.json`; local Codex init installs `.claude/.omh/runtime/bin/omh-memory.sh` and `.claude/.omh/runtime/lib/memory.mjs`, then manages `[mcp_servers.omh-memory]` in Codex config. Both point at `~/.omh/memory/graph.jsonl`.
 - **The loop reads it** — before planning, `/omh-loop` and `/omh-spec` query the graph for prior learnings, already-verified `quickCheck`/`verify` commands, and known pitfalls, and fold them into the plan (no re-detecting what's already known).
 - **The loop writes it** — a failed iteration's Reflexion becomes a `Learning` entity; a green verify appends the verified commands to the `Project`; `/omh-verify` persists **high-confidence findings** (2+ models agree) so the next run doesn't rediscover them.
-- **Agent + programmatic access** — the agent uses the MCP tools live; hooks/CLI use `lib/memory.mjs` (atomic writes, format-compatible with the server) for deterministic access.
+- **Agent + programmatic access** — plugin users use the `omh-memory` MCP tools live. Local Codex installs may use the managed scope-specific `runtime/lib/memory.mjs` helper shown above (atomic writes, format-compatible with the server).
 - **Graceful degradation** — if the MCP server isn't connected (or offline), LTM steps are skipped silently; the loop never blocks on memory.
 
 > **Concurrency note.** The knowledge-graph server keeps an in-memory copy and rewrites the whole file per mutation, so it is designed for one writer at a time. For personal single-agent use this is fine; avoid heavy simultaneous writes from Claude Code and Codex at the same instant.
@@ -288,6 +292,8 @@ graph TB
         HOOKS --> H7[pre-compact.mjs]
         HOOKS --> H8[post-task.mjs]
         HOOKS --> H9[loop-guard.mjs]
+        HOOKS --> H10[plan-gate.mjs]
+        HOOKS --> H11[verify-gate.mjs]
 
         SKILLS --> S1["/harness-setup"]
         SKILLS --> S2["/set-harness"]
@@ -320,6 +326,8 @@ graph TB
     H1 --> CONFIG
     H2 --> CONFIG
     H3 --> CONFIG
+    H10 --> CONFIG
+    H11 --> CONFIG
 
     style CC fill:#7C3AED,color:#fff
     style CONFIG fill:#f59e0b,color:#000
@@ -373,9 +381,10 @@ sequenceDiagram
 ```mermaid
 graph TD
     START["/agent-spawn 3 'fix TypeScript errors'"] --> CONFIG[Read multiAgent config]
-    CONFIG --> CONFIRM{"User confirms?"}
+    CONFIG --> RUNTIME{"Claude edition: claude<br/>Codex edition: multiAgent.runtime"}
+    RUNTIME --> CONFIRM{"User confirms?"}
     CONFIRM -->|Cancel| ABORT[Abort]
-    CONFIRM -->|Yes| CHECK[Check prerequisites: tmux, claude, git]
+    CONFIRM -->|Yes| CHECK["Check tmux, git, and selected runtime CLI"]
     CHECK --> WT{"useWorktree?"}
 
     WT -->|true| CREATE_WT["Create worktrees<br/>.claude/.omh/worktrees/agent-1,2,3"]
@@ -384,7 +393,7 @@ graph TD
     CREATE_WT --> TMUX[Create tmux session: omh-agents]
     SHARED --> TMUX
 
-    TMUX --> LAUNCH["Launch claude in each pane<br/>(--dangerously-skip-permissions)"]
+    TMUX --> LAUNCH["Launch selected runtime in each pane<br/>Claude Code or Codex"]
     LAUNCH --> STATE[Save state to agents.json]
     STATE --> DONE[Agents running in parallel]
 
@@ -395,6 +404,15 @@ graph TD
     style START fill:#7C3AED,color:#fff
     style CONFIRM fill:#f59e0b,color:#000
 ```
+
+The Claude edition launches Claude. The Codex edition honors `multiAgent.runtime` (`codex` by default there, or `claude`). The fixed launch commands are:
+
+```bash
+claude --permission-mode bypassPermissions -p "Read TASK.md and complete its instructions."
+codex exec --sandbox workspace-write --cd "<worktree>" "Read TASK.md and complete its instructions."
+```
+
+Claude permission bypass is disclosed at the confirmation gate. Codex uses its workspace-write sandbox. Task text stays in `TASK.md`, and neither command interpolates it into the shell.
 
 ```mermaid
 gitGraph
@@ -421,17 +439,22 @@ gitGraph
 
 > Full details: [docs/multi-agent.md](docs/multi-agent.md#native-team-system)
 
-No tmux, no worktrees — use Claude Code's built-in team orchestration.
+No tmux and no worktrees. Claude Code uses `TeamCreate`, `TaskCreate`, and `Agent`; Codex uses `spawn_agent`, `list_agents`, `send_message`, and `interrupt_agent`. Both require confirmation before creating live teammates.
 
 ```mermaid
 graph TD
     START["/team-spawn fullstack 'build auth system'"] --> CONFIG[Read nativeTeam config]
     CONFIG --> CONFIRM{"User confirms?"}
     CONFIRM -->|Cancel| ABORT[Abort]
-    CONFIRM -->|Yes| CREATE[TeamCreate + TaskCreate]
-    CREATE --> SPAWN["Spawn teammates via Agent tool"]
+    CONFIRM -->|Yes| RUNTIME{"Claude Code or Codex?"}
+    RUNTIME -->|Claude| CREATE["TeamCreate + TaskCreate"]
+    CREATE --> SPAWN["Agent"]
+    RUNTIME -->|Codex| CCREATE["Persist confirmed tasks"]
+    CCREATE --> CSPAWN["spawn_agent"]
+    CSPAWN --> CRECON["list_agents · send_message · interrupt_agent"]
     SPAWN --> ASSIGN[Assign tasks to teammates]
     ASSIGN --> RUNNING[Team running — messages arrive automatically]
+    CRECON --> RUNNING
 
     RUNNING --> STATUS["/team-status"]
     RUNNING --> STOP["/team-stop"]
@@ -442,9 +465,11 @@ graph TD
 
 | Template | Members | Best For |
 |----------|---------|----------|
-| `fullstack` | frontend + backend + tester (all sonnet) | Full-stack features |
-| `review` | reviewer (opus) + tester (sonnet) | Code review |
-| `research` | researcher (haiku) + implementer (sonnet) + architect (opus) | Research-driven work |
+| `fullstack` | frontend + backend + tester (all `standard`) | Full-stack features |
+| `review` | reviewer (`architect`) + tester (`standard`) | Code review |
+| `research` | researcher (`quick`) + implementer (`standard`) + architect (`architect`) | Research-driven work |
+
+`quick` / `standard` / `architect` are shared agent types. The Claude edition maps them to haiku/sonnet/opus; the Codex edition treats them as available-profile preferences, not guarantees of a particular model.
 
 ---
 

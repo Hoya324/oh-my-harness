@@ -284,7 +284,7 @@ The runtime default is `claude`. `update` refreshes managed runtime files and `r
 | `/harness-setup` | Initialize oh-my-harness (plugin mode) |
 | `/set-harness [path] [value]` | View or modify harness settings |
 | `/init-project` | Detect conventions and set up test infrastructure |
-| `/agent-spawn [N] [task]` | Spawn N parallel Claude agents in tmux |
+| `/agent-spawn [N] [task]` | Spawn N selected-runtime Claude Code or Codex workers in tmux |
 | `/agent-status` | Check status of running agents |
 | `/agent-apply [id\|all]` | Merge agent worktree changes |
 | `/agent-stop [id\|all]` | Stop agents and cleanup |

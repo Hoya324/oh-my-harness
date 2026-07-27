@@ -130,11 +130,11 @@ Use Claude Code's built-in team tools or Codex native collaboration operations â
 
 | Template | Members | Use For |
 |----------|---------|---------|
-| `fullstack` | frontend (sonnet) + backend (sonnet) + tester (sonnet) | Full-stack feature development |
-| `review` | reviewer (opus) + tester (sonnet) | Code review and testing |
-| `research` | researcher (haiku) + implementer (sonnet) + architect (opus) | Research-driven development |
+| `fullstack` | frontend (`standard`) + backend (`standard`) + tester (`standard`) | Full-stack feature development |
+| `review` | reviewer (`architect`) + tester (`standard`) | Code review and testing |
+| `research` | researcher (`quick`) + implementer (`standard`) + architect (`architect`) | Research-driven development |
 
-Claude uses the model names shown. Codex preserves the same quick/standard/architect semantics with its configured role models.
+Claude maps these shared agent types to haiku/sonnet/opus. Codex treats them as available-profile preferences and does not guarantee a particular model.
 
 ## Workflow
 
