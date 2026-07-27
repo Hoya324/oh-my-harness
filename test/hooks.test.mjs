@@ -506,6 +506,32 @@ describe('scope-guard hook', () => {
     });
     assert.equal(raw, '');
   });
+
+  it('checks every Codex apply_patch Add, Update, and Delete target', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    const raw = runHook('scope-guard.mjs', {
+      tool_name: 'apply_patch',
+      tool_input: {
+        command: [
+          '*** Begin Patch',
+          '*** Add File: src/new.js',
+          '+export const added = true;',
+          '*** Update File: src/existing.js',
+          '@@',
+          '-old',
+          '+new',
+          '*** Delete File: docs/nope.md',
+          '*** End Patch',
+        ].join('\n'),
+      },
+    });
+    const ctx = getContext(raw);
+    assert.ok(ctx.includes('SCOPE WARNING'));
+    assert.ok(ctx.includes('docs/nope.md'));
+  });
 });
 
 // --- usage-tracker ---

@@ -7,7 +7,8 @@ export function translateHookOutput(hookName, raw) {
   catch { return JSON.stringify({ systemMessage: text }); }
 
   const context = parsed.hookSpecificOutput?.additionalContext;
-  if (hookName === 'dangerous-guard.mjs' && context?.includes('[omh:dangerous-guard]')) {
+  if ((hookName === 'dangerous-guard.mjs' && context?.includes('[omh:dangerous-guard]')) ||
+      (hookName === 'scope-guard.mjs' && context?.includes('[omh:scope-guard]'))) {
     return JSON.stringify({
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',

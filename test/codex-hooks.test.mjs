@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -12,12 +12,10 @@ const PROJECT_ROOT = join(__dirname, '..');
 const CODEX_BRIDGE = join(PROJECT_ROOT, 'hooks', 'codex', 'run.mjs');
 let tempProject;
 
-function writeConfig() {
+function writeConfig(config = { features: { dangerousGuard: true } }) {
   const configDir = join(tempProject, '.claude', '.omh');
   mkdirSync(configDir, { recursive: true });
-  writeFileSync(join(configDir, 'harness.config.json'), JSON.stringify({
-    features: { dangerousGuard: true },
-  }));
+  writeFileSync(join(configDir, 'harness.config.json'), JSON.stringify(config));
 }
 
 function runCodexHook(hookFile, input) {
@@ -88,5 +86,41 @@ describe('Codex hook bridge', () => {
       tool_input: { command: 'npm test' },
     });
     assert.equal(quiet, null);
+  });
+
+  it('denies an out-of-scope Codex apply_patch command', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    const denied = runCodexHook('scope-guard.mjs', {
+      tool_name: 'apply_patch',
+      tool_input: {
+        command: '*** Begin Patch\n*** Add File: docs/nope.md\n+out of scope\n*** End Patch',
+      },
+    });
+    assert.equal(denied.hookSpecificOutput.permissionDecision, 'deny');
+  });
+});
+
+describe('Codex hook registration', () => {
+  it('registers every event with the required bridge order, timeouts, and status messages', () => {
+    const config = JSON.parse(readFileSync(join(PROJECT_ROOT, 'hooks', 'codex', 'hooks.json'), 'utf8'));
+    const expected = {
+      SessionStart: [['session-start.mjs', 10]],
+      UserPromptSubmit: [['pre-prompt.mjs', 3]],
+      PreToolUse: [['dangerous-guard.mjs', 3], ['plan-gate.mjs', 5], ['scope-guard.mjs', 3]],
+      PostToolUse: [['commit-convention.mjs', 3], ['usage-tracker.mjs', 3]],
+      PreCompact: [['pre-compact.mjs', 5]],
+      Stop: [['loop-guard.mjs', 600], ['verify-gate.mjs', 600], ['post-task.mjs', 5]],
+    };
+
+    assert.deepEqual(Object.keys(config.hooks), Object.keys(expected));
+    for (const [event, hooks] of Object.entries(expected)) {
+      const entries = config.hooks[event][0].hooks;
+      assert.deepEqual(entries.map(({ command, timeout }) => [command.split(' ').at(-1), timeout]), hooks);
+      assert.ok(entries.every(({ command }) => command.includes('${PLUGIN_ROOT}/hooks/codex/run.mjs')));
+      assert.ok(entries.every(({ statusMessage }) => statusMessage.startsWith('oh-my-harness:')));
+    }
   });
 });

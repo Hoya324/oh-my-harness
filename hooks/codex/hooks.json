@@ -42,6 +42,12 @@
             "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" plan-gate.mjs",
             "timeout": 5,
             "statusMessage": "oh-my-harness: checking plan gate"
+          },
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" scope-guard.mjs",
+            "timeout": 3,
+            "statusMessage": "oh-my-harness: checking scope"
           }
         ]
       }
@@ -55,12 +61,6 @@
             "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" commit-convention.mjs",
             "timeout": 3,
             "statusMessage": "oh-my-harness: checking commit convention"
-          },
-          {
-            "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" scope-guard.mjs",
-            "timeout": 3,
-            "statusMessage": "oh-my-harness: checking scope"
           },
           {
             "type": "command",

@@ -12,6 +12,12 @@ function readStdin() {
   catch { return {}; }
 }
 
+function extractApplyPatchTargets(command) {
+  return [...String(command || '').matchAll(
+    /^\*\*\* (?:Add|Update|Delete) File:[ \t]+(.+?)[ \t]*\r?$/gm
+  )].map(([, filePath]) => filePath);
+}
+
 try {
   if (process.env.DISABLE_HARNESS) { console.log(hookSilent()); process.exit(0); }
 
@@ -25,26 +31,32 @@ try {
   const input = readStdin();
   const toolName = input.tool_name || input.toolName || '';
 
-  // Only check file-modifying tools
-  if (!['Edit', 'Write', 'NotebookEdit'].includes(toolName)) process.exit(0);
-
   const toolInput = input.tool_input || input.toolInput || {};
-  const filePath = toolInput.file_path || toolInput.filePath || toolInput.path || '';
-  if (!filePath) process.exit(0);
+  let filePaths;
+  if (['Edit', 'Write', 'NotebookEdit'].includes(toolName)) {
+    const filePath = toolInput.file_path || toolInput.filePath || toolInput.path || '';
+    filePaths = filePath ? [filePath] : [];
+  } else if (toolName === 'apply_patch') {
+    filePaths = extractApplyPatchTargets(toolInput.command);
+  } else {
+    process.exit(0);
+  }
+  if (filePaths.length === 0) process.exit(0);
 
-  // Resolve to relative path from project root
-  const absPath = isAbsolute(filePath) ? filePath : join(projectRoot, filePath);
-  const relPath = relative(projectRoot, absPath);
+  const relPaths = filePaths.map(filePath => {
+    const absPath = isAbsolute(filePath) ? filePath : join(projectRoot, filePath);
+    return relative(projectRoot, absPath);
+  });
 
-  // Check if file is within any allowed path
-  const isAllowed = allowedPaths.some(allowed => {
+  const isAllowed = relPath => allowedPaths.some(allowed => {
     const normalizedAllowed = allowed.replace(/\/$/, '');
     return relPath === normalizedAllowed || relPath.startsWith(normalizedAllowed + '/');
   });
+  const outOfScope = relPaths.find(relPath => !isAllowed(relPath));
 
-  if (!isAllowed) {
+  if (outOfScope) {
     console.log(hookOutput('PostToolUse',
-      `[omh:scope-guard] SCOPE WARNING: "${relPath}" is outside the allowed scope [${allowedPaths.join(', ')}]. Confirm with the user that this modification is intended.`
+      `[omh:scope-guard] SCOPE WARNING: "${outOfScope}" is outside the allowed scope [${allowedPaths.join(', ')}]. Confirm with the user that this modification is intended.`
     ));
   }
 } catch {
