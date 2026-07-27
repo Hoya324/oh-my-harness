@@ -8,12 +8,24 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (path) => JSON.parse(readFileSync(join(root, path), 'utf8'));
 
 test('Codex plugin package declares its installable runtime surfaces', () => {
+  const packageManifest = readJson('package.json');
+  const claudeManifest = readJson('.claude-plugin/plugin.json');
   const manifest = readJson('.codex-plugin/plugin.json');
   const marketplace = readJson('.claude-plugin/marketplace.json');
   const mcp = readJson('.mcp.json');
 
   assert.equal(manifest.name, 'oh-my-harness');
-  assert.equal(manifest.version, '0.5.0');
+  assert.deepEqual(
+    [
+      packageManifest.version,
+      claudeManifest.version,
+      marketplace.version,
+      marketplace.plugins[0].version,
+      manifest.version,
+    ],
+    ['0.5.0', '0.5.0', '0.5.0', '0.5.0', '0.5.0'],
+    'all package and plugin version surfaces are aligned',
+  );
   assert.equal(manifest.skills, './codex/skills/');
   assert.equal(manifest.hooks, './hooks/codex/hooks.json');
   assert.equal(manifest.mcpServers, './.mcp.json');
@@ -62,4 +74,7 @@ test('omh-status reads shared state without mutating it and emits the exact stat
 
   assert.match(skill, /missing files/i);
   assert.match(skill, /must not modify state/i);
+  assert.match(skill, /sum only finite, non-negative numeric `sessions\[\*\]\.total_calls`/i);
+  assert.match(skill, /malformed or missing entries count as zero/i);
+  assert.match(skill, /session count is the number of object-valued session records/i);
 });
