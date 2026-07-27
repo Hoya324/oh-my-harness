@@ -55,6 +55,24 @@ function fileState(path) {
     : { exists: false };
 }
 
+function runInstalledClaudeDangerousHook(project) {
+  const settings = JSON.parse(
+    readFileSync(join(TEST_HOME, '.claude', 'settings.json'), 'utf8'),
+  );
+  const command = settings.hooks.PreToolUse[0].hooks[0].command;
+  return spawnSync('sh', ['-c', command], {
+    cwd: project,
+    input: JSON.stringify({
+      session_id: 'user-scope-hook-test',
+      tool_name: 'Bash',
+      tool_input: { command: 'rm -rf build' },
+    }),
+    encoding: 'utf8',
+    timeout: 10000,
+    env: { ...cliEnv(), PROJECT_PATH: project },
+  });
+}
+
 function assertInstalledDangerousHookDenies(installRoot, cwd = TMP) {
   const installedHooks = JSON.parse(
     readFileSync(join(installRoot, '.codex', 'hooks.json'), 'utf8'),
@@ -331,6 +349,35 @@ describe('cli init', () => {
     const commands = JSON.stringify(settings.hooks);
     assert.ok(commands.includes(join(TEST_HOME, '.claude', '.omh', 'hooks')));
     assert.ok(!commands.includes('bash .claude/.omh/hooks'));
+  });
+
+  it('runs user-scoped Claude guards from a clean project through global config fallback', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    const cleanProject = join(TMP, 'clean-project');
+    mkdirSync(cleanProject, { recursive: true });
+
+    const result = runInstalledClaudeDangerousHook(cleanProject);
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
+  });
+
+  it('keeps project feature flags ahead of the user-global hook config', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    const project = join(TMP, 'project-precedence');
+    const configPath = join(project, '.claude', '.omh', 'harness.config.json');
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, JSON.stringify({ features: { dangerousGuard: false } }));
+
+    const result = runInstalledClaudeDangerousHook(project);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      continue: true,
+      suppressOutput: true,
+    });
   });
 
   it('preflights existing Claude settings before init creates any payload', () => {
@@ -692,6 +739,14 @@ describe('cli runtime matrix', () => {
         'description = "duplicate"',
         '',
       ].join('\n'),
+      [
+        '[[custom]]',
+        'value = 1',
+        'value = 2',
+        '',
+      ].join('\n'),
+      'custom = { value = 1, value.child = 2 }\n',
+      'custom = -0x1\n',
     ];
 
     for (const [index, original] of fixtures.entries()) {
@@ -714,6 +769,29 @@ describe('cli runtime matrix', () => {
       assert.ok(!existsSync(join(project, 'AGENTS.md')));
       assert.ok(!existsSync(join(project, '.claude')));
     }
+  });
+
+  it('accepts distinct array-table entries, nested inline keys, and valid numeric signs', () => {
+    const original = [
+      '[[custom]]',
+      'value = 1',
+      '[[custom]]',
+      'value = 2',
+      'nested = { value.child = 2, sibling = 1 }',
+      'hex = 0x1',
+      'negative = -1',
+      'positive = +1',
+      '',
+    ].join('\n');
+    const project = join(TMP, 'valid-toml-counterexamples');
+    const configPath = join(project, '.codex', 'config.toml');
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, original);
+
+    runCliIn(project, 'init', '--runtime', 'codex', '--scope', 'project');
+
+    assert.ok(readFileSync(configPath, 'utf8').startsWith(original));
+    assert.ok(existsSync(join(project, '.codex', 'hooks.json')));
   });
 
   it('refreshes and resets only owned Codex skill reference assets', () => {
@@ -1129,6 +1207,33 @@ describe('cli reset', () => {
       assert.notEqual(result.status, 0, fixture.name);
       assert.deepEqual(protectedPaths.map(fileState), before);
     }
+  });
+
+  it('rejects a non-string HUD command before reset changes any bytes', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'project');
+    const userSettingsPath = join(TEST_HOME, '.claude', 'settings.json');
+    const userSettings = JSON.parse(readFileSync(userSettingsPath, 'utf8'));
+    userSettings.statusLine.command = 42;
+    writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2) + '\n');
+
+    const protectedPaths = [
+      userSettingsPath,
+      join(TMP, '.claude', '.omh', 'harness.config.json'),
+      join(TMP, '.claude', '.omh', 'hooks', 'dangerous-guard.mjs'),
+      join(TMP, '.claude', 'settings.local.json'),
+      join(TMP, '.claude', 'CLAUDE.md'),
+      join(TMP, '.claude', 'commands', 'set-harness.md'),
+      join(TMP, '.gitignore'),
+    ];
+    const before = protectedPaths.map(fileState);
+
+    const result = runCliResult(
+      ['reset', '--runtime', 'claude', '--scope', 'project'],
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /HUD|statusLine|settings/i);
+    assert.deepEqual(protectedPaths.map(fileState), before);
   });
 
   it('explicit project reset preserves an independent user-scoped Claude lifecycle', () => {

@@ -17,7 +17,9 @@ HOOK="${1:-}"
 shift
 
 ROOT="${PROJECT_PATH:-.}"
-CONFIG="$ROOT/.claude/.omh/harness.config.json"
+PROJECT_CONFIG="$ROOT/.claude/.omh/harness.config.json"
+USER_HOME="${HOME:-${USERPROFILE:-}}"
+USER_CONFIG="${USER_HOME:+$USER_HOME/.claude/.omh/harness.config.json}"
 
 # Global kill-switch
 if [ "${DISABLE_HARNESS:-}" = "1" ]; then
@@ -25,8 +27,13 @@ if [ "${DISABLE_HARNESS:-}" = "1" ]; then
   exit 0
 fi
 
-# No config → silent
-if [ ! -f "$CONFIG" ]; then
+# Project configuration has precedence. Fall back to the user-scoped
+# installation only when the project has no configuration of its own.
+if [ -f "$PROJECT_CONFIG" ]; then
+  CONFIG="$PROJECT_CONFIG"
+elif [ -n "$USER_CONFIG" ] && [ -f "$USER_CONFIG" ]; then
+  CONFIG="$USER_CONFIG"
+else
   echo '{"continue":true,"suppressOutput":true}'
   exit 0
 fi

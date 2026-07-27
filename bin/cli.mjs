@@ -170,10 +170,16 @@ async function initClaude(root, scope) {
   // Step 2: Hooks
   logStep(2, totalSteps, 'Hooks');
   const hookLibDir = join(hooksDir, 'lib');
+  const runtimeLibDir = join(omh, 'lib');
   mkdirSync(hookLibDir, { recursive: true });
+  mkdirSync(runtimeLibDir, { recursive: true });
   cpSync(join(PKG_ROOT, 'hooks', 'lib', 'output.mjs'), join(hookLibDir, 'output.mjs'));
   cpSync(join(PKG_ROOT, 'hooks', 'lib', 'dictionary.mjs'), join(hookLibDir, 'dictionary.mjs'));
+  cpSync(join(PKG_ROOT, 'hooks', 'lib', 'hook-config.mjs'), join(hookLibDir, 'hook-config.mjs'));
+  cpSync(join(PKG_ROOT, 'hooks', 'lib', 'tier.mjs'), join(hookLibDir, 'tier.mjs'));
   cpSync(join(PKG_ROOT, 'lib', 'detect.mjs'), join(hookLibDir, 'detect.mjs'));
+  cpSync(join(PKG_ROOT, 'lib', 'config.mjs'), join(runtimeLibDir, 'config.mjs'));
+  cpSync(join(PKG_ROOT, 'lib', 'state.mjs'), join(runtimeLibDir, 'state.mjs'));
   const allHooks = [
     'session-start.mjs', 'pre-prompt.mjs', 'post-task.mjs',
     'dangerous-guard.mjs', 'pre-compact.mjs', 'commit-convention.mjs',
@@ -845,9 +851,9 @@ function validTomlScalar(value) {
   if (/^[+-]?(?:0|[1-9](?:_?\d)*)(?:\.(?:\d(?:_?\d)*))?(?:[eE][+-]?\d(?:_?\d)*)?$/.test(value)) {
     return true;
   }
-  if (/^[+-]?0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*$/.test(value)) return true;
-  if (/^[+-]?0o[0-7](?:_?[0-7])*$/.test(value)) return true;
-  if (/^[+-]?0b[01](?:_?[01])*$/.test(value)) return true;
+  if (/^0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*$/.test(value)) return true;
+  if (/^0o[0-7](?:_?[0-7])*$/.test(value)) return true;
+  if (/^0b[01](?:_?[01])*$/.test(value)) return true;
   if (/^\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)?$/.test(value)) {
     return true;
   }
@@ -877,15 +883,25 @@ function parseTomlValueAt(text, start) {
   if (text[index] === '{') {
     index = skipTomlWhitespace(text, index + 1);
     if (text[index] === '}') return index + 1;
-    const keys = new Set();
+    const values = new Set();
+    const tables = new Set();
     while (index < text.length) {
       const equals = findTomlEquals(text.slice(index));
       if (equals === -1) throw tomlError('inline table entry is missing =');
       const equalsIndex = index + equals;
       const key = parseTomlKey(text.slice(index, equalsIndex).trim());
-      const serialized = JSON.stringify(key);
-      if (keys.has(serialized)) throw tomlError('duplicate inline table key');
-      keys.add(serialized);
+      for (let length = 1; length < key.length; length += 1) {
+        const prefixKey = tomlPathKey(key.slice(0, length));
+        if (values.has(prefixKey)) {
+          throw tomlError('inline dotted key extends an existing value');
+        }
+        tables.add(prefixKey);
+      }
+      const serialized = tomlPathKey(key);
+      if (values.has(serialized) || tables.has(serialized)) {
+        throw tomlError('duplicate or conflicting inline table key');
+      }
+      values.add(serialized);
       index = parseTomlValueAt(text, equalsIndex + 1);
       index = skipTomlWhitespace(text, index);
       if (text[index] === '}') return index + 1;
@@ -918,7 +934,7 @@ function analyzeToml(content) {
   const explicitTables = new Set();
   const arrayTables = new Set();
   let currentTable = [];
-  let currentArrayTable = null;
+  let currentArrayElement = null;
 
   const defineTable = (path, isArray) => {
     for (let length = 1; length < path.length; length += 1) {
@@ -947,7 +963,7 @@ function analyzeToml(content) {
       }
       currentTable = parseTomlKey(expression.slice(2, -2).trim());
       defineTable(currentTable, true);
-      currentArrayTable = tomlPathKey(currentTable);
+      currentArrayElement = { values: new Set(), tables: new Set() };
       continue;
     }
     if (expression.startsWith('[')) {
@@ -956,7 +972,7 @@ function analyzeToml(content) {
       }
       currentTable = parseTomlKey(expression.slice(1, -1).trim());
       defineTable(currentTable, false);
-      currentArrayTable = null;
+      currentArrayElement = null;
       continue;
     }
 
@@ -965,13 +981,30 @@ function analyzeToml(content) {
     const key = parseTomlKey(expression.slice(0, equals).trim());
     validateTomlValue(expression.slice(equals + 1).trim());
     const path = [...currentTable, ...key];
+    if (currentArrayElement) {
+      for (let length = 1; length < key.length; length += 1) {
+        const prefixKey = tomlPathKey(key.slice(0, length));
+        if (currentArrayElement.values.has(prefixKey)) {
+          throw tomlError('array-table dotted key extends an existing value');
+        }
+        currentArrayElement.tables.add(prefixKey);
+      }
+      const elementPathKey = tomlPathKey(key);
+      if (
+        currentArrayElement.values.has(elementPathKey)
+        || currentArrayElement.tables.has(elementPathKey)
+      ) {
+        throw tomlError('duplicate or conflicting array-table key');
+      }
+      currentArrayElement.values.add(elementPathKey);
+    }
     for (let length = 1; length < path.length; length += 1) {
       const prefixKey = tomlPathKey(path.slice(0, length));
       if (values.has(prefixKey)) throw tomlError('dotted key extends an existing value');
       tables.add(prefixKey);
     }
     const pathKey = tomlPathKey(path);
-    const repeatedArrayValue = currentArrayTable
+    const repeatedArrayValue = currentArrayElement
       && path.length > currentTable.length
       && values.has(pathKey);
     if (
@@ -1171,6 +1204,7 @@ function validateClaudeSettings(root, scope, operation = 'refresh') {
     !isPlainObject(settings)
     || (settings.hooks !== undefined && !isPlainObject(settings.hooks))
     || (settings.agents !== undefined && !isPlainObject(settings.agents))
+    || !validClaudeStatusLine(settings.statusLine)
   ) {
     console.error(`  ${WARN} Cannot ${operation} Claude: invalid settings structure at ${settingsPath}.`);
     return false;
@@ -1178,7 +1212,14 @@ function validateClaudeSettings(root, scope, operation = 'refresh') {
   for (const groups of Object.values(settings.hooks || {})) {
     if (
       !Array.isArray(groups)
-      || groups.some(group => !isPlainObject(group) || !Array.isArray(group.hooks))
+      || groups.some(group =>
+        !isPlainObject(group)
+        || !Array.isArray(group.hooks)
+        || group.hooks.some(hook =>
+          !isPlainObject(hook)
+          || (hook.command !== undefined && typeof hook.command !== 'string')
+        )
+      )
     ) {
       console.error(`  ${WARN} Cannot ${operation} Claude: invalid hooks structure at ${settingsPath}.`);
       return false;
@@ -1187,12 +1228,23 @@ function validateClaudeSettings(root, scope, operation = 'refresh') {
   return true;
 }
 
+function validClaudeStatusLine(statusLine) {
+  return statusLine === undefined
+    || (
+      isPlainObject(statusLine)
+      && (statusLine.command === undefined || typeof statusLine.command === 'string')
+    );
+}
+
 function validateClaudeHudSettings(root, scope, operation = 'refresh') {
   const settingsPath = getUserSettingsPath();
   if (!existsSync(settingsPath) || settingsPath === getSettingsPath(root, scope)) return true;
   try {
     const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
     if (!isPlainObject(settings)) throw new Error('top level must be an object');
+    if (!validClaudeStatusLine(settings.statusLine)) {
+      throw new Error('statusLine.command must be a string');
+    }
     return true;
   } catch (error) {
     console.error(
@@ -1992,7 +2044,10 @@ function cleanHudSetting(settingsPath, stateRoot) {
   if (!existsSync(settingsPath)) return;
   const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
   const managedHud = join(omhDir(stateRoot), 'hud', 'omh-hud.mjs');
-  if (!settings.statusLine?.command?.includes(managedHud)) return;
+  if (
+    typeof settings.statusLine?.command !== 'string'
+    || !settings.statusLine.command.includes(managedHud)
+  ) return;
   delete settings.statusLine;
   writeFileAtomic(settingsPath, JSON.stringify(settings, null, 2) + '\n');
 }
