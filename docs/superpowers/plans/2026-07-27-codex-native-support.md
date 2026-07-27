@@ -311,7 +311,7 @@ git commit -m "feat(codex): package plugin roles and status"
 
 **Files:**
 - Create: `codex/skills/{harness-setup,set-harness,init-project,omh-spec,omh-loop,omh-verify,agent-spawn,agent-status,agent-apply,agent-stop,team-spawn,team-status,team-stop}/SKILL.md`
-- Create: `codex/skills/_shared/runtime-map.md`
+- Create: `codex/references/runtime-map.md`
 - Modify: `test/codex-plugin.test.mjs`
 
 **Interfaces:**
@@ -332,7 +332,7 @@ const expected = [
 assert.deepEqual(actual.sort(), expected);
 ```
 
-Reject Claude-only tool names in Codex skills:
+Reject Claude-only tool names in each directory that contains a `SKILL.md`:
 
 ```js
 for (const forbidden of ['TeamCreate', 'TaskCreate', 'TaskUpdate', 'AskUserQuestion']) {
@@ -348,7 +348,7 @@ Expected: FAIL listing the thirteen missing skills.
 
 - [ ] **Step 3: Add shared runtime mapping**
 
-`codex/skills/_shared/runtime-map.md` defines:
+`codex/references/runtime-map.md` defines:
 
 - Ask a necessary question directly in chat.
 - `TeamCreate`/`Agent` → `spawn_agent`.
@@ -549,7 +549,7 @@ Exact behavior:
 - `update --runtime codex`: refresh managed Codex hooks, roles, built-in skills, and the marked `AGENTS.md` block.
 - `status --runtime both`: show separate Claude and Codex installation lines plus shared feature state.
 - `reset --runtime codex`: remove only OMH-managed Codex files and marked guidance; preserve shared config when Claude remains installed.
-- `reset --runtime both`: remove both runtime registrations, then remove shared state after the existing reset confirmation semantics.
+- `reset --runtime both`: preserve the current non-interactive reset behavior, remove both runtime registrations, and then remove shared state. Do not introduce a new prompt that would break existing Claude CLI automation.
 - Help lists `--runtime claude|codex|both` and explains the default.
 
 - [ ] **Step 6: Verify idempotency and backward compatibility**
