@@ -255,6 +255,30 @@ test('agent lifecycle contracts protect task files and observed shutdown state',
   assert.match(stop, /recovery commands/is);
 });
 
+test('agent apply blocks a branch that changes a pre-existing protected TASK.md', () => {
+  const apply = readFileSync(join(root, 'codex/skills/agent-apply/SKILL.md'), 'utf8');
+
+  assert.match(
+    apply,
+    /independently inspect.*target branch.*agent branch.*tree.*`TASK\.md`/is,
+  );
+  assert.match(
+    apply,
+    /target branch.*already contains.*`TASK\.md`.*modified or deleted.*hard-block.*before merge/is,
+  );
+  assert.match(apply, /worktree restoration alone.*not sufficient/is);
+});
+
+test('agent apply blocks a branch that introduces TASK.md when the target had none', () => {
+  const apply = readFileSync(join(root, 'codex/skills/agent-apply/SKILL.md'), 'utf8');
+
+  assert.match(
+    apply,
+    /target branch.*has no.*`TASK\.md`.*agent branch.*adds.*hard-block.*before merge/is,
+  );
+  assert.match(apply, /temporary assignment file.*cannot be introduced.*target branch/is);
+});
+
 test('team spawn protects every unresolved team state before replacement', () => {
   const team = readFileSync(join(root, 'codex/skills/team-spawn/SKILL.md'), 'utf8');
 
