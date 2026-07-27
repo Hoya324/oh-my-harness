@@ -8,6 +8,7 @@ import {
   rmSync,
   readdirSync,
   renameSync,
+  chmodSync,
 } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -358,6 +359,7 @@ function ensureSharedConfig(root, scope) {
 
 function installCodexRuntime(root, scope) {
   const runtimeRoot = join(omhDir(codexStateRoot(root, scope)), 'runtime');
+  const runtimeBin = join(runtimeRoot, 'bin');
   mkdirSync(runtimeRoot, { recursive: true });
   cpSync(join(PKG_ROOT, 'hooks'), join(runtimeRoot, 'hooks'), {
     recursive: true,
@@ -367,6 +369,10 @@ function installCodexRuntime(root, scope) {
     recursive: true,
     force: true,
   });
+  mkdirSync(runtimeBin, { recursive: true });
+  const memoryLauncher = join(runtimeBin, 'omh-memory.sh');
+  cpSync(join(PKG_ROOT, 'bin', 'omh-memory.sh'), memoryLauncher);
+  chmodSync(memoryLauncher, 0o755);
   return runtimeRoot;
 }
 
@@ -545,12 +551,25 @@ function mergeCodexConfig(root, scope, ownership) {
   const configPath = join(codexInstallRoot(root, scope), CODEX_CONFIG);
   const existing = existsSync(configPath) ? readFileSync(configPath, 'utf8') : '';
   const userOwned = withoutBlock(existing, TOML_START, TOML_END);
+  const memoryDeclaration = /^\s*\[mcp_servers\.(?:omh-memory|"omh-memory"|'omh-memory')\]\s*(?:#.*)?$/m;
   const descriptions = {
     quick: 'Fast read-only lookup, search, and narrow exploration.',
     standard: 'Focused implementation, testing, debugging, and review.',
     architect: 'Architecture, complex planning, security review, and independent verification.',
   };
   const lines = [TOML_START];
+  if (!memoryDeclaration.test(userOwned)) {
+    const memoryLauncher = join(
+      omhDir(codexStateRoot(root, scope)),
+      'runtime',
+      'bin',
+      'omh-memory.sh',
+    );
+    lines.push('');
+    lines.push('[mcp_servers.omh-memory]');
+    lines.push('command = "bash"');
+    lines.push(`args = [${JSON.stringify(memoryLauncher)}]`);
+  }
   for (const role of CODEX_ROLES) {
     if (!ownership.roles.includes(role)) continue;
     const declaration = new RegExp(`^\\s*\\[agents\\.${role}\\]\\s*$`, 'm');

@@ -1,7 +1,14 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'child_process';
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import {
+  mkdirSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  statSync,
+} from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -66,6 +73,51 @@ function assertInstalledDangerousHookDenies(installRoot, cwd = TMP) {
   assert.equal(hookRun.status, 0, hookRun.stderr);
   const response = JSON.parse(hookRun.stdout);
   assert.equal(response.hookSpecificOutput.permissionDecision, 'deny');
+}
+
+function assertCodexMemoryInstalled(installRoot, stateRoot = installRoot) {
+  const launcher = join(
+    stateRoot,
+    '.claude',
+    '.omh',
+    'runtime',
+    'bin',
+    'omh-memory.sh',
+  );
+  const memoryLib = join(
+    stateRoot,
+    '.claude',
+    '.omh',
+    'runtime',
+    'lib',
+    'memory.mjs',
+  );
+  assert.ok(existsSync(launcher), 'memory launcher should exist');
+  assert.ok(statSync(launcher).mode & 0o111, 'memory launcher should be executable');
+  assert.equal(
+    readFileSync(launcher, 'utf8'),
+    readFileSync(join(__dirname, '..', 'bin', 'omh-memory.sh'), 'utf8'),
+  );
+  assert.ok(existsSync(memoryLib), 'memory helper should exist');
+  assert.equal(
+    readFileSync(memoryLib, 'utf8'),
+    readFileSync(join(__dirname, '..', 'lib', 'memory.mjs'), 'utf8'),
+  );
+
+  const syntax = spawnSync('bash', ['-n', launcher], {
+    encoding: 'utf8',
+    timeout: 10000,
+    env: cliEnv(),
+  });
+  assert.equal(syntax.status, 0, syntax.stderr);
+
+  const config = readFileSync(join(installRoot, '.codex', 'config.toml'), 'utf8');
+  assert.equal((config.match(/^\[mcp_servers\.omh-memory\]$/gm) || []).length, 1);
+  assert.match(config, /^\s*command = "bash"\s*$/m);
+  assert.ok(
+    config.includes(`args = [${JSON.stringify(launcher)}]`),
+    'memory MCP args should contain the exact installed launcher path',
+  );
 }
 
 beforeEach(() => {
@@ -207,6 +259,7 @@ describe('cli runtime matrix', () => {
     assert.ok(config.includes('[agents.quick]'));
     assert.ok(config.includes('[agents.standard]'));
     assert.ok(config.includes('[agents.architect]'));
+    assertCodexMemoryInstalled(TMP);
   });
 
   it('installs both runtime registrations while sharing state', () => {
@@ -217,6 +270,7 @@ describe('cli runtime matrix', () => {
     assert.ok(existsSync(join(TMP, '.codex', 'hooks.json')));
     assert.ok(existsSync(join(TMP, 'AGENTS.md')));
     assert.ok(existsSync(join(TMP, '.claude', '.omh', 'harness.config.json')));
+    assertCodexMemoryInstalled(TMP);
   });
 
   it('preserves unrelated Codex files and shared config across idempotent init', () => {
@@ -297,6 +351,13 @@ describe('cli runtime matrix', () => {
 
     const hooks = readFileSync(join(TEST_HOME, '.codex', 'hooks.json'), 'utf8');
     assert.ok(hooks.includes(join(TEST_HOME, '.claude', '.omh', 'runtime')));
+    assertCodexMemoryInstalled(TEST_HOME);
+  });
+
+  it('installs user-scoped Codex memory when both runtimes are requested', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'user');
+
+    assertCodexMemoryInstalled(TEST_HOME);
   });
 
   it('quotes installed hook paths as literal shell data', () => {
@@ -334,6 +395,7 @@ describe('cli runtime matrix', () => {
     assert.equal(response.hookSpecificOutput.permissionDecision, 'deny');
     assert.ok(!existsSync(join(project, 'DOLLAR_EXECUTED')));
     assert.ok(!existsSync(join(project, 'BACKTICK_EXECUTED')));
+    assertCodexMemoryInstalled(project);
   });
 
   it('preserves same-name user roles and skills through init, update, and reset', () => {
@@ -371,6 +433,47 @@ describe('cli runtime matrix', () => {
     assert.equal(readFileSync(loopPath, 'utf8'), loop);
     assert.ok(!existsSync(join(TMP, '.codex', 'agents', 'standard.toml')));
     assert.ok(!existsSync(join(TMP, '.agents', 'skills', 'omh-spec')));
+  });
+
+  it('preserves a pre-existing user omh-memory registration through init, update, and reset', () => {
+    const customConfig = [
+      '[mcp_servers.omh-memory]',
+      'command = "custom-memory"',
+      'args = ["--custom-store"]',
+      '',
+    ].join('\n');
+    const configPath = join(TMP, '.codex', 'config.toml');
+    const launcher = join(TMP, '.claude', '.omh', 'runtime', 'bin', 'omh-memory.sh');
+    const graphPath = join(TEST_HOME, '.omh', 'memory', 'graph.jsonl');
+    mkdirSync(dirname(configPath), { recursive: true });
+    mkdirSync(dirname(graphPath), { recursive: true });
+    writeFileSync(configPath, customConfig);
+    writeFileSync(graphPath, 'user-memory-sentinel\n');
+
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+    let config = readFileSync(configPath, 'utf8');
+    assert.equal((config.match(/^\[mcp_servers\.omh-memory\]$/gm) || []).length, 1);
+    assert.ok(config.includes('command = "custom-memory"'));
+    assert.ok(config.includes('args = ["--custom-store"]'));
+    assert.ok(existsSync(launcher));
+    assert.equal(readFileSync(graphPath, 'utf8'), 'user-memory-sentinel\n');
+
+    writeFileSync(launcher, 'drifted launcher\n');
+    runCli('update', '--runtime', 'codex', '--scope', 'project');
+    config = readFileSync(configPath, 'utf8');
+    assert.equal((config.match(/^\[mcp_servers\.omh-memory\]$/gm) || []).length, 1);
+    assert.ok(config.includes('command = "custom-memory"'));
+    assert.ok(config.includes('args = ["--custom-store"]'));
+    assert.equal(
+      readFileSync(launcher, 'utf8'),
+      readFileSync(join(__dirname, '..', 'bin', 'omh-memory.sh'), 'utf8'),
+    );
+    assert.equal(readFileSync(graphPath, 'utf8'), 'user-memory-sentinel\n');
+
+    runCli('reset', '--runtime', 'codex', '--scope', 'project');
+    assert.equal(readFileSync(configPath, 'utf8'), customConfig);
+    assert.ok(!existsSync(launcher));
+    assert.equal(readFileSync(graphPath, 'utf8'), 'user-memory-sentinel\n');
   });
 });
 
@@ -496,9 +599,11 @@ describe('cli reset', () => {
     assert.ok(existsSync(join(TMP, '.codex', 'agents', 'quick.toml')));
     assert.ok(existsSync(join(TMP, '.agents', 'skills', 'omh-loop', 'SKILL.md')));
     assert.ok(readFileSync(join(TMP, '.gitignore'), 'utf8').includes('.claude/.omh/'));
+    assertCodexMemoryInstalled(TMP);
     assertInstalledDangerousHookDenies(TMP);
 
     runCli('update', '--runtime', 'codex', '--scope', 'project');
+    assertCodexMemoryInstalled(TMP);
     assertInstalledDangerousHookDenies(TMP);
     runCli('reset', '--runtime', 'codex', '--scope', 'project');
 
@@ -525,9 +630,11 @@ describe('cli reset', () => {
     assert.ok(existsSync(join(TEST_HOME, '.codex', 'hooks.json')));
     assert.ok(existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
     assert.ok(existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop', 'SKILL.md')));
+    assertCodexMemoryInstalled(TEST_HOME);
     assertInstalledDangerousHookDenies(TEST_HOME);
 
     runCli('update', '--runtime', 'codex', '--scope', 'user');
+    assertCodexMemoryInstalled(TEST_HOME);
     assertInstalledDangerousHookDenies(TEST_HOME);
     runCli('reset', '--runtime', 'codex', '--scope', 'user');
 
@@ -558,9 +665,11 @@ describe('cli reset', () => {
     assert.ok(!readFileSync(join(TMP, '.claude', 'CLAUDE.md'), 'utf8')
       .includes('<!-- HARNESS:START -->'));
     assert.ok(!existsSync(join(TMP, '.claude', 'commands', 'set-harness.md')));
+    assertCodexMemoryInstalled(TMP);
     assertInstalledDangerousHookDenies(TMP);
 
     runCli('update', '--runtime', 'codex', '--scope', 'project');
+    assertCodexMemoryInstalled(TMP);
     assertInstalledDangerousHookDenies(TMP);
     runCli('reset', '--runtime', 'codex', '--scope', 'project');
 
@@ -583,9 +692,11 @@ describe('cli reset', () => {
     assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
     assert.ok(existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
     assert.ok(existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop', 'SKILL.md')));
+    assertCodexMemoryInstalled(TEST_HOME);
     assertInstalledDangerousHookDenies(TEST_HOME);
 
     runCli('update', '--runtime', 'codex', '--scope', 'user');
+    assertCodexMemoryInstalled(TEST_HOME);
     assertInstalledDangerousHookDenies(TEST_HOME);
     runCli('reset', '--runtime', 'codex', '--scope', 'user');
 
@@ -670,6 +781,34 @@ describe('cli update', () => {
     assert.ok(agents.startsWith('# Custom\n'));
     assert.ok(agents.includes('Codex quick'));
     assert.equal((agents.match(/<!-- HARNESS:START -->/g) || []).length, 1);
+  });
+
+  it('refreshes and removes the owned memory launcher and MCP registration without touching graph data', () => {
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+    const launcher = join(TMP, '.claude', '.omh', 'runtime', 'bin', 'omh-memory.sh');
+    const configPath = join(TMP, '.codex', 'config.toml');
+    const graphPath = join(TEST_HOME, '.omh', 'memory', 'graph.jsonl');
+    mkdirSync(dirname(graphPath), { recursive: true });
+    writeFileSync(graphPath, 'long-term-graph-sentinel\n');
+    assert.ok(existsSync(launcher));
+    writeFileSync(launcher, 'drifted launcher\n');
+    const driftedConfig = readFileSync(configPath, 'utf8')
+      .replace(JSON.stringify(launcher), JSON.stringify('/drifted/omh-memory.sh'));
+    writeFileSync(configPath, driftedConfig);
+
+    runCli('update', '--runtime', 'codex', '--scope', 'project');
+
+    assertCodexMemoryInstalled(TMP);
+    assert.equal(readFileSync(graphPath, 'utf8'), 'long-term-graph-sentinel\n');
+
+    runCli('reset', '--runtime', 'codex', '--scope', 'project');
+
+    assert.ok(!existsSync(launcher));
+    assert.ok(
+      !existsSync(configPath)
+      || !readFileSync(configPath, 'utf8').includes('[mcp_servers.omh-memory]'),
+    );
+    assert.equal(readFileSync(graphPath, 'utf8'), 'long-term-graph-sentinel\n');
   });
 
   it('does not install Codex from Claude shared config alone', () => {
