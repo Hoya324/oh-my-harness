@@ -61,6 +61,27 @@ For project scope, write `.claude/.omh/harness.config.json`. For global scope, w
 Warn when an existing project config will continue to win over the global fallback. Deep-merge
 updates without dropping user-defined or unknown keys.
 
+## Codex registration surfaces
+
+The Codex plugin manifest does not install custom role profiles or durable `AGENTS.md` guidance.
+Do not imply that marketplace installation alone provides those surfaces. During setup, offer the
+supported explicit provisioning step, or tell the user they can run
+`oh-my-harness init --runtime codex --scope project|user`.
+
+After explicit confirmation:
+
+- Resolve bundled roles relative to this skill at `../../agents/quick.toml`,
+  `../../agents/standard.toml`, and `../../agents/architect.toml`. For project scope, install
+  confirmed missing profiles under `.codex/agents/`; for global scope use
+  `~/.codex/agents/`. Preserve every user-owned same-name file. Refresh a role only when the
+  scope's `.claude/.omh/codex-ownership.json` explicitly records OMH ownership.
+- Resolve durable guidance from `../../../templates/AGENTS.md.tmpl`. For project scope target
+  `AGENTS.md`; for global scope target `~/.codex/AGENTS.md`. Preserve all unmarked user-owned
+  content. Insert or refresh exactly one block bounded by `<!-- HARNESS:START -->` and
+  `<!-- HARNESS:END -->`; abort without writing when markers are incomplete.
+- Preview exact destinations and changes before writing. Role installation and guidance insertion
+  each require explicit confirmation. Write ownership metadata and changed files atomically.
+
 If `.gitignore` lacks `.claude/.omh/`, show the proposed addition and ask before changing it.
 For durable Codex guidance, propose an `AGENTS.md` change and require explicit confirmation before
 overwriting existing guidance. Project skills belong in `.agents/skills`.

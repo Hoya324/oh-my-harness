@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRuntime, runtimeIncludes, skillRoots } from '../lib/runtime.mjs';
+import { parseRuntime, parseScope, runtimeIncludes, skillRoots } from '../lib/runtime.mjs';
 
 describe('runtime helpers', () => {
   describe('parseRuntime', () => {
@@ -33,6 +33,42 @@ describe('runtime helpers', () => {
       assert.equal(runtimeIncludes('codex', 'codex'), true);
       assert.equal(runtimeIncludes('both', 'claude'), true);
       assert.equal(runtimeIncludes('both', 'codex'), true);
+    });
+  });
+
+  describe('parseScope', () => {
+    it('returns null when no scope selector is present', () => {
+      assert.equal(parseScope([]), null);
+    });
+
+    it('accepts exact project, user, and global selectors', () => {
+      assert.equal(parseScope(['--scope', 'project']), 'project');
+      assert.equal(parseScope(['--scope', 'user']), 'user');
+      assert.equal(parseScope(['--global']), 'user');
+    });
+
+    it('rejects missing and invalid scope values', () => {
+      assert.throws(() => parseScope(['--scope']), /project or user/);
+      assert.throws(() => parseScope(['--scope', '--runtime', 'codex']), /project or user/);
+      assert.throws(() => parseScope(['--scope', 'banana']), /project or user/);
+      assert.throws(() => parseScope(['--scope', 'PROJECT']), /project or user/);
+      assert.throws(() => parseScope(['--scope=project']), /project or user/);
+    });
+
+    it('rejects duplicate and conflicting scope selectors', () => {
+      assert.throws(
+        () => parseScope(['--scope', 'project', '--scope', 'project']),
+        /only once/,
+      );
+      assert.throws(
+        () => parseScope(['--scope', 'project', '--scope', 'user']),
+        /only once/,
+      );
+      assert.throws(
+        () => parseScope(['--global', '--scope', 'user']),
+        /only once/,
+      );
+      assert.throws(() => parseScope(['--global', '--global']), /only once/);
     });
   });
 

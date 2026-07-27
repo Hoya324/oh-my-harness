@@ -5,7 +5,12 @@ description: Read and concisely report the current shared Oh My Harness runtime,
 
 # OMH status
 
-Read `.claude/.omh/harness.config.json`, `.claude/.omh/loop-state.json`, and `.claude/.omh/usage.json`. Tolerate missing files and malformed optional fields. You must not modify state.
+Resolve shared state exactly like the hooks: try the project
+`.claude/.omh/harness.config.json` first, then the user-global
+`~/.claude/.omh/harness.config.json`; the project wins. Use the first parseable candidate. Read
+`.claude/.omh/loop-state.json` and `.claude/.omh/usage.json` from that same selected state root
+(under `~/` for the user-global candidate), never by mixing project and global state. Tolerate
+missing files and malformed optional fields. You must not modify state.
 
 Treat the loop as inactive unless `loop-state.json` has `active: true` and the config does not explicitly disable `features.autonomousLoop`. For an active loop, use its `tier`, `iteration`, and `stopCause` (`pending` when absent). Report `Tier` as that active tier, otherwise `inactive`.
 

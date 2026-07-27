@@ -1,5 +1,17 @@
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -43,10 +55,91 @@ test('Codex plugin package declares its installable runtime surfaces', () => {
   assert.equal(marketplace.plugins[0].name, 'oh-my-harness');
   assert.equal(marketplace.version, '0.5.0');
   assert.equal(marketplace.plugins[0].version, '0.5.0');
-  assert.equal(mcp.mcpServers['omh-memory'].args[0].includes('${CLAUDE_PLUGIN_ROOT}'), true);
+  const memoryMcp = mcp.mcpServers['omh-memory'];
+  assert.equal(memoryMcp.command, 'bash');
+  assert.equal(memoryMcp.cwd, '.');
+  assert.equal(memoryMcp.args[0], '-c');
+  assert.match(memoryMcp.args[1], /cd "\$CLAUDE_PLUGIN_ROOT"/);
+  assert.match(memoryMcp.args[1], /exec bash bin\/omh-memory\.sh/);
+  assert.equal(JSON.stringify(mcp).includes('${CLAUDE_PLUGIN_ROOT}'), false);
 
   for (const path of [manifest.skills, manifest.hooks, manifest.mcpServers]) {
     assert.equal(existsSync(join(root, path)), true, `manifest path exists: ${path}`);
+  }
+});
+
+test('memory MCP launcher uses one exact package version and prefers the local npm cache', () => {
+  const launcher = readFileSync(join(root, 'bin/omh-memory.sh'), 'utf8');
+
+  assert.match(launcher, /@modelcontextprotocol\/server-memory@2026\.7\.4/);
+  assert.match(launcher, /\bnpx\s+--yes\s+--prefer-offline\b/);
+  assert.doesNotMatch(
+    launcher,
+    /exec\s+npx\s+-y\s+@modelcontextprotocol\/server-memory\s*$/m,
+    'the launcher must not execute an unpinned package',
+  );
+});
+
+test('memory MCP launcher completes a bounded initialize handshake through its pinned npx command', {
+  skip: process.platform === 'win32',
+}, () => {
+  const sandbox = mkdtempSync(join(tmpdir(), 'omh-memory-launcher-'));
+  const fakeBin = join(sandbox, 'bin');
+  const fakeNpx = join(fakeBin, 'npx');
+  const memoryFile = join(sandbox, 'memory', 'graph.jsonl');
+  mkdirSync(fakeBin, { recursive: true });
+  writeFileSync(fakeNpx, `#!/usr/bin/env node
+const expected = ['--yes', '--prefer-offline', '@modelcontextprotocol/server-memory@2026.7.4'];
+if (JSON.stringify(process.argv.slice(2)) !== JSON.stringify(expected)) process.exit(42);
+let input = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', chunk => { input += chunk; });
+process.stdin.on('end', () => {
+  const request = JSON.parse(input.trim());
+  process.stdout.write(JSON.stringify({
+    jsonrpc: '2.0',
+    id: request.id,
+    result: {
+      protocolVersion: request.params.protocolVersion,
+      capabilities: { tools: {} },
+      serverInfo: { name: process.env.MEMORY_FILE_PATH, version: 'test' },
+    },
+  }) + '\\n');
+});
+`);
+  chmodSync(fakeNpx, 0o755);
+
+  try {
+    const initialize = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2025-03-26',
+        capabilities: {},
+        clientInfo: { name: 'omh-test', version: '1.0.0' },
+      },
+    };
+    const result = spawnSync('bash', [join(root, 'bin/omh-memory.sh')], {
+      input: `${JSON.stringify(initialize)}\n`,
+      encoding: 'utf8',
+      timeout: 5_000,
+      env: {
+        ...process.env,
+        HOME: sandbox,
+        PATH: `${fakeBin}:${process.env.PATH || ''}`,
+        OMH_MEMORY_FILE: memoryFile,
+      },
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    const response = JSON.parse(result.stdout.trim());
+    assert.equal(response.id, 1);
+    assert.equal(response.result.protocolVersion, '2025-03-26');
+    assert.equal(response.result.serverInfo.name, memoryFile);
+    assert.equal(existsSync(dirname(memoryFile)), true);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
   }
 });
 
@@ -298,6 +391,20 @@ test('harness setup resolves the bundled defaults from the installed skill locat
   );
 });
 
+test('harness setup explicitly provisions role and guidance surfaces unsupported by the manifest', () => {
+  const setup = readFileSync(join(root, 'codex/skills/harness-setup/SKILL.md'), 'utf8');
+
+  assert.match(setup, /manifest.*does not.*role|role.*not.*manifest/is);
+  assert.ok(setup.includes('../../agents/quick.toml'));
+  assert.ok(setup.includes('../../agents/standard.toml'));
+  assert.ok(setup.includes('../../agents/architect.toml'));
+  assert.ok(setup.includes('.codex/agents/'));
+  assert.ok(setup.includes('../../../templates/AGENTS.md.tmpl'));
+  assert.match(setup, /explicit confirmation/i);
+  assert.match(setup, /HARNESS:START.*HARNESS:END/is);
+  assert.match(setup, /preserve.*user-owned/is);
+});
+
 test('omh-status reads shared state without mutating it and emits the exact status contract', () => {
   const skill = readFileSync(join(root, 'codex/skills/omh-status/SKILL.md'), 'utf8');
 
@@ -322,4 +429,13 @@ test('omh-status reads shared state without mutating it and emits the exact stat
   assert.match(skill, /sum only finite, non-negative numeric `sessions\[\*\]\.total_calls`/i);
   assert.match(skill, /malformed or missing entries count as zero/i);
   assert.match(skill, /session count is the number of object-valued session records/i);
+});
+
+test('omh-status resolves project state before the user-global fallback', () => {
+  const skill = readFileSync(join(root, 'codex/skills/omh-status/SKILL.md'), 'utf8');
+
+  assert.ok(skill.includes('~/.claude/.omh/harness.config.json'));
+  assert.match(skill, /project.*first.*user-global|project.*wins/is);
+  assert.match(skill, /first parseable candidate/is);
+  assert.match(skill, /loop-state\.json.*usage\.json.*same.*selected/is);
 });

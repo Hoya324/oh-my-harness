@@ -2,7 +2,7 @@
 #
 # omh-memory.sh — oh-my-harness long-term memory (LTM) launcher.
 #
-# Runs the knowledge-graph MCP server (@modelcontextprotocol/server-memory) against
+# Runs the pinned knowledge-graph MCP server against
 # ONE runtime-neutral store so Claude Code AND Codex (and any other MCP client) share
 # the same long-term memory graph.
 #
@@ -17,4 +17,6 @@ MEMORY_FILE_PATH="${OMH_MEMORY_FILE:-${MEMORY_FILE_PATH:-$HOME/.omh/memory/graph
 export MEMORY_FILE_PATH
 mkdir -p "$(dirname "$MEMORY_FILE_PATH")"
 
-exec npx -y @modelcontextprotocol/server-memory
+# Prefer a warm npm cache. The first launch on a machine without this exact
+# package still requires registry access; subsequent launches use the cache.
+exec npx --yes --prefer-offline @modelcontextprotocol/server-memory@2026.7.4

@@ -9,7 +9,7 @@ import {
   writeFileSync,
   statSync,
 } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -49,13 +49,21 @@ function runCliResult(args, cwd = TMP) {
   });
 }
 
+function fileState(path) {
+  return existsSync(path)
+    ? { exists: true, content: readFileSync(path, 'utf8') }
+    : { exists: false };
+}
+
 function assertInstalledDangerousHookDenies(installRoot, cwd = TMP) {
   const installedHooks = JSON.parse(
     readFileSync(join(installRoot, '.codex', 'hooks.json'), 'utf8'),
   );
   const dangerousHandler = installedHooks.hooks.PreToolUse
     .flatMap(group => group.hooks)
-    .find(handler => handler.command.includes('dangerous-guard.mjs'));
+    .find(handler =>
+      handler.command.includes('dangerous-guard.mjs')
+      || handler.statusMessage?.includes('checking safety'));
   assert.ok(dangerousHandler, 'dangerous guard hook should be installed');
 
   const hookRun = spawnSync('sh', ['-c', dangerousHandler.command], {
@@ -117,6 +125,41 @@ function assertCodexMemoryInstalled(installRoot, stateRoot = installRoot) {
   assert.ok(
     config.includes(`args = [${JSON.stringify(launcher)}]`),
     'memory MCP args should contain the exact installed launcher path',
+  );
+}
+
+function assertCodexSkillReferencesInstalled(installRoot) {
+  const setupSkill = join(
+    installRoot,
+    '.agents',
+    'skills',
+    'harness-setup',
+    'SKILL.md',
+  );
+  const teamSkill = join(
+    installRoot,
+    '.agents',
+    'skills',
+    'team-spawn',
+    'SKILL.md',
+  );
+  const runtimeMapFromSetup = resolve(dirname(setupSkill), '../../references/runtime-map.md');
+  const runtimeMapFromTeam = resolve(dirname(teamSkill), '../../references/runtime-map.md');
+  const templateFromSetup = resolve(
+    dirname(setupSkill),
+    '../../../templates/harness.config.json.tmpl',
+  );
+
+  assert.ok(existsSync(runtimeMapFromSetup), runtimeMapFromSetup);
+  assert.equal(runtimeMapFromTeam, runtimeMapFromSetup);
+  assert.equal(
+    readFileSync(runtimeMapFromSetup, 'utf8'),
+    readFileSync(join(__dirname, '..', 'codex', 'references', 'runtime-map.md'), 'utf8'),
+  );
+  assert.ok(existsSync(templateFromSetup), templateFromSetup);
+  assert.equal(
+    readFileSync(templateFromSetup, 'utf8'),
+    readFileSync(join(__dirname, '..', 'templates', 'harness.config.json.tmpl'), 'utf8'),
   );
 }
 
@@ -234,6 +277,79 @@ describe('cli init', () => {
     assert.ok(!existsSync(join(TMP, '.codex', 'hooks.json')));
     assert.ok(!existsSync(join(TMP, 'AGENTS.md')));
   });
+
+  it('rejects corrupt harness config before init changes either runtime', () => {
+    for (const runtime of ['claude', 'codex', 'both']) {
+      const project = join(TMP, `corrupt-init-config-${runtime}`);
+      const configPath = join(project, '.claude', '.omh', 'harness.config.json');
+      mkdirSync(dirname(configPath), { recursive: true });
+      writeFileSync(configPath, '{ invalid\n');
+
+      const result = runCliResult(
+        ['init', '--runtime', runtime, '--scope', 'project'],
+        project,
+      );
+
+      assert.notEqual(result.status, 0, runtime);
+      assert.match(result.stdout + result.stderr, /invalid.*harness\.config|harness\.config.*invalid/i);
+      assert.equal(readFileSync(configPath, 'utf8'), '{ invalid\n');
+      assert.deepEqual(
+        [
+          join(project, '.claude', '.omh', 'hooks'),
+          join(project, '.claude', '.omh', 'runtime'),
+          join(project, '.claude', '.omh', 'codex-ownership.json'),
+          join(project, '.claude', 'commands'),
+          join(project, '.claude', 'settings.local.json'),
+          join(project, '.claude', 'CLAUDE.md'),
+          join(project, '.codex'),
+          join(project, '.agents'),
+          join(project, 'AGENTS.md'),
+          join(project, '.gitignore'),
+        ].map(path => existsSync(path)),
+        [false, false, false, false, false, false, false, false, false, false],
+        `${runtime}: no registration payload is created`,
+      );
+    }
+  });
+
+  it('installs explicit user-scoped Claude files only under the user home', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+
+    for (const path of [
+      join(TEST_HOME, '.claude', '.omh', 'harness.config.json'),
+      join(TEST_HOME, '.claude', '.omh', 'hooks', 'dangerous-guard.mjs'),
+      join(TEST_HOME, '.claude', 'commands', 'set-harness.md'),
+      join(TEST_HOME, '.claude', 'CLAUDE.md'),
+      join(TEST_HOME, '.claude', 'settings.json'),
+    ]) assert.ok(existsSync(path), path);
+    assert.ok(!existsSync(join(TMP, '.claude')));
+    assert.ok(!existsSync(join(TMP, '.gitignore')));
+
+    const settings = JSON.parse(
+      readFileSync(join(TEST_HOME, '.claude', 'settings.json'), 'utf8'),
+    );
+    const commands = JSON.stringify(settings.hooks);
+    assert.ok(commands.includes(join(TEST_HOME, '.claude', '.omh', 'hooks')));
+    assert.ok(!commands.includes('bash .claude/.omh/hooks'));
+  });
+
+  it('preflights existing Claude settings before init creates any payload', () => {
+    const settingsPath = join(TMP, '.claude', 'settings.local.json');
+    mkdirSync(dirname(settingsPath), { recursive: true });
+    writeFileSync(settingsPath, '{ invalid\n');
+
+    const result = runCliResult(
+      ['init', '--runtime', 'claude', '--scope', 'project'],
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /invalid.*settings/i);
+    assert.equal(readFileSync(settingsPath, 'utf8'), '{ invalid\n');
+    assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TMP, '.claude', 'commands')));
+    assert.ok(!existsSync(join(TMP, '.claude', 'CLAUDE.md')));
+    assert.ok(!existsSync(join(TMP, '.gitignore')));
+  });
 });
 
 describe('cli runtime matrix', () => {
@@ -260,6 +376,7 @@ describe('cli runtime matrix', () => {
     assert.ok(config.includes('[agents.standard]'));
     assert.ok(config.includes('[agents.architect]'));
     assertCodexMemoryInstalled(TMP);
+    assertCodexSkillReferencesInstalled(TMP);
   });
 
   it('installs both runtime registrations while sharing state', () => {
@@ -352,6 +469,7 @@ describe('cli runtime matrix', () => {
     const hooks = readFileSync(join(TEST_HOME, '.codex', 'hooks.json'), 'utf8');
     assert.ok(hooks.includes(join(TEST_HOME, '.claude', '.omh', 'runtime')));
     assertCodexMemoryInstalled(TEST_HOME);
+    assertCodexSkillReferencesInstalled(TEST_HOME);
   });
 
   it('installs user-scoped Codex memory when both runtimes are requested', () => {
@@ -374,7 +492,9 @@ describe('cli runtime matrix', () => {
     );
     const dangerousHandler = installedHooks.hooks.PreToolUse
       .flatMap(group => group.hooks)
-      .find(handler => handler.command.includes('dangerous-guard.mjs'));
+      .find(handler =>
+        handler.command.includes('dangerous-guard.mjs')
+        || handler.statusMessage?.includes('checking safety'));
     assert.ok(dangerousHandler, 'dangerous guard hook should be installed');
 
     const hookRun = spawnSync('sh', ['-c', dangerousHandler.command], {
@@ -475,6 +595,169 @@ describe('cli runtime matrix', () => {
     assert.ok(!existsSync(launcher));
     assert.equal(readFileSync(graphPath, 'utf8'), 'user-memory-sentinel\n');
   });
+
+  it('recognizes quoted, dotted, table-local, and inline user TOML registrations semantically', () => {
+    const fixtures = [
+      {
+        name: 'quoted-tables',
+        config: [
+          'model = "custom"',
+          '[custom.keep]',
+          'value = true',
+          '[agents."quick"]',
+          'description = "custom quick"',
+          'config_file = "custom-quick.toml"',
+          '[mcp_servers."omh-memory"]',
+          'command = "custom-memory"',
+          '',
+        ].join('\n'),
+        forbidden: ['[agents.quick]', '[mcp_servers.omh-memory]'],
+        required: ['[agents.standard]', '[agents.architect]'],
+      },
+      {
+        name: 'dotted-assignments',
+        config: [
+          'model = "custom"',
+          'agents.quick = { description = "custom quick", config_file = "custom-quick.toml" }',
+          'mcp_servers."omh-memory" = { command = "custom-memory", args = ["--custom"] }',
+          '',
+        ].join('\n'),
+        forbidden: ['[agents.quick]', '[mcp_servers.omh-memory]'],
+        required: ['[agents.standard]', '[agents.architect]'],
+      },
+      {
+        name: 'table-local-inline',
+        config: [
+          'model = "custom"',
+          '[agents]',
+          '"quick" = { description = "custom quick", config_file = "custom-quick.toml" }',
+          '[mcp_servers]',
+          '"omh-memory" = { command = "custom-memory", args = ["--custom"] }',
+          '',
+        ].join('\n'),
+        forbidden: ['[agents.quick]', '[mcp_servers.omh-memory]'],
+        required: ['[agents.standard]', '[agents.architect]'],
+      },
+      {
+        name: 'sealed-parent-inline',
+        config: [
+          'model = "custom"',
+          'agents = { quick = { description = "custom quick" } }',
+          'mcp_servers = { "omh-memory" = { command = "custom-memory" } }',
+          '',
+        ].join('\n'),
+        forbidden: [
+          '[agents.quick]',
+          '[agents.standard]',
+          '[agents.architect]',
+          '[mcp_servers.omh-memory]',
+        ],
+        required: [],
+      },
+    ];
+
+    for (const fixture of fixtures) {
+      const project = join(TMP, fixture.name);
+      const configPath = join(project, '.codex', 'config.toml');
+      mkdirSync(dirname(configPath), { recursive: true });
+      writeFileSync(configPath, fixture.config);
+
+      runCliIn(project, 'init', '--runtime', 'codex', '--scope', 'project');
+      const merged = readFileSync(configPath, 'utf8');
+
+      assert.ok(merged.startsWith(fixture.config), `${fixture.name}: preserves unrelated bytes`);
+      for (const declaration of fixture.forbidden) {
+        assert.ok(!merged.includes(declaration), `${fixture.name}: omits ${declaration}`);
+      }
+      for (const declaration of fixture.required) {
+        assert.ok(merged.includes(declaration), `${fixture.name}: keeps ${declaration}`);
+      }
+
+      runCliIn(project, 'update', '--runtime', 'codex', '--scope', 'project');
+      assert.equal(
+        (readFileSync(configPath, 'utf8').match(/# OH-MY-HARNESS:START/g) || []).length,
+        1,
+        `${fixture.name}: update stays idempotent`,
+      );
+    }
+  });
+
+  it('rejects invalid or semantically conflicting user TOML before creating any Codex files', () => {
+    const fixtures = [
+      'model = "unterminated\n',
+      [
+        '[agents.quick]',
+        'description = "first"',
+        '[agents."quick"]',
+        'description = "duplicate"',
+        '',
+      ].join('\n'),
+    ];
+
+    for (const [index, original] of fixtures.entries()) {
+      const project = join(TMP, `invalid-toml-${index}`);
+      const configPath = join(project, '.codex', 'config.toml');
+      mkdirSync(dirname(configPath), { recursive: true });
+      writeFileSync(configPath, original);
+
+      const result = runCliResult(
+        ['init', '--runtime', 'codex', '--scope', 'project'],
+        project,
+      );
+
+      assert.notEqual(result.status, 0);
+      assert.match(result.stdout + result.stderr, /TOML/i);
+      assert.equal(readFileSync(configPath, 'utf8'), original);
+      assert.ok(!existsSync(join(project, '.codex', 'hooks.json')));
+      assert.ok(!existsSync(join(project, '.codex', 'agents')));
+      assert.ok(!existsSync(join(project, '.agents')));
+      assert.ok(!existsSync(join(project, 'AGENTS.md')));
+      assert.ok(!existsSync(join(project, '.claude')));
+    }
+  });
+
+  it('refreshes and resets only owned Codex skill reference assets', () => {
+    const runtimeMap = join(TMP, '.agents', 'references', 'runtime-map.md');
+    const configTemplate = join(TMP, 'templates', 'harness.config.json.tmpl');
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+    const ownershipPath = join(TMP, '.claude', '.omh', 'codex-ownership.json');
+    let ownership = JSON.parse(readFileSync(ownershipPath, 'utf8'));
+    assert.deepEqual(
+      ownership.assets,
+      [
+        '.agents/references/runtime-map.md',
+        'templates/harness.config.json.tmpl',
+      ],
+    );
+
+    writeFileSync(runtimeMap, 'drifted-runtime-map\n');
+    writeFileSync(configTemplate, 'drifted-template\n');
+    runCli('update', '--runtime', 'codex', '--scope', 'project');
+    assertCodexSkillReferencesInstalled(TMP);
+
+    runCli('reset', '--runtime', 'codex', '--scope', 'project');
+    assert.ok(!existsSync(runtimeMap));
+    assert.ok(!existsSync(configTemplate));
+
+    const project = join(TMP, 'preexisting-assets');
+    const customRuntimeMap = join(project, '.agents', 'references', 'runtime-map.md');
+    const customTemplate = join(project, 'templates', 'harness.config.json.tmpl');
+    mkdirSync(dirname(customRuntimeMap), { recursive: true });
+    mkdirSync(dirname(customTemplate), { recursive: true });
+    writeFileSync(customRuntimeMap, 'user runtime map\n');
+    writeFileSync(customTemplate, 'user template\n');
+
+    runCliIn(project, 'init', '--runtime', 'codex', '--scope', 'project');
+    ownership = JSON.parse(
+      readFileSync(join(project, '.claude', '.omh', 'codex-ownership.json'), 'utf8'),
+    );
+    assert.ok(!ownership.assets.includes('.agents/references/runtime-map.md'));
+    assert.ok(!ownership.assets.includes('templates/harness.config.json.tmpl'));
+    runCliIn(project, 'update', '--runtime', 'codex', '--scope', 'project');
+    runCliIn(project, 'reset', '--runtime', 'codex', '--scope', 'project');
+    assert.equal(readFileSync(customRuntimeMap, 'utf8'), 'user runtime map\n');
+    assert.equal(readFileSync(customTemplate, 'utf8'), 'user template\n');
+  });
 });
 
 describe('cli reset', () => {
@@ -567,10 +850,10 @@ describe('cli reset', () => {
     );
   });
 
-  it('reset both at user scope removes user and project shared state', () => {
+  it('reset both at user scope removes only user-scoped shared state', () => {
     runCli('init', '--runtime', 'both', '--scope', 'user');
     assert.ok(existsSync(join(TEST_HOME, '.claude', '.omh')));
-    assert.ok(existsSync(join(TMP, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
 
     runCli('reset', '--runtime', 'both', '--scope', 'user');
 
@@ -705,6 +988,192 @@ describe('cli reset', () => {
     assert.ok(!existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
     assert.ok(!existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop')));
   });
+
+  it('aborts Codex reset without changing any bytes when cleanup inputs are ambiguous', () => {
+    const fixtures = [
+      {
+        name: 'invalid-hooks',
+        mutate(project) {
+          writeFileSync(join(project, '.codex', 'hooks.json'), '{ invalid\n');
+        },
+      },
+      {
+        name: 'incomplete-agents',
+        mutate(project) {
+          writeFileSync(
+            join(project, 'AGENTS.md'),
+            '# custom\n<!-- HARNESS:START -->\nunterminated\n',
+          );
+        },
+      },
+      {
+        name: 'incomplete-toml',
+        mutate(project) {
+          writeFileSync(
+            join(project, '.codex', 'config.toml'),
+            'model = "custom"\n# OH-MY-HARNESS:START\nunterminated\n',
+          );
+        },
+      },
+      {
+        name: 'invalid-ownership',
+        mutate(project) {
+          writeFileSync(
+            join(project, '.claude', '.omh', 'codex-ownership.json'),
+            '{ invalid\n',
+          );
+        },
+      },
+    ];
+
+    for (const fixture of fixtures) {
+      const project = join(TMP, `reset-preflight-${fixture.name}`);
+      mkdirSync(project, { recursive: true });
+      runCliIn(project, 'init', '--runtime', 'codex', '--scope', 'project');
+      fixture.mutate(project);
+
+      const protectedPaths = [
+        join(project, '.codex', 'hooks.json'),
+        join(project, '.codex', 'config.toml'),
+        join(project, 'AGENTS.md'),
+        join(project, '.codex', 'agents', 'quick.toml'),
+        join(project, '.agents', 'skills', 'omh-loop', 'SKILL.md'),
+        join(project, '.claude', '.omh', 'codex-ownership.json'),
+        join(project, '.claude', '.omh', 'runtime', 'hooks', 'codex', 'run.mjs'),
+        join(project, '.claude', '.omh', 'harness.config.json'),
+        join(project, '.gitignore'),
+      ];
+      const before = protectedPaths.map(fileState);
+
+      const result = runCliResult(
+        ['reset', '--runtime', 'codex', '--scope', 'project'],
+        project,
+      );
+
+      assert.notEqual(result.status, 0, fixture.name);
+      assert.match(result.stdout + result.stderr, /cannot|invalid|incomplete/i);
+      assert.deepEqual(
+        protectedPaths.map(fileState),
+        before,
+        `${fixture.name}: reset preserves every protected byte`,
+      );
+    }
+  });
+
+  it('preflights both runtimes before reset mutates either registration', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'project');
+    writeFileSync(join(TMP, '.codex', 'hooks.json'), '{ invalid\n');
+    const protectedPaths = [
+      join(TMP, '.codex', 'hooks.json'),
+      join(TMP, '.codex', 'config.toml'),
+      join(TMP, 'AGENTS.md'),
+      join(TMP, '.codex', 'agents', 'quick.toml'),
+      join(TMP, '.agents', 'skills', 'omh-loop', 'SKILL.md'),
+      join(TMP, '.claude', '.omh', 'codex-ownership.json'),
+      join(TMP, '.claude', '.omh', 'runtime', 'hooks', 'codex', 'run.mjs'),
+      join(TMP, '.claude', '.omh', 'harness.config.json'),
+      join(TMP, '.claude', 'settings.local.json'),
+      join(TMP, '.claude', 'CLAUDE.md'),
+      join(TMP, '.claude', 'commands', 'set-harness.md'),
+      join(TMP, '.gitignore'),
+    ];
+    const before = protectedPaths.map(fileState);
+
+    const result = runCliResult(
+      ['reset', '--runtime', 'both', '--scope', 'project'],
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.deepEqual(protectedPaths.map(fileState), before);
+  });
+
+  it('aborts Claude reset on malformed managed guidance or settings without cross-file cleanup', () => {
+    const fixtures = [
+      {
+        name: 'settings',
+        mutate(project) {
+          writeFileSync(join(project, '.claude', 'settings.local.json'), '{ invalid\n');
+        },
+      },
+      {
+        name: 'guidance',
+        mutate(project) {
+          writeFileSync(
+            join(project, '.claude', 'CLAUDE.md'),
+            '# custom\n<!-- HARNESS:START -->\nunterminated\n',
+          );
+        },
+      },
+    ];
+
+    for (const fixture of fixtures) {
+      const project = join(TMP, `claude-reset-preflight-${fixture.name}`);
+      mkdirSync(project, { recursive: true });
+      runCliIn(project, 'init', '--runtime', 'claude', '--scope', 'project');
+      fixture.mutate(project);
+      const protectedPaths = [
+        join(project, '.claude', '.omh', 'harness.config.json'),
+        join(project, '.claude', '.omh', 'hooks', 'dangerous-guard.mjs'),
+        join(project, '.claude', 'settings.local.json'),
+        join(project, '.claude', 'CLAUDE.md'),
+        join(project, '.claude', 'commands', 'set-harness.md'),
+        join(project, '.gitignore'),
+      ];
+      const before = protectedPaths.map(fileState);
+
+      const result = runCliResult(
+        ['reset', '--runtime', 'claude', '--scope', 'project'],
+        project,
+      );
+
+      assert.notEqual(result.status, 0, fixture.name);
+      assert.deepEqual(protectedPaths.map(fileState), before);
+    }
+  });
+
+  it('explicit project reset preserves an independent user-scoped Claude lifecycle', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'project');
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    const userPaths = [
+      join(TEST_HOME, '.claude', '.omh', 'harness.config.json'),
+      join(TEST_HOME, '.claude', '.omh', 'hooks', 'dangerous-guard.mjs'),
+      join(TEST_HOME, '.claude', 'commands', 'set-harness.md'),
+      join(TEST_HOME, '.claude', 'CLAUDE.md'),
+      join(TEST_HOME, '.claude', 'settings.json'),
+    ];
+    const userBefore = userPaths.map(fileState);
+
+    runCli('reset', '--runtime', 'claude', '--scope', 'project');
+
+    assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TMP, '.claude', 'commands', 'set-harness.md')));
+    assert.deepEqual(userPaths.map(fileState), userBefore);
+
+    runCli('update', '--runtime', 'claude', '--scope', 'user');
+    runCli('reset', '--runtime', 'claude', '--scope', 'user');
+    assert.ok(!existsSync(join(TEST_HOME, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TEST_HOME, '.claude', 'commands', 'set-harness.md')));
+  });
+
+  it('removes only the selected Claude HUD registration', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'project');
+    const userSettingsPath = join(TEST_HOME, '.claude', 'settings.json');
+    let userSettings = JSON.parse(readFileSync(userSettingsPath, 'utf8'));
+    assert.ok(userSettings.statusLine.command.includes(join(TMP, '.claude', '.omh')));
+
+    runCli('reset', '--runtime', 'claude', '--scope', 'project');
+    userSettings = JSON.parse(readFileSync(userSettingsPath, 'utf8'));
+    assert.ok(!userSettings.statusLine);
+
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    userSettings = JSON.parse(readFileSync(userSettingsPath, 'utf8'));
+    assert.ok(userSettings.statusLine.command.includes(join(TEST_HOME, '.claude', '.omh')));
+    runCli('reset', '--runtime', 'claude', '--scope', 'user');
+    userSettings = JSON.parse(readFileSync(userSettingsPath, 'utf8'));
+    assert.ok(!userSettings.statusLine);
+    assert.ok(!userSettings.hooks);
+    assert.ok(!userSettings.agents);
+  });
 });
 
 describe('cli status', () => {
@@ -744,6 +1213,27 @@ describe('cli status', () => {
     const output = runCli('status', '--runtime', 'codex', '--scope', 'user');
     assert.ok(output.includes('userScopeFeature'));
     assert.ok(!output.includes('projectScopeFeature'));
+  });
+
+  it('reads only the explicitly selected Claude scope', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'project');
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    writeFileSync(
+      join(TMP, '.claude', '.omh', 'harness.config.json'),
+      JSON.stringify({ features: { projectScopeFeature: true } }, null, 2),
+    );
+    writeFileSync(
+      join(TEST_HOME, '.claude', '.omh', 'harness.config.json'),
+      JSON.stringify({ features: { userScopeFeature: true } }, null, 2),
+    );
+
+    const projectOutput = runCli('status', '--runtime', 'claude', '--scope', 'project');
+    assert.ok(projectOutput.includes('projectScopeFeature'));
+    assert.ok(!projectOutput.includes('userScopeFeature'));
+
+    const userOutput = runCli('status', '--runtime', 'claude', '--scope', 'user');
+    assert.ok(userOutput.includes('userScopeFeature'));
+    assert.ok(!userOutput.includes('projectScopeFeature'));
   });
 });
 
@@ -878,6 +1368,148 @@ describe('cli update', () => {
     assert.equal(readFileSync(configPath, 'utf8'), malformed);
     assert.equal(readFileSync(rolePath, 'utf8'), 'drifted\n');
   });
+
+  it('rejects corrupt harness config before updating either runtime', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'project');
+    const configPath = join(TMP, '.claude', '.omh', 'harness.config.json');
+    const settingsPath = join(TMP, '.claude', 'settings.local.json');
+    const rolePath = join(TMP, '.codex', 'agents', 'standard.toml');
+    writeFileSync(configPath, '{ invalid\n');
+    writeFileSync(settingsPath, '{"custom":"project-settings"}\n');
+    writeFileSync(rolePath, 'drifted-role\n');
+    const protectedPaths = [
+      configPath,
+      settingsPath,
+      rolePath,
+      join(TMP, '.claude', 'CLAUDE.md'),
+      join(TMP, '.codex', 'hooks.json'),
+      join(TMP, '.codex', 'config.toml'),
+      join(TMP, 'AGENTS.md'),
+      join(TMP, '.claude', '.omh', 'codex-ownership.json'),
+      join(TMP, '.claude', '.omh', 'runtime', 'hooks', 'codex', 'run.mjs'),
+    ];
+    const before = protectedPaths.map(fileState);
+
+    const result = runCliResult(
+      ['update', '--runtime', 'both', '--scope', 'project'],
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /invalid.*harness\.config|harness\.config.*invalid/i);
+    assert.deepEqual(protectedPaths.map(fileState), before);
+  });
+
+  it('repairs an absent config from the safe template before refreshing installed runtimes', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'project');
+    const configPath = join(TMP, '.claude', '.omh', 'harness.config.json');
+    const settingsPath = join(TMP, '.claude', 'settings.local.json');
+    const rolePath = join(TMP, '.codex', 'agents', 'standard.toml');
+    rmSync(configPath);
+    writeFileSync(settingsPath, '{}\n');
+    writeFileSync(rolePath, 'drifted-role\n');
+
+    runCli('update', '--runtime', 'both', '--scope', 'project');
+
+    assert.equal(
+      readFileSync(configPath, 'utf8'),
+      readFileSync(join(__dirname, '..', 'templates', 'harness.config.json.tmpl'), 'utf8'),
+    );
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    assert.ok(settings.hooks?.SessionStart);
+    assert.notEqual(readFileSync(rolePath, 'utf8'), 'drifted-role\n');
+  });
+
+  it('updates only the explicitly selected Claude scope', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'project');
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    const projectSettings = join(TMP, '.claude', 'settings.local.json');
+    const userSettings = join(TEST_HOME, '.claude', 'settings.json');
+    const projectGuidance = join(TMP, '.claude', 'CLAUDE.md');
+    writeFileSync(projectSettings, '{"project":"drifted"}\n');
+    writeFileSync(userSettings, '{"user":"drifted"}\n');
+    const projectGuidanceBefore = readFileSync(projectGuidance, 'utf8');
+
+    runCli('update', '--runtime', 'claude', '--scope', 'user');
+
+    assert.equal(readFileSync(projectSettings, 'utf8'), '{"project":"drifted"}\n');
+    assert.equal(readFileSync(projectGuidance, 'utf8'), projectGuidanceBefore);
+    const refreshedUserSettings = JSON.parse(readFileSync(userSettings, 'utf8'));
+    assert.equal(refreshedUserSettings.user, 'drifted');
+    assert.ok(refreshedUserSettings.hooks?.SessionStart);
+  });
+
+  it('preflights Claude guidance before a both-runtime update mutates Codex', () => {
+    runCli('init', '--runtime', 'both', '--scope', 'project');
+    const guidancePath = join(TMP, '.claude', 'CLAUDE.md');
+    const rolePath = join(TMP, '.codex', 'agents', 'standard.toml');
+    writeFileSync(
+      guidancePath,
+      '# custom\n<!-- HARNESS:START -->\nunterminated\n',
+    );
+    writeFileSync(rolePath, 'drifted-role\n');
+    const protectedPaths = [
+      guidancePath,
+      rolePath,
+      join(TMP, '.claude', 'settings.local.json'),
+      join(TMP, '.codex', 'hooks.json'),
+      join(TMP, '.codex', 'config.toml'),
+      join(TMP, 'AGENTS.md'),
+      join(TMP, '.claude', '.omh', 'codex-ownership.json'),
+      join(TMP, '.claude', '.omh', 'runtime', 'hooks', 'codex', 'run.mjs'),
+    ];
+    const before = protectedPaths.map(fileState);
+
+    const result = runCliResult(
+      ['update', '--runtime', 'both', '--scope', 'project'],
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /incomplete.*markers/i);
+    assert.deepEqual(protectedPaths.map(fileState), before);
+  });
+});
+
+describe('cli scope validation', () => {
+  it('rejects missing, invalid, duplicate, and conflicting scope selectors before reset mutation', () => {
+    const invalidArguments = [
+      ['--scope'],
+      ['--scope', 'banana'],
+      ['--scope=project'],
+      ['--scope', 'project', '--scope', 'project'],
+      ['--scope', 'project', '--global'],
+    ];
+
+    for (const [index, scopeArguments] of invalidArguments.entries()) {
+      const project = join(TMP, `invalid-scope-${index}`);
+      mkdirSync(project, { recursive: true });
+      runCliIn(project, 'init', '--runtime', 'codex', '--scope', 'project');
+
+      const protectedPaths = [
+        join(project, '.codex', 'hooks.json'),
+        join(project, '.codex', 'config.toml'),
+        join(project, 'AGENTS.md'),
+        join(project, '.codex', 'agents', 'quick.toml'),
+        join(project, '.agents', 'skills', 'omh-loop', 'SKILL.md'),
+        join(project, '.claude', '.omh', 'codex-ownership.json'),
+        join(project, '.claude', '.omh', 'runtime', 'hooks', 'codex', 'run.mjs'),
+        join(project, '.claude', '.omh', 'harness.config.json'),
+      ];
+      const before = protectedPaths.map(path => readFileSync(path, 'utf8'));
+
+      const result = runCliResult(
+        ['reset', '--runtime', 'codex', ...scopeArguments],
+        project,
+      );
+
+      assert.notEqual(result.status, 0, scopeArguments.join(' '));
+      assert.match(result.stdout + result.stderr, /scope/i);
+      assert.deepEqual(
+        protectedPaths.map(path => readFileSync(path, 'utf8')),
+        before,
+        `reset must preserve bytes for ${scopeArguments.join(' ')}`,
+      );
+    }
+  });
 });
 
 describe('cli --version', () => {
@@ -904,5 +1536,12 @@ describe('cli unknown command', () => {
     assert.ok(output.includes('usage'));
     assert.ok(output.includes('--runtime claude|codex|both'));
     assert.match(output, /default.*claude/i);
+    for (const lifecycle of ['init', 'update', 'status', 'reset']) {
+      assert.match(
+        output,
+        new RegExp(`${lifecycle}[^\\n]+--scope project\\|user`),
+        `${lifecycle} documents explicit scope`,
+      );
+    }
   });
 });

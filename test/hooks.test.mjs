@@ -34,13 +34,22 @@ function parseHookOutput(raw) {
 function getContext(raw) {
   const parsed = parseHookOutput(raw);
   if (!parsed || typeof parsed === 'string') return '';
-  return parsed.hookSpecificOutput?.additionalContext || parsed.systemMessage || '';
+  return parsed.hookSpecificOutput?.additionalContext ||
+    parsed.hookSpecificOutput?.permissionDecisionReason ||
+    parsed.systemMessage ||
+    '';
 }
 
 function writeConfig(config) {
   const dir = join(TMP, '.claude', '.omh');
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'harness.config.json'), JSON.stringify(config));
+}
+
+function writeRawConfig(contents) {
+  const dir = join(TMP, '.claude', '.omh');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'harness.config.json'), contents);
 }
 
 beforeEach(() => { mkdirSync(TMP, { recursive: true }); });
@@ -437,6 +446,76 @@ describe('dangerous-guard hook', () => {
     const parsed = parseHookOutput(raw);
     assert.ok(!parsed || parsed.suppressOutput === true);
   });
+
+  it('emits a real PreToolUse denial instead of an advisory warning', () => {
+    writeConfig({ features: { dangerousGuard: true } });
+    const parsed = parseHookOutput(runHook('dangerous-guard.mjs', {
+      tool_name: 'Bash',
+      tool_input: { command: 'rm -rf build' },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /\[omh:dangerous-guard\]/);
+  });
+
+  it('detects split and reordered recursive-force rm flags', () => {
+    writeConfig({ features: { dangerousGuard: true } });
+    const parsed = parseHookOutput(runHook('dangerous-guard.mjs', {
+      tool_name: 'Bash',
+      tool_input: { command: 'rm -r build -f' },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
+  });
+
+  it('checks every apply_patch target including Move to destinations', () => {
+    writeConfig({ features: { dangerousGuard: true } });
+    const parsed = parseHookOutput(runHook('dangerous-guard.mjs', {
+      tool_name: 'apply_patch',
+      tool_input: {
+        command: [
+          '*** Begin Patch',
+          '*** Update File: src/config.js',
+          '*** Move to: config/.env.production',
+          '@@',
+          '-old',
+          '+new',
+          '*** End Patch',
+        ].join('\n'),
+      },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /\.env/);
+  });
+
+  it('uses a safe enabled default when no config exists', () => {
+    const parsed = parseHookOutput(runHook('dangerous-guard.mjs', {
+      tool_name: 'Bash',
+      tool_input: { command: 'git reset --hard HEAD~1' },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+  });
+
+  it('uses the safe default when the only config is corrupt', () => {
+    writeRawConfig('{not-json');
+    const parsed = parseHookOutput(runHook('dangerous-guard.mjs', {
+      tool_name: 'Bash',
+      tool_input: { command: 'rm --recursive --force build' },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+  });
+
+  it('denies malformed input because command safety cannot be established', () => {
+    writeConfig({ features: { dangerousGuard: true } });
+    const parsed = parseHookOutput(runHook('dangerous-guard.mjs', '{not-json'));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /malformed input/i);
+  });
 });
 
 // --- commit-convention ---
@@ -531,6 +610,139 @@ describe('scope-guard hook', () => {
     const ctx = getContext(raw);
     assert.ok(ctx.includes('SCOPE WARNING'));
     assert.ok(ctx.includes('docs/nope.md'));
+  });
+
+  it('emits a real PreToolUse denial for an out-of-scope target', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+      tool_name: 'Write',
+      tool_input: { file_path: join(TMP, 'docs', 'nope.md') },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /\[omh:scope-guard\]/);
+  });
+
+  it('checks an apply_patch Move to destination', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+      tool_name: 'apply_patch',
+      tool_input: {
+        command: [
+          '*** Begin Patch',
+          '*** Update File: src/inside.js',
+          '*** Move to: docs/outside.js',
+          '@@',
+          '-old',
+          '+new',
+          '*** End Patch',
+        ].join('\n'),
+      },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /docs\/outside\.js/);
+  });
+
+  it('resolves a direct relative target from the tool cwd', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+      cwd: join(TMP, 'docs'),
+      tool_name: 'Write',
+      tool_input: { file_path: 'outside.md' },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /docs\/outside\.md/);
+  });
+
+  it('detects Bash redirection and path-mutating commands outside scope', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    for (const command of [
+      'printf x > docs/out.txt',
+      'touch docs/touched.txt',
+      'cp src/in.txt docs/copied.txt',
+      'mv src/in.txt docs/moved.txt',
+    ]) {
+      const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+        tool_name: 'Bash',
+        tool_input: { command },
+      }));
+      assert.equal(
+        parsed.hookSpecificOutput.permissionDecision,
+        'deny',
+        `expected denial for: ${command}`,
+      );
+    }
+  });
+
+  it('does not treat read-only Bash paths as mutations', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    for (const command of ['cat docs/readme.md', 'git status --short']) {
+      assert.equal(runHook('scope-guard.mjs', {
+        tool_name: 'Bash',
+        tool_input: { command },
+      }), '', `expected read-only command to pass: ${command}`);
+    }
+  });
+
+  it('checks path-bearing filesystem MCP mutation tools', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+      tool_name: 'mcp__filesystem__write_file',
+      tool_input: { path: 'docs/from-mcp.md', content: 'outside' },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /docs\/from-mcp\.md/);
+  });
+
+  it('defaults to the project boundary when no config exists', () => {
+    const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+      tool_name: 'Write',
+      tool_input: { file_path: join(TMP, '..', 'outside.txt') },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+  });
+
+  it('defaults to the project boundary when the only config is corrupt', () => {
+    writeRawConfig('{not-json');
+    const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+      tool_name: 'Write',
+      tool_input: { file_path: join(TMP, '..', 'outside.txt') },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+  });
+
+  it('denies malformed input when an explicit scope policy is active', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    const parsed = parseHookOutput(runHook('scope-guard.mjs', '{not-json'));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /malformed input/i);
   });
 });
 

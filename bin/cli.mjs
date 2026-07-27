@@ -15,7 +15,7 @@ import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { createInterface } from 'readline';
 import { scaffoldProjectSkills } from '../lib/scaffold-skills.mjs';
-import { parseRuntime, runtimeIncludes } from '../lib/runtime.mjs';
+import { parseRuntime, parseScope, runtimeIncludes } from '../lib/runtime.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -27,6 +27,16 @@ const CODEX_HOOKS = '.codex/hooks.json';
 const CODEX_CONFIG = '.codex/config.toml';
 const CODEX_OWNERSHIP = 'codex-ownership.json';
 const CODEX_ROLES = ['quick', 'standard', 'architect'];
+const CODEX_SKILL_ASSETS = [
+  {
+    path: '.agents/references/runtime-map.md',
+    source: ['codex', 'references', 'runtime-map.md'],
+  },
+  {
+    path: 'templates/harness.config.json.tmpl',
+    source: ['templates', 'harness.config.json.tmpl'],
+  },
+];
 const AGENTS_START = '<!-- HARNESS:START -->';
 const AGENTS_END = '<!-- HARNESS:END -->';
 const TOML_START = '# OH-MY-HARNESS:START';
@@ -82,17 +92,6 @@ function getSettingsPath(root, scope) {
   return join(root, SETTINGS_PROJECT);
 }
 
-// --- SCOPE ---
-function parseScope() {
-  const idx = args.indexOf('--scope');
-  if (idx !== -1 && args[idx + 1]) {
-    const val = args[idx + 1].toLowerCase();
-    if (val === 'user' || val === 'project') return val;
-  }
-  if (args.includes('--global')) return 'user';
-  return null;
-}
-
 async function promptScope() {
   // Non-interactive (piped, CI, or test): default to project
   if (!process.stdin.isTTY || process.env.NODE_TEST_CONTEXT || process.env.OMH_SKIP_GLOBAL) {
@@ -130,9 +129,11 @@ function showDuck() {
 
 // --- INIT ---
 async function initClaude(root, scope) {
-  const omh = omhDir(root);
+  const installRoot = claudeInstallRoot(root, scope);
+  const stateRoot = claudeStateRoot(root, scope);
+  const omh = omhDir(stateRoot);
   const hooksDir = join(omh, 'hooks');
-  const cmdDir = join(root, COMMANDS_DIR);
+  const cmdDir = join(installRoot, COMMANDS_DIR);
   const isFirstRun = !existsSync(join(omh, 'harness.config.json'));
   const totalSteps = 8;
 
@@ -157,7 +158,10 @@ async function initClaude(root, scope) {
 
   const configDest = join(omh, 'harness.config.json');
   if (!existsSync(configDest)) {
-    cpSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), configDest);
+    writeFileAtomic(
+      configDest,
+      readFileSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), 'utf8'),
+    );
     logDone('Created harness.config.json');
   } else {
     logDone('Config preserved (existing)');
@@ -208,24 +212,28 @@ async function initClaude(root, scope) {
 
   // Step 5: CLAUDE.md
   logStep(5, totalSteps, 'CLAUDE.md');
-  appendClaudeMd(root);
+  appendClaudeMd(root, scope);
   logDone('Harness instructions injected');
 
   // Step 6: .gitignore
   logStep(6, totalSteps, '.gitignore');
-  updateGitignore(root, 'add');
-  logDone('.claude/.omh/ added to .gitignore');
+  if (scope === 'project') {
+    updateGitignore(root, 'add');
+    logDone('.claude/.omh/ added to .gitignore');
+  } else {
+    logInfo('User-scoped state is outside the project; .gitignore unchanged');
+  }
 
   // Step 7: HUD
   logStep(7, totalSteps, 'HUD Status Line');
-  installHud(root);
+  installHud(root, scope);
   logDone('Status line configured');
 
   // Step 8: Project Skills
   logStep(8, totalSteps, 'Project Skills');
   const configForSkills = JSON.parse(readFileSync(join(omh, 'harness.config.json'), 'utf8'));
   if (configForSkills.features?.skillScaffolding !== false) {
-    const skillsDir = join(root, '.claude', 'skills');
+    const skillsDir = join(installRoot, '.claude', 'skills');
     if (existsSync(skillsDir) && readdirSync(skillsDir).length > 0) {
       logDone('Project skills preserved (existing)');
     } else {
@@ -239,7 +247,7 @@ async function initClaude(root, scope) {
         const { detectConventions } = await import('../lib/detect.mjs');
         conventions = detectConventions(root);
       }
-      const result = scaffoldProjectSkills(root, conventions);
+      const result = scaffoldProjectSkills(installRoot, conventions);
       if (result.created.length > 0) {
         logDone(`${result.created.length} project skills scaffolded (${conventions.language || 'generic'})`);
         logInfo(result.created.join(', '));
@@ -255,22 +263,37 @@ async function initClaude(root, scope) {
   log('');
   log(`  ${GREEN}${BOLD}oh-my-harness is ready!${RESET}`);
   log('');
-  log(`  ${DIM}Config ${RESET} .claude/.omh/harness.config.json`);
+  const configLabel = scope === 'user'
+    ? join(getUserHome(), '.claude', '.omh', 'harness.config.json')
+    : '.claude/.omh/harness.config.json';
+  log(`  ${DIM}Config ${RESET} ${configLabel}`);
   log(`  ${DIM}Scope  ${RESET} ${scopeLabel}`);
   log(`  ${DIM}Hooks  ${RESET} 8 active (6 events)`);
-  log(`  ${DIM}Skills ${RESET} project skills in .claude/skills/`);
+  log(`  ${DIM}Skills ${RESET} ${scope === 'user' ? 'user' : 'project'} skills in .claude/skills/`);
   log(`  ${DIM}Agents ${RESET} haiku / sonnet / opus`);
   log('');
   log(`  ${DIM}Use ${RESET}${BOLD}/set-harness${RESET}${DIM} to customize anytime.${RESET}`);
   log('');
 }
 
-function codexInstallRoot(root, scope) {
+function scopedInstallRoot(root, scope) {
   return scope === 'user' ? getUserHome() : root;
 }
 
+function claudeInstallRoot(root, scope) {
+  return scopedInstallRoot(root, scope);
+}
+
+function claudeStateRoot(root, scope) {
+  return scopedInstallRoot(root, scope);
+}
+
+function codexInstallRoot(root, scope) {
+  return scopedInstallRoot(root, scope);
+}
+
 function codexStateRoot(root, scope) {
-  return scope === 'user' ? getUserHome() : root;
+  return scopedInstallRoot(root, scope);
 }
 
 function codexOwnershipPath(root, scope) {
@@ -294,34 +317,39 @@ function managedBlockBounds(content, startMarker, endMarker) {
   return { start, end: endStart + endMarker.length };
 }
 
-function upsertManagedBlock(filePath, block, startMarker, endMarker) {
-  const normalized = block.trim();
+function writeFileAtomic(filePath, content) {
   mkdirSync(dirname(filePath), { recursive: true });
-
-  if (!existsSync(filePath)) {
-    writeFileSync(filePath, normalized + '\n');
-    return true;
+  const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    writeFileSync(temporaryPath, content);
+    renameSync(temporaryPath, filePath);
+  } catch (error) {
+    if (existsSync(temporaryPath)) rmSync(temporaryPath);
+    throw error;
   }
+}
 
-  const existing = readFileSync(filePath, 'utf8');
+function renderManagedBlock(existing, block, startMarker, endMarker) {
+  const normalized = block.trim();
   const bounds = managedBlockBounds(existing, startMarker, endMarker);
-  if (bounds?.malformed) {
-    console.error(`  ${WARN} Preserved ${filePath}: incomplete oh-my-harness markers.`);
-    return false;
-  }
-
+  if (bounds?.malformed) return null;
   if (bounds) {
-    writeFileSync(
-      filePath,
-      existing.slice(0, bounds.start) + normalized + existing.slice(bounds.end),
-    );
-    return true;
+    return existing.slice(0, bounds.start) + normalized + existing.slice(bounds.end);
   }
-
   const separator = existing.length === 0
     ? ''
     : existing.endsWith('\n\n') ? '' : existing.endsWith('\n') ? '\n' : '\n\n';
-  writeFileSync(filePath, existing + separator + normalized + '\n');
+  return existing + separator + normalized + '\n';
+}
+
+function upsertManagedBlock(filePath, block, startMarker, endMarker) {
+  const existing = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '';
+  const rendered = renderManagedBlock(existing, block, startMarker, endMarker);
+  if (rendered === null) {
+    console.error(`  ${WARN} Preserved ${filePath}: incomplete oh-my-harness markers.`);
+    return false;
+  }
+  writeFileAtomic(filePath, rendered);
   return true;
 }
 
@@ -349,9 +377,11 @@ function removeManagedBlock(filePath, startMarker, endMarker) {
 function ensureSharedConfig(root, scope) {
   const omh = omhDir(codexStateRoot(root, scope));
   const configDest = join(omh, 'harness.config.json');
-  mkdirSync(omh, { recursive: true });
   if (!existsSync(configDest)) {
-    cpSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), configDest);
+    writeFileAtomic(
+      configDest,
+      readFileSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), 'utf8'),
+    );
     return 'created';
   }
   return 'preserved';
@@ -457,7 +487,7 @@ function managedCodexSkillNames() {
 }
 
 function emptyCodexOwnership() {
-  return { version: 1, roles: [], skills: [] };
+  return { version: 1, roles: [], skills: [], assets: [] };
 }
 
 function parseCodexOwnership(root, scope) {
@@ -472,14 +502,18 @@ function parseCodexOwnership(root, scope) {
       parsed?.version !== 1
       || !Array.isArray(parsed.roles)
       || !Array.isArray(parsed.skills)
+      || (parsed.assets !== undefined && !Array.isArray(parsed.assets))
     ) {
       return { ok: false, ownership: emptyCodexOwnership() };
     }
     const allowedRoles = new Set(CODEX_ROLES);
     const allowedSkills = new Set(managedCodexSkillNames());
+    const allowedAssets = new Set(CODEX_SKILL_ASSETS.map(asset => asset.path));
+    const assets = parsed.assets || [];
     if (
       parsed.roles.some(role => typeof role !== 'string' || !allowedRoles.has(role))
       || parsed.skills.some(skill => typeof skill !== 'string' || !allowedSkills.has(skill))
+      || assets.some(asset => typeof asset !== 'string' || !allowedAssets.has(asset))
     ) {
       return { ok: false, ownership: emptyCodexOwnership() };
     }
@@ -489,6 +523,7 @@ function parseCodexOwnership(root, scope) {
         version: 1,
         roles: [...new Set(parsed.roles)].sort(),
         skills: [...new Set(parsed.skills)].sort(),
+        assets: [...new Set(assets)].sort(),
       },
     };
   } catch {
@@ -504,6 +539,7 @@ function writeCodexOwnership(root, scope, ownership) {
     version: 1,
     roles: [...new Set(ownership.roles)].sort(),
     skills: [...new Set(ownership.skills)].sort(),
+    assets: [...new Set(ownership.assets)].sort(),
   }, null, 2) + '\n');
   renameSync(temporaryPath, manifestPath);
 }
@@ -523,6 +559,19 @@ function installCodexSkills(root, scope, ownership) {
     owned.add(skill);
   }
   ownership.skills = [...owned].sort();
+}
+
+function installCodexSkillAssets(root, scope, ownership) {
+  const installRoot = codexInstallRoot(root, scope);
+  const owned = new Set(ownership.assets);
+  for (const asset of CODEX_SKILL_ASSETS) {
+    const destination = join(installRoot, asset.path);
+    if (existsSync(destination) && !owned.has(asset.path)) continue;
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(join(PKG_ROOT, ...asset.source), destination);
+    owned.add(asset.path);
+  }
+  ownership.assets = [...owned].sort();
 }
 
 function installCodexRoles(root, scope, ownership) {
@@ -547,18 +596,425 @@ function withoutBlock(content, startMarker, endMarker) {
   return content.slice(0, bounds.start) + content.slice(bounds.end);
 }
 
-function mergeCodexConfig(root, scope, ownership) {
+function tomlError(message) {
+  return new Error(`Invalid TOML: ${message}`);
+}
+
+function splitTomlExpressions(content) {
+  const expressions = [];
+  let current = '';
+  let squareDepth = 0;
+  let curlyDepth = 0;
+  let quote = null;
+
+  for (let index = 0; index < content.length; index += 1) {
+    let char = content[index];
+    if (quote) {
+      if (quote === 'basic' || quote === 'literal') {
+        if (char === '\n' || char === '\r') {
+          throw tomlError('single-line string contains a newline');
+        }
+        current += char;
+        if (quote === 'basic' && char === '\\') {
+          index += 1;
+          if (index >= content.length) throw tomlError('unterminated escape sequence');
+          current += content[index];
+        } else if (
+          (quote === 'basic' && char === '"')
+          || (quote === 'literal' && char === "'")
+        ) {
+          quote = null;
+        }
+        continue;
+      }
+
+      const delimiter = quote === 'multibasic' ? '"""' : "'''";
+      if (content.startsWith(delimiter, index)) {
+        current += delimiter;
+        index += 2;
+        quote = null;
+        continue;
+      }
+      current += char;
+      if (quote === 'multibasic' && char === '\\' && index + 1 < content.length) {
+        current += content[index + 1];
+        index += 1;
+      }
+      continue;
+    }
+
+    if (char === '#') {
+      while (index < content.length && content[index] !== '\n') index += 1;
+      if (index >= content.length) break;
+      char = '\n';
+    } else if (content.startsWith('"""', index)) {
+      current += '"""';
+      index += 2;
+      quote = 'multibasic';
+      continue;
+    } else if (content.startsWith("'''", index)) {
+      current += "'''";
+      index += 2;
+      quote = 'multiliteral';
+      continue;
+    } else if (char === '"') {
+      current += char;
+      quote = 'basic';
+      continue;
+    } else if (char === "'") {
+      current += char;
+      quote = 'literal';
+      continue;
+    }
+
+    if (char === '[') squareDepth += 1;
+    if (char === ']') squareDepth -= 1;
+    if (char === '{') curlyDepth += 1;
+    if (char === '}') curlyDepth -= 1;
+    if (squareDepth < 0 || curlyDepth < 0) {
+      throw tomlError('unmatched closing delimiter');
+    }
+
+    if (char === '\n' && squareDepth === 0 && curlyDepth === 0) {
+      if (current.trim()) expressions.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  if (quote) throw tomlError('unterminated string');
+  if (squareDepth !== 0 || curlyDepth !== 0) throw tomlError('unclosed delimiter');
+  if (current.trim()) expressions.push(current.trim());
+  return expressions;
+}
+
+function decodeTomlBasicKey(content) {
+  let decoded = '';
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+    if (char !== '\\') {
+      decoded += char;
+      continue;
+    }
+    const escape = content[++index];
+    const simple = {
+      b: '\b',
+      t: '\t',
+      n: '\n',
+      f: '\f',
+      r: '\r',
+      '"': '"',
+      '\\': '\\',
+    };
+    if (simple[escape] !== undefined) {
+      decoded += simple[escape];
+      continue;
+    }
+    const width = escape === 'u' ? 4 : escape === 'U' ? 8 : 0;
+    if (width === 0) throw tomlError(`invalid key escape \\${escape || ''}`);
+    const hex = content.slice(index + 1, index + 1 + width);
+    if (!new RegExp(`^[0-9A-Fa-f]{${width}}$`).test(hex)) {
+      throw tomlError('invalid Unicode key escape');
+    }
+    const codePoint = Number.parseInt(hex, 16);
+    try {
+      decoded += String.fromCodePoint(codePoint);
+    } catch {
+      throw tomlError('invalid Unicode key code point');
+    }
+    index += width;
+  }
+  return decoded;
+}
+
+function parseTomlKey(text) {
+  const segments = [];
+  let index = 0;
+  const skipWhitespace = () => {
+    while (index < text.length && /[ \t]/.test(text[index])) index += 1;
+  };
+
+  while (index < text.length) {
+    skipWhitespace();
+    if (index >= text.length) throw tomlError('empty dotted key segment');
+
+    let segment = '';
+    if (text[index] === '"' || text[index] === "'") {
+      const delimiter = text[index++];
+      let raw = '';
+      let closed = false;
+      while (index < text.length) {
+        const char = text[index++];
+        if (char === delimiter) {
+          closed = true;
+          break;
+        }
+        if (delimiter === '"' && char === '\\') {
+          if (index >= text.length) throw tomlError('unterminated key escape');
+          raw += char + text[index++];
+        } else {
+          if (char === '\n' || char === '\r') throw tomlError('newline in quoted key');
+          raw += char;
+        }
+      }
+      if (!closed) throw tomlError('unterminated quoted key');
+      segment = delimiter === '"' ? decodeTomlBasicKey(raw) : raw;
+    } else {
+      const start = index;
+      while (index < text.length && /[A-Za-z0-9_-]/.test(text[index])) index += 1;
+      if (index === start) throw tomlError(`invalid bare key near ${text.slice(index)}`);
+      segment = text.slice(start, index);
+    }
+    segments.push(segment);
+    skipWhitespace();
+    if (index >= text.length) break;
+    if (text[index] !== '.') throw tomlError(`invalid dotted key near ${text.slice(index)}`);
+    index += 1;
+  }
+
+  if (segments.length === 0) throw tomlError('empty key');
+  return segments;
+}
+
+function findTomlEquals(expression) {
+  let quote = null;
+  for (let index = 0; index < expression.length; index += 1) {
+    const char = expression[index];
+    if (quote) {
+      if (quote === 'basic' && char === '\\') {
+        index += 1;
+      } else if (
+        (quote === 'basic' && char === '"')
+        || (quote === 'literal' && char === "'")
+      ) {
+        quote = null;
+      }
+      continue;
+    }
+    if (char === '"') quote = 'basic';
+    else if (char === "'") quote = 'literal';
+    else if (char === '=') return index;
+  }
+  return -1;
+}
+
+function skipTomlWhitespace(text, index) {
+  while (index < text.length && /\s/.test(text[index])) index += 1;
+  return index;
+}
+
+function parseTomlStringValue(text, start) {
+  const delimiter = text[start];
+  const triple = text.startsWith(delimiter.repeat(3), start);
+  let index = start + (triple ? 3 : 1);
+  while (index < text.length) {
+    if (triple && text.startsWith(delimiter.repeat(3), index)) return index + 3;
+    const char = text[index];
+    if (!triple && char === delimiter) return index + 1;
+    if (!triple && (char === '\n' || char === '\r')) {
+      throw tomlError('newline in single-line string value');
+    }
+    if (delimiter === '"' && char === '\\') {
+      const escape = text[index + 1];
+      if (triple && (escape === '\n' || escape === '\r')) {
+        index += 2;
+        while (index < text.length && /\s/.test(text[index])) index += 1;
+        continue;
+      }
+      if ('btnfr"\\'.includes(escape)) {
+        index += 2;
+        continue;
+      }
+      const width = escape === 'u' ? 4 : escape === 'U' ? 8 : 0;
+      if (width === 0) throw tomlError(`invalid string escape \\${escape || ''}`);
+      const hex = text.slice(index + 2, index + 2 + width);
+      if (!new RegExp(`^[0-9A-Fa-f]{${width}}$`).test(hex)) {
+        throw tomlError('invalid Unicode string escape');
+      }
+      index += width + 2;
+      continue;
+    }
+    index += 1;
+  }
+  throw tomlError('unterminated string value');
+}
+
+function validTomlScalar(value) {
+  if (/^(?:true|false|[+-]?(?:inf|nan))$/.test(value)) return true;
+  if (/^[+-]?(?:0|[1-9](?:_?\d)*)(?:\.(?:\d(?:_?\d)*))?(?:[eE][+-]?\d(?:_?\d)*)?$/.test(value)) {
+    return true;
+  }
+  if (/^[+-]?0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*$/.test(value)) return true;
+  if (/^[+-]?0o[0-7](?:_?[0-7])*$/.test(value)) return true;
+  if (/^[+-]?0b[01](?:_?[01])*$/.test(value)) return true;
+  if (/^\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)?$/.test(value)) {
+    return true;
+  }
+  return /^\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value);
+}
+
+function parseTomlValueAt(text, start) {
+  let index = skipTomlWhitespace(text, start);
+  if (index >= text.length) throw tomlError('missing value');
+
+  if (text[index] === '"' || text[index] === "'") {
+    return parseTomlStringValue(text, index);
+  }
+  if (text[index] === '[') {
+    index = skipTomlWhitespace(text, index + 1);
+    if (text[index] === ']') return index + 1;
+    while (index < text.length) {
+      index = parseTomlValueAt(text, index);
+      index = skipTomlWhitespace(text, index);
+      if (text[index] === ']') return index + 1;
+      if (text[index] !== ',') throw tomlError('array values must be comma-separated');
+      index = skipTomlWhitespace(text, index + 1);
+      if (text[index] === ']') return index + 1;
+    }
+    throw tomlError('unterminated array');
+  }
+  if (text[index] === '{') {
+    index = skipTomlWhitespace(text, index + 1);
+    if (text[index] === '}') return index + 1;
+    const keys = new Set();
+    while (index < text.length) {
+      const equals = findTomlEquals(text.slice(index));
+      if (equals === -1) throw tomlError('inline table entry is missing =');
+      const equalsIndex = index + equals;
+      const key = parseTomlKey(text.slice(index, equalsIndex).trim());
+      const serialized = JSON.stringify(key);
+      if (keys.has(serialized)) throw tomlError('duplicate inline table key');
+      keys.add(serialized);
+      index = parseTomlValueAt(text, equalsIndex + 1);
+      index = skipTomlWhitespace(text, index);
+      if (text[index] === '}') return index + 1;
+      if (text[index] !== ',') throw tomlError('inline table entries must be comma-separated');
+      index = skipTomlWhitespace(text, index + 1);
+      if (text[index] === '}') throw tomlError('inline tables cannot end with a trailing comma');
+    }
+    throw tomlError('unterminated inline table');
+  }
+
+  const scalarStart = index;
+  while (index < text.length && !/[\],}]/.test(text[index])) index += 1;
+  const scalar = text.slice(scalarStart, index).trim();
+  if (!validTomlScalar(scalar)) throw tomlError(`invalid scalar value ${scalar}`);
+  return scalarStart + text.slice(scalarStart, index).lastIndexOf(scalar) + scalar.length;
+}
+
+function validateTomlValue(text) {
+  const end = skipTomlWhitespace(text, parseTomlValueAt(text, 0));
+  if (end !== text.length) throw tomlError(`unexpected value suffix ${text.slice(end)}`);
+}
+
+function tomlPathKey(path) {
+  return JSON.stringify(path);
+}
+
+function analyzeToml(content) {
+  const tables = new Set();
+  const values = new Set();
+  const explicitTables = new Set();
+  const arrayTables = new Set();
+  let currentTable = [];
+  let currentArrayTable = null;
+
+  const defineTable = (path, isArray) => {
+    for (let length = 1; length < path.length; length += 1) {
+      const prefixKey = tomlPathKey(path.slice(0, length));
+      if (values.has(prefixKey)) throw tomlError('table extends an existing value');
+      tables.add(prefixKey);
+    }
+    const key = tomlPathKey(path);
+    if (values.has(key)) throw tomlError('table conflicts with an existing value');
+    if (isArray) {
+      if (explicitTables.has(key)) throw tomlError('array table conflicts with a table');
+      arrayTables.add(key);
+    } else {
+      if (explicitTables.has(key) || arrayTables.has(key)) {
+        throw tomlError('duplicate table declaration');
+      }
+      explicitTables.add(key);
+    }
+    tables.add(key);
+  };
+
+  for (const expression of splitTomlExpressions(content)) {
+    if (expression.startsWith('[[')) {
+      if (!expression.endsWith(']]') || expression.length < 5) {
+        throw tomlError('malformed array table header');
+      }
+      currentTable = parseTomlKey(expression.slice(2, -2).trim());
+      defineTable(currentTable, true);
+      currentArrayTable = tomlPathKey(currentTable);
+      continue;
+    }
+    if (expression.startsWith('[')) {
+      if (!expression.endsWith(']') || expression.length < 3) {
+        throw tomlError('malformed table header');
+      }
+      currentTable = parseTomlKey(expression.slice(1, -1).trim());
+      defineTable(currentTable, false);
+      currentArrayTable = null;
+      continue;
+    }
+
+    const equals = findTomlEquals(expression);
+    if (equals === -1) throw tomlError('key/value expression is missing =');
+    const key = parseTomlKey(expression.slice(0, equals).trim());
+    validateTomlValue(expression.slice(equals + 1).trim());
+    const path = [...currentTable, ...key];
+    for (let length = 1; length < path.length; length += 1) {
+      const prefixKey = tomlPathKey(path.slice(0, length));
+      if (values.has(prefixKey)) throw tomlError('dotted key extends an existing value');
+      tables.add(prefixKey);
+    }
+    const pathKey = tomlPathKey(path);
+    const repeatedArrayValue = currentArrayTable
+      && path.length > currentTable.length
+      && values.has(pathKey);
+    if (
+      !repeatedArrayValue
+      && (values.has(pathKey) || tables.has(pathKey))
+    ) {
+      throw tomlError('duplicate or conflicting key');
+    }
+    values.add(pathKey);
+  }
+
+  return { tables, values };
+}
+
+function tomlPathOccupied(analysis, path) {
+  for (let length = 1; length <= path.length; length += 1) {
+    if (analysis.values.has(tomlPathKey(path.slice(0, length)))) return true;
+  }
+  return analysis.tables.has(tomlPathKey(path));
+}
+
+function projectedCodexRoles(root, scope, ownership) {
+  const rolesRoot = join(codexInstallRoot(root, scope), '.codex', 'agents');
+  const projected = new Set(ownership.roles);
+  for (const role of CODEX_ROLES) {
+    const destination = join(rolesRoot, `${role}.toml`);
+    if (!existsSync(destination) || projected.has(role)) projected.add(role);
+  }
+  return { ...ownership, roles: [...projected].sort() };
+}
+
+function codexConfigCandidate(root, scope, ownership) {
   const configPath = join(codexInstallRoot(root, scope), CODEX_CONFIG);
   const existing = existsSync(configPath) ? readFileSync(configPath, 'utf8') : '';
   const userOwned = withoutBlock(existing, TOML_START, TOML_END);
-  const memoryDeclaration = /^\s*\[mcp_servers\.(?:omh-memory|"omh-memory"|'omh-memory')\]\s*(?:#.*)?$/m;
+  const analysis = analyzeToml(userOwned);
   const descriptions = {
     quick: 'Fast read-only lookup, search, and narrow exploration.',
     standard: 'Focused implementation, testing, debugging, and review.',
     architect: 'Architecture, complex planning, security review, and independent verification.',
   };
   const lines = [TOML_START];
-  if (!memoryDeclaration.test(userOwned)) {
+  if (!tomlPathOccupied(analysis, ['mcp_servers', 'omh-memory'])) {
     const memoryLauncher = join(
       omhDir(codexStateRoot(root, scope)),
       'runtime',
@@ -572,15 +1028,33 @@ function mergeCodexConfig(root, scope, ownership) {
   }
   for (const role of CODEX_ROLES) {
     if (!ownership.roles.includes(role)) continue;
-    const declaration = new RegExp(`^\\s*\\[agents\\.${role}\\]\\s*$`, 'm');
-    if (declaration.test(userOwned)) continue;
+    if (tomlPathOccupied(analysis, ['agents', role])) continue;
     lines.push('');
     lines.push(`[agents.${role}]`);
     lines.push(`description = ${JSON.stringify(descriptions[role])}`);
-    lines.push(`config_file = "agents/${role}.toml"`);
+    lines.push('config_file = "agents/' + role + '.toml"');
   }
   lines.push(TOML_END);
-  return upsertManagedBlock(configPath, lines.join('\n'), TOML_START, TOML_END);
+  const candidate = renderManagedBlock(
+    existing,
+    lines.join('\n'),
+    TOML_START,
+    TOML_END,
+  );
+  if (candidate === null) throw tomlError('incomplete oh-my-harness markers');
+  analyzeToml(candidate);
+  return candidate;
+}
+
+function mergeCodexConfig(root, scope, ownership) {
+  const configPath = join(codexInstallRoot(root, scope), CODEX_CONFIG);
+  try {
+    writeFileAtomic(configPath, codexConfigCandidate(root, scope, ownership));
+    return true;
+  } catch (error) {
+    console.error(`  ${WARN} Preserved ${configPath}: ${error.message}.`);
+    return false;
+  }
 }
 
 function installCodexGuidance(root, scope) {
@@ -595,6 +1069,43 @@ function installCodexGuidance(root, scope) {
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function harnessConfigPath(root, scope) {
+  return join(omhDir(codexStateRoot(root, scope)), 'harness.config.json');
+}
+
+function parseHarnessConfigFile(filePath) {
+  const parsed = JSON.parse(readFileSync(filePath, 'utf8'));
+  if (!isPlainObject(parsed)) throw new Error('top level must be an object');
+  if (parsed.features !== undefined && !isPlainObject(parsed.features)) {
+    throw new Error('features must be an object');
+  }
+  return parsed;
+}
+
+function validateHarnessConfig(root, scope, { allowMissing = false } = {}) {
+  const configPath = harnessConfigPath(root, scope);
+  if (!existsSync(configPath)) {
+    if (!allowMissing) {
+      console.error(`  ${WARN} oh-my-harness is not initialized at ${configPath}.`);
+      return false;
+    }
+    try {
+      parseHarnessConfigFile(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'));
+      return true;
+    } catch (error) {
+      console.error(`  ${WARN} Bundled safe harness config is invalid: ${error.message}.`);
+      return false;
+    }
+  }
+  try {
+    parseHarnessConfigFile(configPath);
+    return true;
+  } catch (error) {
+    console.error(`  ${WARN} Invalid harness.config.json at ${configPath}: ${error.message}.`);
+    return false;
+  }
 }
 
 function validateCodexHooks(root, scope) {
@@ -625,7 +1136,12 @@ function validateCodexHooks(root, scope) {
   return true;
 }
 
-function validateManagedMarkers(filePath, startMarker, endMarker) {
+function validateManagedMarkers(
+  filePath,
+  startMarker,
+  endMarker,
+  { runtimeName = 'Codex', operation = 'refresh' } = {},
+) {
   if (!existsSync(filePath)) return true;
   const content = readFileSync(filePath, 'utf8');
   const startCount = content.split(startMarker).length - 1;
@@ -636,9 +1152,66 @@ function validateManagedMarkers(filePath, startMarker, endMarker) {
     && content.indexOf(startMarker) < content.indexOf(endMarker);
   if (hasNoMarkers || hasOneOrderedBlock) return true;
   console.error(
-    `  ${WARN} Cannot refresh Codex: incomplete oh-my-harness markers in ${filePath}.`,
+    `  ${WARN} Cannot ${operation} ${runtimeName}: incomplete oh-my-harness markers in ${filePath}.`,
   );
   return false;
+}
+
+function validateClaudeSettings(root, scope, operation = 'refresh') {
+  const settingsPath = getSettingsPath(root, scope);
+  if (!existsSync(settingsPath)) return true;
+  let settings;
+  try {
+    settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+  } catch {
+    console.error(`  ${WARN} Cannot ${operation} Claude: invalid settings JSON at ${settingsPath}.`);
+    return false;
+  }
+  if (
+    !isPlainObject(settings)
+    || (settings.hooks !== undefined && !isPlainObject(settings.hooks))
+    || (settings.agents !== undefined && !isPlainObject(settings.agents))
+  ) {
+    console.error(`  ${WARN} Cannot ${operation} Claude: invalid settings structure at ${settingsPath}.`);
+    return false;
+  }
+  for (const groups of Object.values(settings.hooks || {})) {
+    if (
+      !Array.isArray(groups)
+      || groups.some(group => !isPlainObject(group) || !Array.isArray(group.hooks))
+    ) {
+      console.error(`  ${WARN} Cannot ${operation} Claude: invalid hooks structure at ${settingsPath}.`);
+      return false;
+    }
+  }
+  return true;
+}
+
+function validateClaudeHudSettings(root, scope, operation = 'refresh') {
+  const settingsPath = getUserSettingsPath();
+  if (!existsSync(settingsPath) || settingsPath === getSettingsPath(root, scope)) return true;
+  try {
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    if (!isPlainObject(settings)) throw new Error('top level must be an object');
+    return true;
+  } catch (error) {
+    console.error(
+      `  ${WARN} Cannot ${operation} Claude: invalid user HUD settings at `
+      + `${settingsPath} (${error.message}).`,
+    );
+    return false;
+  }
+}
+
+function preflightClaude(root, scope, operation = 'refresh') {
+  if (!validateManagedMarkers(
+    join(claudeInstallRoot(root, scope), CLAUDE_MD),
+    AGENTS_START,
+    AGENTS_END,
+    { runtimeName: 'Claude', operation },
+  )) return false;
+  return validateClaudeSettings(root, scope, operation)
+    && validateClaudeHudSettings(root, scope, operation);
 }
 
 function preflightCodex(root, scope) {
@@ -658,6 +1231,19 @@ function preflightCodex(root, scope) {
   if (!parsedOwnership.ok) {
     console.error(
       `  ${WARN} Cannot refresh Codex: invalid ownership manifest at ${codexOwnershipPath(root, scope)}.`,
+    );
+    return false;
+  }
+  try {
+    codexConfigCandidate(
+      root,
+      scope,
+      projectedCodexRoles(root, scope, parsedOwnership.ownership),
+    );
+  } catch (error) {
+    console.error(
+      `  ${WARN} Cannot refresh Codex: invalid TOML at `
+      + `${join(codexInstallRoot(root, scope), CODEX_CONFIG)} (${error.message}).`,
     );
     return false;
   }
@@ -690,6 +1276,7 @@ function refreshCodex(root, scope) {
   const runtimeRoot = installCodexRuntime(root, scope);
   if (!mergeCodexHooks(root, scope, runtimeRoot)) return false;
   installCodexSkills(root, scope, ownership);
+  installCodexSkillAssets(root, scope, ownership);
   installCodexRoles(root, scope, ownership);
   if (!mergeCodexConfig(root, scope, ownership)) return false;
   if (!installCodexGuidance(root, scope)) return false;
@@ -724,14 +1311,24 @@ async function initCodex(root, scope) {
 }
 
 async function init(root, scope, runtime) {
+  if (
+    (runtimeIncludes(runtime, 'claude') && !preflightClaude(root, scope, 'initialize'))
+    || !validateHarnessConfig(root, scope, { allowMissing: true })
+    || (runtimeIncludes(runtime, 'codex') && !preflightCodex(root, scope))
+  ) {
+    process.exitCode = 1;
+    return false;
+  }
   if (runtimeIncludes(runtime, 'claude')) await initClaude(root, scope);
   if (runtimeIncludes(runtime, 'codex')) await initCodex(root, scope);
+  return process.exitCode !== 1;
 }
 
 // --- HUD ---
-function installHud(root) {
+function installHud(root, scope = 'project') {
+  const stateRoot = claudeStateRoot(root, scope);
   const hudSrc = join(PKG_ROOT, 'hud', 'omh-hud.mjs');
-  const hudDest = join(omhDir(root), 'hud');
+  const hudDest = join(omhDir(stateRoot), 'hud');
   mkdirSync(hudDest, { recursive: true });
   cpSync(hudSrc, join(hudDest, 'omh-hud.mjs'));
 
@@ -749,7 +1346,7 @@ function installHud(root) {
   const existing = userSettings.statusLine;
   const isOmh = existing?.command?.includes('omh-hud');
   if (!existing || isOmh) {
-    const hudPath = join(omhDir(root), 'hud', 'omh-hud.mjs');
+    const hudPath = join(omhDir(stateRoot), 'hud', 'omh-hud.mjs');
     userSettings.statusLine = {
       type: 'command',
       command: `node "${hudPath}"`,
@@ -761,57 +1358,55 @@ function installHud(root) {
 
 // --- MERGE SETTINGS ---
 function mergeSettings(root, scope = 'project') {
-  const settingsPath = getSettingsPath(root, scope);
-
-  // Skip writing to user scope during tests
-  if (scope === 'user' && (process.env.NODE_TEST_CONTEXT || process.env.OMH_SKIP_GLOBAL)) {
-    // Fallback: write to project scope instead during tests
-    scope = 'project';
-  }
-
   const actualPath = getSettingsPath(root, scope);
   let settings = {};
   if (existsSync(actualPath)) {
     try { settings = JSON.parse(readFileSync(actualPath, 'utf8')); } catch {}
   }
 
-  const hooksBase = '.claude/.omh/hooks';
-  const gate = `bash ${hooksBase}/hook-gate.sh`;
+  const hooksBase = scope === 'user'
+    ? join(omhDir(claudeStateRoot(root, scope)), 'hooks')
+    : '.claude/.omh/hooks';
+  const hookPath = (file) => scope === 'user'
+    ? shellQuote(join(hooksBase, file))
+    : `${hooksBase}/${file}`;
+  const gate = `bash ${hookPath('hook-gate.sh')}`;
+  const gatedHook = (file, features) => `${gate} ${hookPath(file)} ${features}`;
   // 2-Stage Prompt Evaluation: bash pre-filter checks feature flag before spawning Node.
   // Format: bash hook-gate.sh <hook-script> <feature1> [feature2 ...]
   const harnessHooks = {
     SessionStart: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/session-start.mjs conventionSetup`, timeout: 10 }],
+      hooks: [{ type: 'command', command: gatedHook('session-start.mjs', 'conventionSetup'), timeout: 10 }],
     }],
     UserPromptSubmit: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/pre-prompt.mjs autoPlanMode ambiguityDetection`, timeout: 3 }],
+      hooks: [{ type: 'command', command: gatedHook('pre-prompt.mjs', 'autoPlanMode ambiguityDetection'), timeout: 3 }],
     }],
     PreToolUse: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/dangerous-guard.mjs dangerousGuard`, timeout: 3 }],
+      hooks: [{ type: 'command', command: gatedHook('dangerous-guard.mjs', 'dangerousGuard'), timeout: 3 }],
     }],
     PostToolUse: [{
       matcher: '*',
       hooks: [
-        { type: 'command', command: `${gate} ${hooksBase}/commit-convention.mjs commitConvention`, timeout: 3 },
-        { type: 'command', command: `${gate} ${hooksBase}/scope-guard.mjs scopeGuard`, timeout: 3 },
-        { type: 'command', command: `${gate} ${hooksBase}/usage-tracker.mjs usageTracking`, timeout: 3 },
+        { type: 'command', command: gatedHook('commit-convention.mjs', 'commitConvention'), timeout: 3 },
+        { type: 'command', command: gatedHook('scope-guard.mjs', 'scopeGuard'), timeout: 3 },
+        { type: 'command', command: gatedHook('usage-tracker.mjs', 'usageTracking'), timeout: 3 },
       ],
     }],
     PreCompact: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/pre-compact.mjs contextSnapshot`, timeout: 5 }],
+      hooks: [{ type: 'command', command: gatedHook('pre-compact.mjs', 'contextSnapshot'), timeout: 5 }],
     }],
     Stop: [{
       matcher: '*',
-      hooks: [{ type: 'command', command: `${gate} ${hooksBase}/post-task.mjs testEnforcement`, timeout: 5 }],
+      hooks: [{ type: 'command', command: gatedHook('post-task.mjs', 'testEnforcement'), timeout: 5 }],
     }],
   };
 
   // Read config for model routing
-  const configPath = join(omhDir(root), 'harness.config.json');
+  const configPath = harnessConfigPath(root, scope);
   let config;
   try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { config = {}; }
 
@@ -936,15 +1531,17 @@ function buildClaudeMdContent(root, config) {
   return s.join('\n');
 }
 
-function appendClaudeMd(root) {
-  const mdPath = join(root, CLAUDE_MD);
+function appendClaudeMd(root, scope = 'project') {
+  const installRoot = claudeInstallRoot(root, scope);
+  const stateRoot = claudeStateRoot(root, scope);
+  const mdPath = join(installRoot, CLAUDE_MD);
 
   // Read config
-  const configPath = join(omhDir(root), 'harness.config.json');
+  const configPath = harnessConfigPath(root, scope);
   let config;
   try { config = JSON.parse(readFileSync(configPath, 'utf8')); } catch { config = {}; }
 
-  const content = buildClaudeMdContent(root, config);
+  const content = buildClaudeMdContent(stateRoot, config);
 
   // Ensure .claude dir exists
   mkdirSync(dirname(mdPath), { recursive: true });
@@ -968,14 +1565,17 @@ function appendClaudeMd(root) {
 }
 
 // --- UPDATE ---
-function updateClaude(root) {
-  if (!existsSync(join(omhDir(root), 'harness.config.json'))) {
+function updateClaude(root, scope = 'project') {
+  if (!claudeInstalledAt(root, scope)) {
     console.error(`  ${WARN} oh-my-harness not initialized. Run: ${BOLD}oh-my-harness init${RESET}`);
-    process.exit(1);
+    process.exitCode = 1;
+    return false;
   }
-  mergeSettings(root);
-  appendClaudeMd(root);
+  ensureSharedConfig(root, scope);
+  mergeSettings(root, scope);
+  appendClaudeMd(root, scope);
   log(`  ${CHECK} oh-my-harness updated from config.`);
+  return true;
 }
 
 function codexInstalledAt(root, scope) {
@@ -1018,10 +1618,11 @@ function codexRegisteredAt(root, scope) {
   return false;
 }
 
-function claudeInstalled(root) {
-  const mdPath = join(root, CLAUDE_MD);
+function claudeInstalledAt(root, scope) {
+  const installRoot = claudeInstallRoot(root, scope);
+  const mdPath = join(installRoot, CLAUDE_MD);
   if (existsSync(mdPath) && readFileSync(mdPath, 'utf8').includes(AGENTS_START)) return true;
-  const settingsPath = join(root, SETTINGS_PROJECT);
+  const settingsPath = getSettingsPath(root, scope);
   if (!existsSync(settingsPath)) return false;
   try {
     const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
@@ -1035,9 +1636,12 @@ function claudeInstalled(root) {
   }
 }
 
+function claudeInstalled(root) {
+  return claudeInstalledAt(root, 'project');
+}
+
 function selectedCodexScope(root) {
-  const explicit = parseScope();
-  if (explicit) return explicit;
+  if (requestedScope) return requestedScope;
   if (codexRegisteredAt(root, 'project')) return 'project';
   if (codexRegisteredAt(root, 'user')) return 'user';
   return 'project';
@@ -1052,11 +1656,7 @@ function updateCodex(root, scope) {
     process.exitCode = 1;
     return false;
   }
-  if (!existsSync(join(omhDir(codexStateRoot(root, scope)), 'harness.config.json'))) {
-    console.error(`  ${WARN} oh-my-harness not initialized. Run: ${BOLD}oh-my-harness init --runtime codex${RESET}`);
-    process.exitCode = 1;
-    return false;
-  }
+  ensureSharedConfig(root, scope);
   if (!refreshCodex(root, scope)) {
     process.exitCode = 1;
     return false;
@@ -1067,15 +1667,48 @@ function updateCodex(root, scope) {
 }
 
 function update(root, runtime) {
-  if (runtimeIncludes(runtime, 'claude')) updateClaude(root);
-  if (runtimeIncludes(runtime, 'codex')) updateCodex(root, selectedCodexScope(root));
+  const claudeScope = requestedScope || 'project';
+  const codexScope = requestedScope || selectedCodexScope(root);
+  if (runtimeIncludes(runtime, 'claude') && !claudeInstalledAt(root, claudeScope)) {
+    console.error(`  ${WARN} oh-my-harness not initialized. Run: ${BOLD}oh-my-harness init${RESET}`);
+    process.exitCode = 1;
+    return false;
+  }
+  if (runtimeIncludes(runtime, 'codex') && !codexRegisteredAt(root, codexScope)) {
+    console.error(
+      `  ${WARN} oh-my-harness Codex runtime is not installed for ${codexScope} scope. `
+      + `Run: ${BOLD}oh-my-harness init --runtime codex --scope ${codexScope}${RESET}`,
+    );
+    process.exitCode = 1;
+    return false;
+  }
+  if (runtimeIncludes(runtime, 'claude') && !preflightClaude(root, claudeScope, 'refresh')) {
+    process.exitCode = 1;
+    return false;
+  }
+  const configScopes = new Set();
+  if (runtimeIncludes(runtime, 'claude')) configScopes.add(claudeScope);
+  if (runtimeIncludes(runtime, 'codex')) configScopes.add(codexScope);
+  for (const scope of configScopes) {
+    if (!validateHarnessConfig(root, scope, { allowMissing: true })) {
+      process.exitCode = 1;
+      return false;
+    }
+  }
+  if (runtimeIncludes(runtime, 'codex') && !preflightCodex(root, codexScope)) {
+    process.exitCode = 1;
+    return false;
+  }
+  if (runtimeIncludes(runtime, 'claude')) updateClaude(root, claudeScope);
+  if (runtimeIncludes(runtime, 'codex')) updateCodex(root, codexScope);
+  return process.exitCode !== 1;
 }
 
 // --- STATUS ---
-function statusClaude(root) {
-  const configPath = join(omhDir(root), 'harness.config.json');
+function statusClaude(root, scope = 'project') {
+  const configPath = harnessConfigPath(root, scope);
   if (!existsSync(configPath)) {
-    log(`  ${WARN} oh-my-harness is not initialized in this project.`);
+    log(`  ${WARN} oh-my-harness is not initialized for ${scope} scope.`);
     return;
   }
   const config = JSON.parse(readFileSync(configPath, 'utf8'));
@@ -1108,18 +1741,19 @@ function runtimeInstallLabel(installed, scope) {
   return `${GREEN}installed${RESET}${scope ? ` ${DIM}(${scope})${RESET}` : ''}`;
 }
 
-function statusRuntimes(root, runtime, scope) {
-  const codexInstalled = codexInstalledAt(root, scope);
-  const configPath = join(omhDir(codexStateRoot(root, scope)), 'harness.config.json');
+function statusRuntimes(root, runtime, claudeScope, codexScope) {
+  const codexInstalled = codexInstalledAt(root, codexScope);
+  const configScope = runtimeIncludes(runtime, 'codex') ? codexScope : claudeScope;
+  const configPath = harnessConfigPath(root, configScope);
 
   log(`\n  ${BOLD}oh-my-harness${RESET} ${DIM}v${getVersion()}${RESET}`);
   log('');
   log(`  ${BOLD}Runtimes${RESET}`);
   if (runtimeIncludes(runtime, 'claude')) {
-    log(`    Claude: ${runtimeInstallLabel(claudeInstalled(root), 'project')}`);
+    log(`    Claude: ${runtimeInstallLabel(claudeInstalledAt(root, claudeScope), claudeScope)}`);
   }
   if (runtimeIncludes(runtime, 'codex')) {
-    log(`    Codex : ${runtimeInstallLabel(codexInstalled, codexInstalled ? scope : '')}`);
+    log(`    Codex : ${runtimeInstallLabel(codexInstalled, codexInstalled ? codexScope : '')}`);
   }
 
   log('');
@@ -1139,13 +1773,17 @@ function statusRuntimes(root, runtime, scope) {
 }
 
 function status(root, runtime) {
-  if (runtime === 'claude') statusClaude(root);
-  else statusRuntimes(root, runtime, selectedCodexScope(root));
+  const claudeScope = requestedScope || 'project';
+  const codexScope = requestedScope || selectedCodexScope(root);
+  if (runtime === 'claude') statusClaude(root, claudeScope);
+  else statusRuntimes(root, runtime, claudeScope, codexScope);
 }
 
 // --- RESET ---
-function resetClaude(root, { preserveShared = false } = {}) {
-  const omh = omhDir(root);
+function resetClaude(root, scope = 'project', { preserveShared = false } = {}) {
+  const installRoot = claudeInstallRoot(root, scope);
+  const stateRoot = claudeStateRoot(root, scope);
+  const omh = omhDir(stateRoot);
   if (existsSync(omh)) {
     if (preserveShared) {
       logInfo('Shared .claude/.omh/ state preserved for Codex');
@@ -1154,20 +1792,20 @@ function resetClaude(root, { preserveShared = false } = {}) {
       logDone('Removed .claude/.omh/');
     }
   }
-  logInfo('Project skills (.claude/skills/) preserved — user-owned');
+  logInfo(`${scope === 'user' ? 'User' : 'Project'} skills (.claude/skills/) preserved — user-owned`);
   // Remove commands
   const allCmds = [
     'set-harness.md', 'init-project.md',
     'agent-spawn.md', 'agent-status.md', 'agent-apply.md', 'agent-stop.md',
   ];
   for (const cmd of allCmds) {
-    const p = join(root, COMMANDS_DIR, cmd);
+    const p = join(installRoot, COMMANDS_DIR, cmd);
     if (existsSync(p)) rmSync(p);
   }
   logDone('Removed harness commands');
 
   // Remove CLAUDE.md block
-  const mdPath = join(root, CLAUDE_MD);
+  const mdPath = join(installRoot, CLAUDE_MD);
   if (existsSync(mdPath)) {
     const content = readFileSync(mdPath, 'utf8');
     if (content.includes('<!-- HARNESS:START -->')) {
@@ -1180,17 +1818,14 @@ function resetClaude(root, { preserveShared = false } = {}) {
     }
   }
 
-  // Clean hooks from settings.local.json
-  cleanSettings(join(root, SETTINGS_PROJECT));
-
-  // Also clean user settings if they have harness hooks
-  if (!process.env.NODE_TEST_CONTEXT && !process.env.OMH_SKIP_GLOBAL) {
-    cleanSettings(getUserSettingsPath());
-  }
+  cleanSettings(getSettingsPath(root, scope));
+  cleanHudSetting(getUserSettingsPath(), stateRoot);
   logDone('Cleaned settings');
 
   // Clean .gitignore unless the shared state is still used by Codex
-  if (preserveShared) {
+  if (scope !== 'project') {
+    logInfo('Project .gitignore unchanged for user-scoped reset');
+  } else if (preserveShared) {
     logInfo('.gitignore preserved for shared Codex state');
   } else {
     updateGitignore(root, 'remove');
@@ -1247,19 +1882,25 @@ function resetCodex(root, scope, { preserveShared = false } = {}) {
     const skillPath = join(skillsRoot, skill);
     if (existsSync(skillPath)) rmSync(skillPath, { recursive: true });
   }
+  for (const asset of ownership.assets) {
+    const assetPath = join(installRoot, asset);
+    if (existsSync(assetPath)) rmSync(assetPath);
+  }
   const ownershipPath = codexOwnershipPath(root, scope);
   if (existsSync(ownershipPath)) rmSync(ownershipPath);
 
   removeEmptyDirectory(join(codexRoot, 'agents'));
   removeEmptyDirectory(codexRoot);
   removeEmptyDirectory(skillsRoot);
+  removeEmptyDirectory(join(installRoot, '.agents', 'references'));
   removeEmptyDirectory(join(installRoot, '.agents'));
+  removeEmptyDirectory(join(installRoot, 'templates'));
 
   const stateRoot = codexStateRoot(root, scope);
   const runtimeRoot = join(omhDir(stateRoot), 'runtime');
   if (existsSync(runtimeRoot)) rmSync(runtimeRoot, { recursive: true });
 
-  if (!preserveShared && !claudeInstalled(root)) {
+  if (!preserveShared && !claudeInstalledAt(root, scope)) {
     const omh = omhDir(stateRoot);
     if (existsSync(omh)) rmSync(omh, { recursive: true });
     if (scope === 'project') updateGitignore(root, 'remove');
@@ -1280,20 +1921,31 @@ function codexRegistrationUsesStateRoot(root, stateRoot) {
 }
 
 function reset(root, runtime) {
-  if (runtime === 'claude') {
-    resetClaude(root, {
-      preserveShared: codexRegistrationUsesStateRoot(root, root),
-    });
-    return;
+  const scope = requestedScope || (runtimeIncludes(runtime, 'codex')
+    ? selectedCodexScope(root)
+    : 'project');
+  if (
+    (runtimeIncludes(runtime, 'claude') && !preflightClaude(root, scope, 'reset'))
+    || (runtimeIncludes(runtime, 'codex') && !preflightCodex(root, scope))
+  ) {
+    process.exitCode = 1;
+    return false;
   }
-  const scope = selectedCodexScope(root);
+
+  if (runtime === 'claude') {
+    const stateRoot = claudeStateRoot(root, scope);
+    resetClaude(root, scope, {
+      preserveShared: codexRegistrationUsesStateRoot(root, stateRoot),
+    });
+    return true;
+  }
   if (runtime === 'codex') {
     resetCodex(root, scope);
-    return;
+    return true;
   }
   resetCodex(root, scope, { preserveShared: true });
-  resetClaude(root, {
-    preserveShared: codexRegistrationUsesStateRoot(root, root),
+  resetClaude(root, scope, {
+    preserveShared: codexRegistrationUsesStateRoot(root, claudeStateRoot(root, scope)),
   });
   const selectedStateRoot = codexStateRoot(root, scope);
   const selectedSharedState = omhDir(selectedStateRoot);
@@ -1305,6 +1957,7 @@ function reset(root, runtime) {
       logDone('Removed selected-scope shared .claude/.omh/ state');
     }
   }
+  return true;
 }
 
 function cleanSettings(settingsPath) {
@@ -1335,6 +1988,15 @@ function cleanSettings(settingsPath) {
   } catch {}
 }
 
+function cleanHudSetting(settingsPath, stateRoot) {
+  if (!existsSync(settingsPath)) return;
+  const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+  const managedHud = join(omhDir(stateRoot), 'hud', 'omh-hud.mjs');
+  if (!settings.statusLine?.command?.includes(managedHud)) return;
+  delete settings.statusLine;
+  writeFileAtomic(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+}
+
 // --- GITIGNORE ---
 function updateGitignore(root, action) {
   const giPath = join(root, '.gitignore');
@@ -1362,10 +2024,10 @@ function showHelp() {
 
   ${BOLD}Usage${RESET}
     oh-my-harness init ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
-    oh-my-harness update ${DIM}[--runtime claude|codex|both]${RESET}
-    oh-my-harness status ${DIM}[--runtime claude|codex|both]${RESET}
+    oh-my-harness update ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
+    oh-my-harness status ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
     oh-my-harness usage ${DIM}[--verbose]${RESET}               Show tool statistics
-    oh-my-harness reset ${DIM}[--runtime claude|codex|both]${RESET}
+    oh-my-harness reset ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
 
   ${BOLD}Skill Scaffolding${RESET}
     On init, project-specific skills (code-review, test-write, lint-fix) are
@@ -1432,11 +2094,19 @@ function usage(root) {
 
 // --- ENTRY ---
 const root = projectRoot();
-const runtime = parseRuntime(args);
+let runtime;
+let requestedScope;
+try {
+  runtime = parseRuntime(args);
+  requestedScope = parseScope(args);
+} catch (error) {
+  console.error(`  ${WARN} ${error.message}`);
+  process.exit(1);
+}
 switch (command) {
   case 'init': {
     const configExists = existsSync(join(omhDir(root), 'harness.config.json'));
-    let scope = parseScope();
+    let scope = requestedScope;
     if (!scope) {
       if (configExists || !process.stdin.isTTY || process.env.NODE_TEST_CONTEXT || process.env.OMH_SKIP_GLOBAL) {
         scope = 'project';

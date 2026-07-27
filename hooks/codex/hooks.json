@@ -1,5 +1,5 @@
 {
-  "description": "oh-my-harness Codex hooks — convention detection, test enforcement, guard rails",
+  "description": "oh-my-harness Codex hooks — ordered convention, verification, and safety pipelines",
   "hooks": {
     "SessionStart": [
       {
@@ -7,8 +7,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" session-start.mjs",
-            "timeout": 10,
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" SessionStart",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\codex\\run.mjs\" SessionStart",
+            "timeout": 12,
             "statusMessage": "oh-my-harness: loading project conventions"
           }
         ]
@@ -20,8 +21,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" pre-prompt.mjs",
-            "timeout": 3,
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" UserPromptSubmit",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\codex\\run.mjs\" UserPromptSubmit",
+            "timeout": 5,
             "statusMessage": "oh-my-harness: evaluating request"
           }
         ]
@@ -33,21 +35,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" dangerous-guard.mjs",
-            "timeout": 3,
-            "statusMessage": "oh-my-harness: checking command safety"
-          },
-          {
-            "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" plan-gate.mjs",
-            "timeout": 5,
-            "statusMessage": "oh-my-harness: checking plan gate"
-          },
-          {
-            "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" scope-guard.mjs",
-            "timeout": 3,
-            "statusMessage": "oh-my-harness: checking scope"
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" PreToolUse",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\codex\\run.mjs\" PreToolUse",
+            "timeout": 15,
+            "statusMessage": "oh-my-harness: checking safety, plan, and scope"
           }
         ]
       }
@@ -58,15 +49,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" commit-convention.mjs",
-            "timeout": 3,
-            "statusMessage": "oh-my-harness: checking commit convention"
-          },
-          {
-            "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" usage-tracker.mjs",
-            "timeout": 3,
-            "statusMessage": "oh-my-harness: recording usage"
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" PostToolUse",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\codex\\run.mjs\" PostToolUse",
+            "timeout": 8,
+            "statusMessage": "oh-my-harness: recording tool outcome"
           }
         ]
       }
@@ -77,8 +63,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" pre-compact.mjs",
-            "timeout": 5,
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" PreCompact",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\codex\\run.mjs\" PreCompact",
+            "timeout": 7,
             "statusMessage": "oh-my-harness: saving context"
           }
         ]
@@ -90,21 +77,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" loop-guard.mjs",
-            "timeout": 600,
-            "statusMessage": "oh-my-harness: evaluating loop"
-          },
-          {
-            "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" verify-gate.mjs",
-            "timeout": 600,
-            "statusMessage": "oh-my-harness: verifying completion"
-          },
-          {
-            "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" post-task.mjs",
-            "timeout": 5,
-            "statusMessage": "oh-my-harness: checking task completion"
+            "command": "node \"${PLUGIN_ROOT}/hooks/codex/run.mjs\" Stop",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\codex\\run.mjs\" Stop",
+            "timeout": 1210,
+            "statusMessage": "oh-my-harness: evaluating loop, verification, and completion"
           }
         ]
       }
