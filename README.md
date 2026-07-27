@@ -1,6 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-7C3AED?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6TTIgMTJsMTAgNSAxMC01LTEwLTUtMTAgNXoiIGZpbGw9IndoaXRlIi8+PC9zdmc+" alt="Claude Code Plugin" />
-  <img src="https://img.shields.io/badge/version-0.4.5-blue?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Codex-Plugin-10A37F?style=for-the-badge" alt="Codex Plugin" />
+  <img src="https://img.shields.io/badge/version-0.5.0-blue?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=for-the-badge&logo=node.js" alt="Node >= 18" />
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge" alt="MIT License" />
   <img src="https://img.shields.io/github/actions/workflow/status/Hoya324/oh-my-harness/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI" />
@@ -9,7 +10,7 @@
 <h1 align="center">Oh My Harness</h1>
 
 <p align="center">
-  <strong>Spec-driven, weight-aware autonomous Claude Code harness. Define the goal — it loops until done.</strong><br/>
+  <strong>Spec-driven autonomous harness for Claude Code and Codex. Define the goal — it loops until done.</strong><br/>
   An autonomous loop that self-verifies and cross-verifies, weight-aware routing with multi-model verification, a living on-disk state anchor, plus smart defaults, test enforcement, model routing, and multi-agent orchestration — all through native hooks.
 </p>
 
@@ -59,14 +60,51 @@ Everywhere else, OMH stays the harness you barely notice — smart defaults that
 
 ## Quick Start
 
-Install via the Claude Code plugin marketplace — one copy-paste:
+Install the plugin for your runtime:
 
 ```bash
+# Claude Code
 claude plugin marketplace add Hoya324/oh-my-harness
 claude plugin install oh-my-harness@oh-my-harness
+
+# Codex CLI / desktop local marketplace source
+codex plugin marketplace add Hoya324/oh-my-harness
 ```
 
-That's it. **Zero setup required** — OMH works on sensible defaults the moment it's installed, and harness features (including the autonomous loop) activate automatically. `/harness-setup` is optional and only needed if you want to tune `harness.config.json`.
+Or install runtime files directly into the current project:
+
+```bash
+# If the local CLI is not already on PATH
+git clone https://github.com/Hoya324/oh-my-harness.git
+cd oh-my-harness
+npm link
+cd /path/to/your-project
+
+# Local CLI installation into a project
+oh-my-harness init --runtime codex
+oh-my-harness init --runtime both
+```
+
+The Codex command above registers the marketplace source; install or enable `oh-my-harness` from the resulting marketplace listing in the Codex CLI or desktop flow available in your build. The local CLI default remains `--runtime claude`; `--runtime both` registers both runtimes while sharing one configuration and state store. **Zero setup is required** after plugin installation. `/harness-setup` is optional and only needed to tune `harness.config.json`.
+
+## Codex Support
+
+OMH 0.5.0 supports the Codex CLI and Codex desktop through the native [`.codex-plugin`](.codex-plugin/plugin.json) manifest, Codex lifecycle hooks, Codex-native skills, durable `AGENTS.md` guidance, and quick/standard/architect roles.
+
+| Capability | Claude Code | Codex CLI / desktop |
+|---|---|---|
+| Native plugin | `.claude-plugin` marketplace entry | `.codex-plugin` via the local marketplace |
+| Lifecycle guards | Claude hook contract | Codex hook bridge; dangerous and explicit scope violations deny before tool use |
+| Spec / loop / verify | `/omh-spec`, `/omh-loop`, `/omh-verify` | Same public skill names and shared core |
+| Project skills | `.claude/skills/` | `.agents/skills/` |
+| Roles / collaboration | Claude agents and team tools | Codex quick/standard/architect roles and collaboration tools |
+| tmux/worktree workers | Claude process | Selectable Claude or `codex exec` process |
+| Status | Claude status-line HUD | `omh-status` plus hook messages; no custom Claude HUD in Codex |
+| State and memory | `.claude/.omh/` and `~/.omh/memory/graph.jsonl` | The same stores |
+
+Codex keeps its native hook-trust boundary. After installing, open `/hooks`, review the OMH lifecycle hooks, and trust only the entries you approve; the installer never bypasses this review. The custom status-line HUD remains Claude-only because Codex has no equivalent extension surface. In Codex, invoke `omh-status` for the current tier, loop, verification, usage, and MCP memory status.
+
+> The `.claude/.omh/` name is retained for compatibility. Claude Code and Codex intentionally read and write the same config, `STATE.md`, loop state, usage data, and learnings. Long-term memory also remains shared at `~/.omh/memory/graph.jsonl`.
 
 ---
 
@@ -80,9 +118,12 @@ claude plugin update oh-my-harness@oh-my-harness
 
 # Re-apply updated hooks and dictionary
 /harness-setup
+
+# Refresh only managed Codex files for the installed scope
+oh-my-harness update --runtime codex
 ```
 
-> **Note:** updating preserves your existing `harness.config.json`. Only hooks, commands, and CLAUDE.md instructions are refreshed.
+> **Note:** runtime-aware updates refresh only OMH-managed hooks, built-in skills, roles, and marked guidance blocks. User config, shared state, unrelated hooks, custom skills, and unmarked `AGENTS.md` / `CLAUDE.md` content are preserved. `reset --runtime codex` removes managed Codex registration while preserving shared project state when Claude remains installed; `reset --runtime both` removes both registrations and removes `.claude/.omh/` only when no remaining registration uses it. Neither reset deletes the separate long-term memory store at `~/.omh/memory/graph.jsonl`.
 
 ---
 
@@ -224,7 +265,7 @@ OMH is built in **four layers**, so the load-bearing decision logic stays pure a
 |-------|-----------|------|
 | **① Hooks** | 9 `.mjs` on Claude Code lifecycle events | Thin **fail-open** wrappers — gather impure signals (git, time, stdin) and emit decisions |
 | **② Pure Core** (`lib/`) | `loop` · `tier` · `detect` · `config` · `verify` · `state` · `dictionary` | All decision logic as **pure functions** (no fs / git / time) → fully unit-tested |
-| **③ Skills** | 12 slash commands | User-invoked workflows (`/omh-loop`, `/omh-verify`, `/team-spawn`, …) |
+| **③ Skills** | 13 Claude / 14 Codex skills | User-invoked workflows (`/omh-loop`, `/omh-verify`, `/team-spawn`, `omh-status`, …) |
 | **④ Agents** | `quick` · `standard` · `architect` | Model routing — haiku / sonnet / opus by task weight |
 
 ```mermaid

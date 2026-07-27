@@ -2,6 +2,30 @@
 
 Settings live in `.claude/.omh/harness.config.json`.
 
+## Codex Support
+
+The local CLI accepts exactly `--runtime claude|codex|both`; omitting it keeps the backward-compatible `claude` default. `--scope project|user` applies to runtime registration:
+
+```bash
+oh-my-harness init --runtime codex --scope project
+oh-my-harness init --runtime both --scope project
+oh-my-harness update --runtime codex
+oh-my-harness status --runtime both
+oh-my-harness reset --runtime codex
+```
+
+Codex project installs use `.codex/hooks.json`, `.codex/agents/`, `.agents/skills/`, and a marked block in `AGENTS.md`. Claude and Codex still share `.claude/.omh/harness.config.json` and all project state. Updates refresh only managed hooks, roles, built-in skills, and marked guidance; user config, custom skills, unrelated hooks, and unmarked guidance are preserved. A single-runtime reset preserves shared state while the other runtime remains registered. Reset can remove unused `.claude/.omh/` project state, but it never deletes the separate long-term memory store at `~/.omh/memory/graph.jsonl`.
+
+Codex role defaults are overrideable configuration, not workflow invariants:
+
+| Role | Default model | Reasoning | Intended work |
+|---|---|---|---|
+| quick | `gpt-5.6-luna` | low | Read-only lookup and narrow exploration |
+| standard | `gpt-5.6-terra` | medium | Focused implementation, testing, and review |
+| architect | `gpt-5.6-sol` | xhigh | Architecture, complex planning, security, independent verification |
+
+After installation, review trust in `/hooks`. Codex status is available through `omh-status`; the Claude HUD is not installed in Codex.
+
 ## Config Resolution (project → global)
 
 Hooks resolve config in this order, using the first that exists:
@@ -209,9 +233,9 @@ Each tier sets its own iteration and wall-clock budgets and verification depth. 
 
 ---
 
-## Weight Routing (`tier3` + `verify` blocks)
+## Weight Routing (`tier3` block)
 
-The weight-aware harness classifies every prompt by weight into **Tier 1** (light), **Tier 2** (medium), and **Tier 3** (heavy/risky). Tier 3 forces verification before completion. The `tier3.*` thresholds decide when a task is escalated to Tier 3, and the `verify.*` block configures the `/omh-verify` skill — N rounds of independent, multi-model verification and fix, using Claude / GPT-codex / Gemini lenses (external verifiers run read-only). See **[Weight Routing](verify.md)** for the full design.
+The weight-aware harness classifies every prompt by weight into **Tier 1** (light), **Tier 2** (medium), and **Tier 3** (heavy/risky). Tier 3 forces verification before completion. The `tier3.*` thresholds decide when a task is escalated. See **[Weight Routing](verify.md)** for the full design.
 
 Settings are deep-merged into defaults, so you only need to override the fields you care about.
 
@@ -220,6 +244,13 @@ Settings are deep-merged into defaults, so you only need to override the fields 
 | `tier3.taskThreshold` | number | `5` | Task count that forces Tier 3 |
 | `tier3.fileThreshold` | number | `5` | Changed-file count that forces Tier 3 |
 | `tier3.domainKeywords` | string[] | `[]` | Project terms that force Tier 3 (e.g. `["payment","결제"]`) |
+
+## Independent Verification (`verify` block)
+
+The `verify.*` block configures `/omh-verify`: N independent multi-model verify+fix rounds using Claude, GPT-codex, and Gemini lenses. External verifiers are read-only.
+
+| Path | Type | Default | Description |
+|------|------|---------|-------------|
 | `verify.rounds` | number | `3` | `/omh-verify` independent verify rounds |
 | `verify.stopWhenClean` | bool | `true` | Stop early when a round finds nothing |
 | `verify.autoFix` | bool | `false` | Auto-apply fixes (vs. confirm first) |
@@ -238,11 +269,13 @@ Settings are deep-merged into defaults, so you only need to override the fields 
 ## CLI Commands
 
 ```bash
-oh-my-harness init      # Set up harness in current project
-oh-my-harness update    # Regenerate settings from config
-oh-my-harness status    # Show current configuration
-oh-my-harness reset     # Remove all harness files (clean uninstall)
+oh-my-harness init [--runtime claude|codex|both] [--scope project|user]
+oh-my-harness update [--runtime claude|codex|both]
+oh-my-harness status [--runtime claude|codex|both]
+oh-my-harness reset [--runtime claude|codex|both]
 ```
+
+The runtime default is `claude`. `update` refreshes managed runtime files and `reset` removes only the selected managed registration, preserving user-owned content and state still used by another registration.
 
 ## Slash Commands (Skills)
 
@@ -262,6 +295,7 @@ oh-my-harness reset     # Remove all harness files (clean uninstall)
 | `/omh-loop [goal\|SPEC.md]` | Run the spec-driven autonomous loop |
 | `/omh-loop stop` | Abort the running loop (kill switch) |
 | `/omh-verify [N]` | Run N rounds of independent multi-model verify+fix (Claude/GPT-codex/Gemini lenses) |
+| `omh-status` | Codex-only read-only summary of tier, loop, verification, usage, and memory |
 
 ---
 

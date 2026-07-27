@@ -1,6 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-7C3AED?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6TTIgMTJsMTAgNSAxMC01LTEwLTUtMTAgNXoiIGZpbGw9IndoaXRlIi8+PC9zdmc+" alt="Claude Code Plugin" />
-  <img src="https://img.shields.io/badge/version-0.4.5-blue?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Codex-Plugin-10A37F?style=for-the-badge" alt="Codex Plugin" />
+  <img src="https://img.shields.io/badge/version-0.5.0-blue?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=for-the-badge&logo=node.js" alt="Node >= 18" />
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge" alt="MIT License" />
   <img src="https://img.shields.io/github/actions/workflow/status/Hoya324/oh-my-harness/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI" />
@@ -9,7 +10,7 @@
 <h1 align="center">Oh My Harness</h1>
 
 <p align="center">
-  <strong>스펙 기반 자율 Claude Code 하네스. 목표만 정의하면 — 끝날 때까지 루프를 돕니다.</strong><br/>
+  <strong>Claude Code와 Codex를 위한 스펙 기반 자율 하네스. 목표만 정의하면 — 끝날 때까지 루프를 돕니다.</strong><br/>
   스스로 검증하고 교차 검증하는 자율 루프에, 스마트 기본값, 테스트 강제, 모델 라우팅, 멀티 에이전트 오케스트레이션까지 — 모두 네이티브 훅으로 동작합니다.
 </p>
 
@@ -59,14 +60,51 @@ graph LR
 
 ## 빠른 시작
 
-Claude Code 플러그인 마켓플레이스로 설치하세요 — 한 번에 복사·붙여넣기:
+사용할 런타임에 맞는 플러그인을 설치하세요:
 
 ```bash
+# Claude Code
 claude plugin marketplace add Hoya324/oh-my-harness
 claude plugin install oh-my-harness@oh-my-harness
+
+# Codex CLI / desktop local marketplace source
+codex plugin marketplace add Hoya324/oh-my-harness
 ```
 
-이게 전부입니다. **설정은 전혀 필요 없습니다** — OMH는 설치되는 순간 합리적인 기본값으로 동작하고, 하네스 기능(자율 루프 포함)이 자동으로 활성화됩니다. `/harness-setup`은 선택 사항이며, `harness.config.json`을 직접 조정하고 싶을 때만 사용하면 됩니다.
+또는 현재 프로젝트에 런타임 파일을 직접 설치할 수 있습니다:
+
+```bash
+# 로컬 CLI가 PATH에 없다면
+git clone https://github.com/Hoya324/oh-my-harness.git
+cd oh-my-harness
+npm link
+cd /path/to/your-project
+
+# Local CLI installation into a project
+oh-my-harness init --runtime codex
+oh-my-harness init --runtime both
+```
+
+위 Codex 명령은 마켓플레이스 소스를 등록합니다. 사용 중인 Codex CLI 또는 데스크톱 빌드가 제공하는 마켓플레이스 흐름에서 `oh-my-harness`를 설치하거나 활성화하세요. 로컬 CLI 기본값은 계속 `--runtime claude`입니다. `--runtime both`는 두 런타임을 등록하되 하나의 설정과 상태 저장소를 공유합니다. 플러그인 설치 후에는 **별도 설정이 필요 없습니다**. `/harness-setup`은 `harness.config.json`을 조정할 때만 사용하는 선택 사항입니다.
+
+## Codex 지원
+
+OMH 0.5.0은 네이티브 [`.codex-plugin`](.codex-plugin/plugin.json) 매니페스트, Codex 수명주기 훅, Codex 네이티브 스킬, 지속 지침용 `AGENTS.md`, quick/standard/architect 역할을 통해 Codex CLI와 Codex 데스크톱을 지원합니다.
+
+| 기능 | Claude Code | Codex CLI / 데스크톱 |
+|---|---|---|
+| 네이티브 플러그인 | `.claude-plugin` 마켓플레이스 항목 | 로컬 마켓플레이스의 `.codex-plugin` |
+| 수명주기 가드 | Claude 훅 계약 | Codex 훅 브리지; 위험 명령과 명시적 범위 위반은 도구 실행 전에 거부 |
+| 스펙 / 루프 / 검증 | `/omh-spec`, `/omh-loop`, `/omh-verify` | 같은 공개 스킬 이름과 공유 코어 |
+| 프로젝트 스킬 | `.claude/skills/` | `.agents/skills/` |
+| 역할 / 협업 | Claude 에이전트와 팀 도구 | Codex quick/standard/architect 역할과 협업 도구 |
+| tmux/worktree 워커 | Claude 프로세스 | Claude 또는 `codex exec` 프로세스 선택 |
+| 상태 | Claude 상태 표시줄 HUD | `omh-status`와 훅 메시지; Codex에는 Claude 커스텀 HUD 없음 |
+| 상태와 메모리 | `.claude/.omh/`, `~/.omh/memory/graph.jsonl` | 동일한 저장소 |
+
+Codex의 네이티브 훅 신뢰 경계는 그대로 유지됩니다. 설치 후 `/hooks`를 열어 OMH 수명주기 훅을 검토하고 승인할 항목만 신뢰하세요. 설치 프로그램은 이 검토를 우회하지 않습니다. Codex에는 동등한 확장 지점이 없으므로 커스텀 상태 표시줄 HUD는 Claude 전용입니다. Codex에서는 `omh-status`를 호출해 현재 티어, 루프, 검증, 사용량, MCP 메모리 상태를 확인하세요.
+
+> 호환성을 위해 `.claude/.omh/`라는 이름을 유지합니다. Claude Code와 Codex는 동일한 설정, `STATE.md`, 루프 상태, 사용량 데이터, 학습을 의도적으로 함께 읽고 씁니다. 장기 메모리도 `~/.omh/memory/graph.jsonl`에서 공유합니다.
 
 ---
 
@@ -80,9 +118,12 @@ claude plugin update oh-my-harness@oh-my-harness
 
 # 업데이트된 훅과 사전 적용을 위해 재초기화
 /harness-setup
+
+# 설치된 범위의 OMH 관리 Codex 파일만 갱신
+oh-my-harness update --runtime codex
 ```
 
-> **참고:** 업데이트는 기존 `harness.config.json`을 보존합니다. 훅, 명령어, CLAUDE.md 지시문만 갱신됩니다.
+> **참고:** 런타임별 업데이트는 OMH가 관리하는 훅, 내장 스킬, 역할, 표시된 지침 블록만 갱신합니다. 사용자 설정, 공유 상태, 무관한 훅, 커스텀 스킬, 표시 블록 밖의 `AGENTS.md` / `CLAUDE.md` 내용은 보존됩니다. `reset --runtime codex`는 관리되는 Codex 등록을 제거하되 Claude가 남아 있으면 공유 프로젝트 상태를 보존합니다. `reset --runtime both`는 두 등록을 제거하고, 남은 등록이 사용하지 않을 때만 `.claude/.omh/`를 제거합니다. 두 reset 모두 별도 장기 메모리 저장소 `~/.omh/memory/graph.jsonl`은 삭제하지 않습니다.
 
 ---
 
@@ -207,7 +248,7 @@ OMH는 **네 개의 계층**으로 구성됩니다. 핵심 판단 로직은 순�
 |------|-----------|------|
 | **① 훅** | Claude Code 생명주기 이벤트 위의 9개 `.mjs` | 얇은 **fail-open** 래퍼 — 부수효과 신호(git, 시간, stdin)를 모아 판단을 출력 |
 | **② 순수 코어** (`lib/`) | `loop` · `tier` · `detect` · `config` · `verify` · `state` · `dictionary` | 모든 판단 로직을 **순수 함수**(fs / git / 시간 없음)로 → 완전한 단위 테스트 |
-| **③ 스킬** | 12개 슬래시 명령어 | 사용자 호출 워크플로우 (`/omh-loop`, `/omh-verify`, `/team-spawn`, …) |
+| **③ 스킬** | Claude 13개 / Codex 14개 스킬 | 사용자 호출 워크플로우 (`/omh-loop`, `/omh-verify`, `/team-spawn`, `omh-status`, …) |
 | **④ 에이전트** | `quick` · `standard` · `architect` | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
 
 ```mermaid

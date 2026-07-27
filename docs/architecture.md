@@ -1,6 +1,21 @@
 # Architecture
 
-OMH works in two modes — as a **Claude Code plugin** (recommended) or via a **local CLI** run from a cloned repo. Both produce the same result: native hooks, skills, and CLAUDE.md instructions.
+OMH installs as a native **Claude Code or Codex plugin** (recommended), or through the **local CLI**. Every mode uses the same core decisions; only native hook contracts, skills, role guidance, and registration destinations differ.
+
+## Codex Support
+
+OMH uses a shared runtime-neutral core with thin native adapters. The existing `.claude-plugin` package and Claude hooks remain intact; [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json) points Codex at `codex/skills/`, `.mcp.json`, and `hooks/codex/hooks.json`. The Codex bridge normalizes event input, invokes the same hook and `lib/` decisions, then serializes Codex-native output.
+
+Runtime-specific registrations remain separate, but project state does not. Both runtimes read `.claude/.omh/harness.config.json`, `STATE.md`, `loop-state.json`, learnings, conventions, and usage. They also share `~/.omh/memory/graph.jsonl`. Retaining `.claude/.omh/` avoids a state migration in this compatibility release.
+
+| Contract | Claude Code | Codex |
+|---|---|---|
+| Context injection | Claude hook output | `hookSpecificOutput.additionalContext` |
+| Pre-tool denial | Claude permission contract | `hookSpecificOutput.permissionDecision = "deny"` |
+| Stop continuation | Top-level `decision: "block"` | The same top-level continuation shape |
+| Fail-open success | Exit zero | Exit zero with no output |
+
+Auxiliary observation hooks fail open. Dangerous commands and explicit scope-policy violations fail closed. Codex hook trust remains native and must be reviewed in `/hooks`.
 
 ## Layers
 
@@ -10,7 +25,7 @@ OMH is built in four layers. The design rule: **all decision logic lives in pure
 |-------|-----------|------|
 | **① Hooks** | 9 `.mjs` on Claude Code lifecycle events (`hooks/`) | Thin **fail-open** wrappers — gather impure signals and emit decisions; any error stays silent rather than trapping the session |
 | **② Pure Core** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | Decision logic as **pure functions** (no fs / git / `Date.now` / child_process) → fully unit-tested |
-| **③ Skills** | 12 slash commands (`skills/`) | User-invoked workflows: setup, agents, teams, spec / loop / verify |
+| **③ Skills** | 13 Claude skills (`skills/`) / 14 Codex skills (`codex/skills/`) | User-invoked workflows: setup, agents, teams, spec / loop / verify / Codex status |
 | **④ Agents** | `quick` / `standard` / `architect` (`agents/`) | Model routing — haiku / sonnet / opus by task weight |
 
 Each Claude Code lifecycle event triggers exactly one hook (the `Stop` event is where the autonomous loop lives):
@@ -178,14 +193,16 @@ The classifier is pure and unit-tested; the hook is a thin wrapper that emits th
 
 ## Plugin Mode (recommended)
 
-The plugin system handles hook registration and skill loading automatically:
+Claude Code loads `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, and `skills/`. Codex loads `.codex-plugin`, Codex hooks/skills, and `AGENTS.md`; both point into the same core:
 
 ```
 oh-my-harness/                    <- plugin root ($CLAUDE_PLUGIN_ROOT)
 ├── .claude-plugin/
 │   ├── plugin.json               <- plugin manifest
 │   └── marketplace.json          <- marketplace listing
+├── .codex-plugin/plugin.json     <- Codex plugin manifest
 ├── CLAUDE.md                     <- system prompt (auto-injected)
+├── codex/                        <- Codex-native skills, roles, and guidance
 ├── lib/                          <- pure core libraries
 │   └── loop.mjs                  <- loop decision logic (unit-tested)
 ├── hooks/
@@ -232,7 +249,7 @@ oh-my-harness/                    <- plugin root ($CLAUDE_PLUGIN_ROOT)
 
 ## Local CLI Mode
 
-Run from a cloned repo (`node bin/cli.mjs init`, or `npm link` for an `oh-my-harness` shortcut). The CLI copies hooks and commands into your project's `.claude/` directory:
+Run from a cloned repo (`node bin/cli.mjs init`, or `npm link` for an `oh-my-harness` shortcut). The default remains a Claude project install in `.claude/`; select `--runtime codex` for `.codex/`, `.agents/skills/`, and `AGENTS.md`, or `--runtime both` for both registrations:
 
 ```
 your-project/

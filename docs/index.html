@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Oh My Harness — Smart Defaults for Claude Code</title>
-  <meta name="description" content="Claude Code harness with a spec-driven autonomous loop, smart defaults, safety guards, model routing, and multi-agent orchestration. The harness owns when to continue and when to stop.">
+  <title data-i18n="meta.title">Oh My Harness — Claude Code and Codex</title>
+  <meta name="description" data-i18n-content="meta.description" content="Native Claude Code and Codex harness with a spec-driven autonomous loop, safety guards, model routing, and multi-agent orchestration.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -45,13 +45,13 @@
 
   <!-- Hero -->
   <section class="hero">
-    <div class="hero-badge" data-i18n="index.hero.badge">v0.4.5 &middot; MIT License</div>
+    <div class="hero-badge" data-i18n="index.hero.badge">v0.5.0 &middot; Claude Code + Codex</div>
     <h1 class="hero-title" data-i18n-html="index.hero.title">
       Oh My<br><span class="gradient-text">Harness</span>
-      <span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>
+      <span class="title-sub" data-i18n="index.hero.subtitle">Native for Claude Code and Codex</span>
     </h1>
     <p class="hero-desc" data-i18n="index.hero.desc">
-      A spec-driven autonomous loop with real walls — plus safety guards, intelligent model routing, and multi-agent orchestration, all through native hooks. Define a goal once; the harness implements, self-verifies, and cross-verifies until the spec is met. Zero config, instant boost.
+      A spec-driven autonomous loop with real walls — plus safety guards, intelligent model routing, and multi-agent orchestration through native Claude Code and Codex hooks.
     </p>
     <div class="hero-install">
       <div class="install-box">
@@ -69,7 +69,7 @@
     <div class="hero-stats">
       <div class="stat"><span class="stat-num">9</span><span class="stat-label" data-i18n="index.hero.stat.hooks">Hooks</span></div>
       <div class="stat-divider"></div>
-      <div class="stat"><span class="stat-num">13</span><span class="stat-label" data-i18n="index.hero.stat.skills">Skills</span></div>
+      <div class="stat"><span class="stat-num">13/14</span><span class="stat-label" data-i18n="index.hero.stat.skills">Claude/Codex Skills</span></div>
       <div class="stat-divider"></div>
       <div class="stat"><span class="stat-num">3</span><span class="stat-label" data-i18n="index.hero.stat.agents">Agents</span></div>
       <div class="stat-divider"></div>
@@ -88,12 +88,89 @@
     </div>
   </section>
 
+  <!-- Codex support -->
+  <section class="features-section" id="codex">
+    <div class="container">
+      <span class="label-tag" data-i18n="index.codex.badge">Native in both runtimes</span>
+      <h2 class="section-title" data-i18n="index.codex.title">Claude Code and Codex, one harness</h2>
+      <p class="section-desc" data-i18n="index.codex.desc">OMH ships native manifests, lifecycle hooks, skills, and role guidance for the Codex CLI and desktop while preserving the existing Claude Code plugin.</p>
+
+      <div class="feature-rows">
+        <div class="feature-row">
+          <div class="feature-icon-col"><div class="feature-num">01</div></div>
+          <div class="feature-detail">
+            <h3 data-i18n="index.codex.installClaude">Claude Code plugin</h3>
+            <code>claude plugin marketplace add Hoya324/oh-my-harness</code><br>
+            <code>claude plugin install oh-my-harness@oh-my-harness</code>
+          </div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-icon-col"><div class="feature-num">02</div></div>
+          <div class="feature-detail">
+            <h3 data-i18n="index.codex.installCodex">Codex CLI / desktop local marketplace</h3>
+            <code>codex plugin marketplace add Hoya324/oh-my-harness</code>
+            <p data-i18n="index.codex.marketplaceNote">This registers the source; install or enable oh-my-harness from the marketplace flow in your Codex build.</p>
+          </div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-icon-col"><div class="feature-num">03</div></div>
+          <div class="feature-detail">
+            <h3 data-i18n="index.codex.installLocal">Local project installation</h3>
+            <p data-i18n="index.codex.localPrereq">If the oh-my-harness CLI is not already on PATH, clone the repository and link it first.</p>
+            <code>git clone https://github.com/Hoya324/oh-my-harness.git</code><br>
+            <code>cd oh-my-harness &amp;&amp; npm link</code><br>
+            <code>cd /path/to/your-project</code><br>
+            <code>oh-my-harness init --runtime codex</code><br>
+            <code>oh-my-harness init --runtime both</code>
+          </div>
+        </div>
+      </div>
+
+      <h3 data-i18n="index.codex.parity.title">Runtime feature parity</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="index.codex.parity.capability">Capability</th>
+              <th>Claude Code</th>
+              <th>Codex</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-i18n="index.codex.parity.hooks">Lifecycle hooks</td>
+              <td data-i18n="index.codex.parity.nativeClaude">Native Claude contract</td>
+              <td data-i18n="index.codex.parity.nativeCodex">Native Codex contract through a shared-core bridge</td>
+            </tr>
+            <tr>
+              <td data-i18n="index.codex.parity.workflows">Spec, loop, and verify</td>
+              <td>/omh-spec · /omh-loop · /omh-verify</td>
+              <td>/omh-spec · /omh-loop · /omh-verify</td>
+            </tr>
+            <tr>
+              <td data-i18n="index.codex.parity.state">Project state and memory</td>
+              <td>.claude/.omh/ · ~/.omh/memory/graph.jsonl</td>
+              <td>.claude/.omh/ · ~/.omh/memory/graph.jsonl</td>
+            </tr>
+            <tr>
+              <td data-i18n="index.codex.parity.status">Status presentation</td>
+              <td data-i18n="index.codex.parity.claudeHud">Custom status-line HUD</td>
+              <td data-i18n="index.codex.parity.codexStatus">Hook messages and omh-status</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-desc" data-i18n="index.codex.trust">After Codex installation, open /hooks and review the lifecycle hooks before trusting them. OMH never bypasses Codex's native trust boundary.</p>
+      <p class="section-desc" data-i18n="index.codex.hud">Codex has no equivalent custom status-line extension, so the Claude HUD is not rendered there. Use omh-status for tier, loop, verification, usage, and memory state.</p>
+    </div>
+  </section>
+
   <!-- How it works - Pipeline -->
   <section class="pipeline-section">
     <div class="container">
       <span class="label-tag" data-i18n="index.pipeline.tag">How it works</span>
       <h2 class="section-title" data-i18n="index.pipeline.title">The Hook Pipeline</h2>
-      <p class="section-desc" data-i18n="index.pipeline.desc">OMH hooks into Claude Code's lifecycle at every stage.</p>
+      <p class="section-desc" data-i18n="index.pipeline.desc">OMH hooks into the native Claude Code or Codex lifecycle at every stage.</p>
 
       <div class="pipeline">
         <div class="pipeline-stage">

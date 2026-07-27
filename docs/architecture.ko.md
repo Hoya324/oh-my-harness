@@ -1,6 +1,21 @@
 # 아키텍처
 
-OMH는 **Claude Code 플러그인**(권장) 또는 클론한 저장소에서 실행하는 **로컬 CLI** 두 가지 모드로 동작합니다. 둘 다 동일한 결과를 제공합니다: 네이티브 훅, 스킬, CLAUDE.md 지시문.
+OMH는 네이티브 **Claude Code 또는 Codex 플러그인**(권장), 또는 **로컬 CLI**로 설치합니다. 모든 모드는 동일한 코어 판단을 사용하며 네이티브 훅 계약, 스킬, 역할 지침, 등록 위치만 다릅니다.
+
+## Codex 지원
+
+OMH는 런타임 중립 공유 코어와 얇은 네이티브 어댑터를 사용합니다. 기존 `.claude-plugin` 패키지와 Claude 훅은 그대로 유지되고, [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json)은 Codex가 `codex/skills/`, `.mcp.json`, `hooks/codex/hooks.json`을 사용하도록 연결합니다. Codex 브리지는 이벤트 입력을 정규화하고 동일한 훅과 `lib/` 판단을 실행한 뒤 Codex 네이티브 출력으로 직렬화합니다.
+
+런타임별 등록은 분리되지만 프로젝트 상태는 분리되지 않습니다. 두 런타임은 `.claude/.omh/harness.config.json`, `STATE.md`, `loop-state.json`, 학습, 컨벤션, 사용량을 함께 읽습니다. `~/.omh/memory/graph.jsonl`도 공유합니다. 이번 호환성 릴리스에서 `.claude/.omh/`를 유지해 상태 마이그레이션을 피합니다.
+
+| 계약 | Claude Code | Codex |
+|---|---|---|
+| 컨텍스트 주입 | Claude 훅 출력 | `hookSpecificOutput.additionalContext` |
+| 도구 실행 전 거부 | Claude 권한 계약 | `hookSpecificOutput.permissionDecision = "deny"` |
+| Stop 연속 실행 | 최상위 `decision: "block"` | 동일한 최상위 연속 실행 형태 |
+| fail-open 성공 | 종료 코드 0 | 출력 없이 종료 코드 0 |
+
+보조 관측 훅은 fail-open입니다. 위험 명령과 명시적 범위 정책 위반은 fail-closed입니다. Codex 훅 신뢰는 네이티브 경계를 유지하며 `/hooks`에서 검토해야 합니다.
 
 ## 계층 구조
 
@@ -10,7 +25,7 @@ OMH는 네 개의 계층으로 구성됩니다. 설계 원칙은 이렇습니다
 |------|-----------|------|
 | **① 훅** | Claude Code 생명주기 이벤트 위의 9개 `.mjs` (`hooks/`) | 얇은 **fail-open** 래퍼 — 부수효과 신호를 모아 판단을 출력; 오류가 나도 세션을 가두지 않고 조용히 통과 |
 | **② 순수 코어** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | 판단 로직을 **순수 함수**(fs / git / `Date.now` / child_process 없음)로 → 완전한 단위 테스트 |
-| **③ 스킬** | 12개 슬래시 명령어 (`skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 |
+| **③ 스킬** | Claude 스킬 13개 (`skills/`) / Codex 스킬 14개 (`codex/skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 / Codex 상태 |
 | **④ 에이전트** | `quick` / `standard` / `architect` (`agents/`) | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
 
 각 Claude Code 생명주기 이벤트는 정확히 하나의 훅을 트리거합니다 (`Stop` 이벤트가 자율 루프가 사는 곳):
@@ -158,16 +173,30 @@ flowchart TD
 
 루프는 **계층(tier)** 구조이며(`quick` / `standard` / `deep`가 반복 횟수·벽시계 시간 예산과 검증 깊이를 정하고, 계층을 가로지르는 `maxTotalIterations` 상한이 있음), **저비용 우선 검증 사다리**(quickCheck → verify → self-review → cross-verify)를 실행합니다. 이 사다리는 빠르게 실패하고 *실제* 실패 출력을 다음 반복의 지시문으로 되먹입니다. 상태는 `.claude/.omh/loop-state.json`에 저장되며(원자적 쓰기, fail-open), 프로젝트 루트의 `PROGRESS.md`가 사람이 읽는 계획 + 로그이고, `.claude/.omh/loop-learnings.md`는 빌드/테스트 호출을 캐시합니다. 전체 `loop` 설정 블록은 [docs/loop](./loop.ko.md)과 [docs/configuration](./configuration.ko.md)을 참고하세요.
 
+## 무게 라우팅 (UserPromptSubmit 훅)
+
+`features.weightRouting`이 켜지면 `pre-prompt.mjs`가 작업 시작 전에 프롬프트를 Tier 1(가벼움), Tier 2(표준), Tier 3(무겁거나 위험함)으로 분류합니다. 순수 코어 `lib/tier.mjs`는 `lib/dictionary.mjs`의 한국어/영어 패턴과 설정된 도메인 키워드를 사용합니다. Tier 3은 완료 선언 전에 `/omh-verify`를 강제합니다. 프로젝트 설정을 먼저 읽고 없으면 전역 `~/.claude/.omh` 설정으로 fallback합니다.
+
+## 교차 모델 검증 (/omh-verify)
+
+`/omh-verify`는 현재 diff에 대해 N회의 독립 다중 모델 검증+수정을 실행합니다. 각 라운드는 Claude, GPT(`codex`), Gemini 렌즈를 새 컨텍스트에서 교대합니다. 외부 검증자는 엄격한 읽기 전용입니다. `lib/adapters/codex.mjs`는 `codex exec -s read-only`, Gemini 어댑터는 `gemini -p --approval-mode plan`을 사용합니다. `lib/verify.mjs`가 diff 캡처, 렌즈 로테이션, 라운드 계산을 담당합니다.
+
+## STATE.md — 살아있는 프로젝트 앵커
+
+`lib/state.mjs`는 `.claude/.omh/STATE.md`에 현재 목표, 단계, 결정, 진행률을 유지합니다. `session-start.mjs`가 SessionStart마다 이를 다시 주입하고 `pre-compact.mjs`가 PreCompact 전에 갱신하므로 새 세션과 컨텍스트 압축을 견딥니다. Claude Code와 Codex 훅과 스킬이 동일한 정규 상태를 공유합니다.
+
 ## 플러그인 모드 (권장)
 
-플러그인 시스템이 훅 등록과 스킬 로딩을 자동으로 처리합니다:
+Claude Code는 `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, `skills/`를 로드합니다. Codex는 `.codex-plugin`, Codex 훅/스킬, `AGENTS.md`를 로드하며 둘 다 동일한 코어를 가리킵니다:
 
 ```
 oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 ├── .claude-plugin/
 │   ├── plugin.json               <- 플러그인 매니페스트
 │   └── marketplace.json          <- 마켓플레이스 목록
+├── .codex-plugin/plugin.json     <- Codex 플러그인 매니페스트
 ├── CLAUDE.md                     <- 시스템 프롬프트 (자동 주입)
+├── codex/                        <- Codex 네이티브 스킬, 역할, 지침
 ├── lib/                          <- 순수 코어 라이브러리
 │   └── loop.mjs                  <- 루프 결정 로직 (단위 테스트)
 ├── hooks/
@@ -214,7 +243,7 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 
 ## 로컬 CLI 모드
 
-클론한 저장소에서 실행합니다(`node bin/cli.mjs init`, 또는 `npm link`로 `oh-my-harness` 단축 명령 등록). CLI가 훅과 명령어를 프로젝트의 `.claude/` 디렉토리에 복사합니다:
+클론한 저장소에서 실행합니다(`node bin/cli.mjs init`, 또는 `npm link`로 `oh-my-harness` 단축 명령 등록). 기본값은 `.claude/`에 설치하는 Claude 프로젝트 모드입니다. `.codex/`, `.agents/skills/`, `AGENTS.md`에는 `--runtime codex`, 두 등록 모두에는 `--runtime both`를 사용합니다:
 
 ```
 your-project/
@@ -229,7 +258,11 @@ your-project/
     │   ├── agent-spawn.md
     │   ├── agent-status.md
     │   ├── agent-apply.md
-    │   └── agent-stop.md
+    │   ├── agent-stop.md
+    │   ├── omh-verify.md
+    │   ├── team-spawn.md
+    │   ├── team-status.md
+    │   └── team-stop.md
     ├── PROGRESS.md               <- 루프 계획 + 사람용 로그 (프로젝트 루트)
     └── .omh/                     <- 프로젝트 데이터 (gitignored)
         ├── harness.config.json

@@ -1,5 +1,18 @@
 # Features
 
+## Codex Support
+
+The Claude Code and Codex editions share the same feature core, config, `.claude/.omh/` project state, and `~/.omh/memory/graph.jsonl` memory store. Codex provides native lifecycle hooks, the same public workflow names, `.agents/skills/` scaffolding, quick/standard/architect roles, native collaboration operations, and selectable Codex tmux workers.
+
+Presentation differs, not the underlying state. Claude Code keeps the custom status-line HUD. Codex has no equivalent custom status-line extension, so guard transitions appear as hook messages and the read-only `omh-status` skill reports tier, loop, verification, usage, and memory connection state. Review installed Codex hooks in `/hooks`; OMH does not bypass native trust.
+
+| Capability | Claude Code | Codex |
+|---|---|---|
+| Hooks | Native Claude hook payloads | Native Codex payloads through the shared-core bridge |
+| Workflows | `/omh-spec`, `/omh-loop`, `/omh-verify` | Same public names |
+| Project skills | `.claude/skills/` | `.agents/skills/` |
+| Status | Custom HUD | Hook messages + `omh-status` |
+
 ## Status Line (HUD)
 
 OMH replaces Claude Code's default status line with a real-time dashboard:
@@ -277,7 +290,7 @@ Silently records every tool invocation to `.claude/.omh/usage.json`:
 
 ### 11. Skill Scaffolding
 
-Automatically generates project-specific skills in `.claude/skills/` based on detected conventions.
+Automatically generates project-specific skills from detected conventions. Claude Code uses `.claude/skills/`; Codex uses `.agents/skills/`; `--runtime both` renders both destinations.
 
 **Scaffolded skills:**
 
@@ -303,7 +316,7 @@ Automatically generates project-specific skills in `.claude/skills/` based on de
 1. Run `/init-project` or `oh-my-harness init`
 2. OMH detects your project's language and tools
 3. Skill templates are rendered with your specific tools (e.g., "vitest" not "test runner")
-4. Skills are written to `.claude/skills/` — Claude Code auto-discovers them
+4. Skills are written to the selected runtime destination for native discovery
 5. Customize freely — OMH never overwrites existing skills
 
 > Skills are user-owned files. `oh-my-harness reset` will NOT delete them.
@@ -326,7 +339,7 @@ Set to `false` to disable scaffold hints and skip skill generation during init.
 
 ### 12. Native Team
 
-Orchestrate parallel work using Claude Code's built-in team system — no tmux or worktree dependencies.
+Orchestrate parallel work using Claude Code's built-in team system or Codex collaboration operations — no tmux or worktree dependencies.
 
 **Templates:**
 
@@ -347,9 +360,9 @@ Orchestrate parallel work using Claude Code's built-in team system — no tmux o
 **How it works:**
 
 1. Run `/team-spawn fullstack build auth system`
-2. OMH creates a native team via TeamCreate
+2. OMH uses Claude `TeamCreate` or confirmed Codex `spawn_agent` calls
 3. Tasks are decomposed and assigned to teammates
-4. Teammates work in parallel, communicating via SendMessage
+4. Teammates work in parallel, communicating through Claude `SendMessage` or Codex `send_message`
 5. Check progress with `/team-status`
 6. Shutdown with `/team-stop` when done
 

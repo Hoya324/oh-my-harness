@@ -1,5 +1,13 @@
 # Verification & Weight-Aware Harness
 
+## Codex Support
+
+Both runtimes preserve the same independence rule: the generator must not judge its own work. Claude Code can use a fresh native subagent or a demonstrably different external verifier. Codex can use a fresh Codex subagent or `codex exec -s read-only` only when the selected model/runtime is demonstrably distinct from the generator. If no distinct judge is available, report reduced coverage and do not label the result independent.
+
+External verifiers are read-only and diagnose; the generating workflow applies fixes. Every round starts with fresh context and does not receive earlier conclusions. Missing optional CLIs degrade gracefully. Findings reported by two or more independent models remain the high-confidence agreement signal on both runtimes.
+
+Codex-native `/omh-verify` reads the same diff and config, records shared findings in the same memory store, and uses quick/standard/architect role semantics without weakening read-only boundaries.
+
 > Match guardrails to the weight of the work, and verify heavy work with **independent, multi-model** rounds before it's called done.
 
 OMH's weight-aware harness has three parts: **weight routing** (classify every prompt), **`/omh-verify`** (N-round independent verify+fix), and **Living State** (`STATE.md`). They complement the [Autonomous Loop](loop.md): the loop drives *one task to done*, while these decide *how much scrutiny* a task deserves and verify it with outside eyes.

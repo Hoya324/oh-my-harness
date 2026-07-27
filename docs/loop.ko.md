@@ -1,8 +1,20 @@
 # 자율 루프 (Autonomous Loop)
 
+## Codex 지원
+
+Codex는 Claude Code와 동일한 스펙, 티어 예산, 저렴한 것부터 실행하는 검증 사다리, 상태, 가드레일을 사용합니다. 네이티브 `Stop` 브리지는 루프 연속 실행 계약을 최상위에 보존합니다:
+
+```json
+{"decision":"block","reason":"Run the next iteration."}
+```
+
+목표가 충족되지 않았고 예산이 남아 있으면 이 응답이 다음 Codex 턴을 요청합니다. 스펙이 통과하거나 가드레일이 발동하면 훅은 연속 실행 출력을 내지 않습니다. `stop_hook_active`를 가장 먼저 확인해 연속 실행 훅이 자신을 재귀 호출하지 않게 합니다. 잘못된 상태와 보조 기능 실패는 fail-open이고, 위험 명령과 명시적 범위 정책 거부는 fail-closed입니다.
+
+동일한 공개 스킬 `/omh-spec`, `/omh-loop`, `/omh-loop stop`으로 시작하고 중지합니다. 두 런타임은 `.claude/.omh/loop-state.json`, `PROGRESS.md`, 동일한 공유 메모리를 사용하므로 한 프로젝트 루프 상태에 대해 경쟁 writer를 실행하지 마세요.
+
 > oh-my-harness **0.3.0**의 핵심 기능. 목표를 한 번 정의하면, SPEC이 객관적으로 충족될 때까지 OMH가 직접 루프를 돌립니다.
 
-목표를 `SPEC.md`에 한 번 적어두면, OMH가 **구현 → 자가 검증(self-verify) → 교차 검증(cross-verify)** 을 반복하며 SPEC이 충족될 때까지 작업을 이어갑니다. 루프는 Claude Code의 네이티브 훅 위에서 동작하므로, **언제 계속하고 언제 멈출지는 하네스가 소유**합니다 — 모델의 자기 판단이 아닙니다.
+목표를 `SPEC.md`에 한 번 적어두면, OMH가 **구현 → 자가 검증(self-verify) → 교차 검증(cross-verify)** 을 반복하며 SPEC이 충족될 때까지 작업을 이어갑니다. 루프는 네이티브 Claude Code 또는 Codex 훅 어댑터를 통해 동작하므로, **언제 계속하고 언제 멈출지는 하네스가 소유**합니다 — 모델의 자기 판단이 아닙니다.
 
 ```bash
 /omh-spec add JWT auth with refresh tokens   # 기계 검증 가능한 SPEC.md 작성

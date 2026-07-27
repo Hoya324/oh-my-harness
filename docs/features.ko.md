@@ -1,5 +1,18 @@
 # 기능
 
+## Codex 지원
+
+Claude Code판과 Codex판은 동일한 기능 코어, 설정, `.claude/.omh/` 프로젝트 상태, `~/.omh/memory/graph.jsonl` 메모리 저장소를 공유합니다. Codex는 네이티브 수명주기 훅, 동일한 공개 워크플로우 이름, `.agents/skills/` 스캐폴딩, quick/standard/architect 역할, 네이티브 협업 작업, 선택 가능한 Codex tmux 워커를 제공합니다.
+
+표현 방식만 다르고 기반 상태는 같습니다. Claude Code는 커스텀 상태 표시줄 HUD를 유지합니다. Codex에는 동등한 커스텀 상태 표시줄 확장이 없으므로 가드 전환은 훅 메시지로 표시되고, 읽기 전용 `omh-status` 스킬이 티어, 루프, 검증, 사용량, 메모리 연결 상태를 보고합니다. 설치된 Codex 훅은 `/hooks`에서 검토하세요. OMH는 네이티브 신뢰 절차를 우회하지 않습니다.
+
+| 기능 | Claude Code | Codex |
+|---|---|---|
+| 훅 | 네이티브 Claude 훅 페이로드 | 공유 코어 브리지를 통한 네이티브 Codex 페이로드 |
+| 워크플로우 | `/omh-spec`, `/omh-loop`, `/omh-verify` | 동일한 공개 이름 |
+| 프로젝트 스킬 | `.claude/skills/` | `.agents/skills/` |
+| 상태 | 커스텀 HUD | 훅 메시지 + `omh-status` |
+
 ## 상태 표시줄 (HUD)
 
 OMH는 Claude Code의 기본 상태 표시줄을 실시간 대시보드로 대체합니다:
@@ -117,10 +130,10 @@ Claude가 서브에이전트에 작업을 위임할 때, OMH가 자동으로 적
 [컨벤션 자동 감지](#1-컨벤션-자동-감지) · [테스트 강제](#2-테스트-강제) · [자동 Plan 모드](#4-자동-plan-모드) · [모호성 가드](#5-모호성-가드) · [위험 명령 가드](#6-위험-명령-가드) · [컨텍스트 스냅샷](#7-컨텍스트-스냅샷) · [커밋 컨벤션](#8-커밋-컨벤션) · [스코프 가드](#9-스코프-가드) · [사용량 추적](#10-사용량-추적) · [무게 라우팅](#15-무게-라우팅-tier-123) · [Living State](#17-living-state-statemd) · [검증 게이트](#검증-게이트) · [플랜 게이트](#플랜-게이트)
 
 **B. 자율 실행** — 직접 호출하는 워크플로우:
-[네이티브 팀](#11-네이티브-팀) · [자율 루프](#13-자율-루프-autonomous-loop) · [스펙 작성](#14-스펙-작성-spec-authoring) · [N-라운드 검증](#16-n-라운드-독립-검증-omh-verify)
+[네이티브 팀](#12-네이티브-팀) · [자율 루프](#13-자율-루프-autonomous-loop) · [스펙 작성](#14-스펙-작성-spec-authoring) · [N-라운드 검증](#16-n-라운드-독립-검증-omh-verify)
 
 **C. 라우팅·스캐폴딩·관측** — 가로지르는 기능:
-[상태 표시줄 (HUD)](#상태-표시줄-hud) · [모델 라우팅](#3-모델-라우팅) · [스킬 스캐폴딩](features.md#11-skill-scaffolding)
+[상태 표시줄 (HUD)](#상태-표시줄-hud) · [모델 라우팅](#3-모델-라우팅) · [스킬 스캐폴딩](#11-스킬-스캐폴딩)
 
 ---
 
@@ -275,9 +288,20 @@ Plan 모드를 제안합니다 — 강제하지 않습니다.
 }
 ```
 
-### 11. 네이티브 팀
+### 11. 스킬 스캐폴딩
 
-Claude Code의 내장 팀 시스템을 사용하여 병렬 작업을 오케스트레이션합니다 — tmux나 worktree 의존성이 필요 없습니다.
+감지된 컨벤션을 바탕으로 프로젝트 전용 `code-review`, `test-write`, `lint-fix` 스킬을 자동 생성합니다. Claude Code는 `.claude/skills/`, Codex는 `.agents/skills/`를 사용하며 `--runtime both`는 두 위치를 모두 생성합니다.
+
+1. `/init-project` 또는 `oh-my-harness init --runtime <runtime>` 실행
+2. 프로젝트 언어, 테스트 도구, 린터 감지
+3. 감지된 도구 이름으로 템플릿 렌더링
+4. 기존 사용자 스킬은 덮어쓰지 않고 새 스킬만 생성
+
+Node.js, Python, Go, Rust, Java, Kotlin을 지원합니다. `features.skillScaffolding`을 `false`로 설정하면 세션 힌트와 init 스캐폴딩을 비활성화합니다.
+
+### 12. 네이티브 팀
+
+Claude Code 내장 팀 시스템 또는 Codex 협업 작업을 사용하여 병렬 작업을 오케스트레이션합니다 — tmux나 worktree 의존성이 필요 없습니다.
 
 **템플릿:**
 
@@ -298,9 +322,9 @@ Claude Code의 내장 팀 시스템을 사용하여 병렬 작업을 오케스�
 **동작 방식:**
 
 1. `/team-spawn fullstack 인증 시스템 구축` 실행
-2. OMH가 TeamCreate로 네이티브 팀 생성
+2. Claude는 TeamCreate, Codex는 확인된 `spawn_agent` 호출로 네이티브 팀 생성
 3. 작업이 분해되어 팀원에게 할당
-4. 팀원이 SendMessage로 소통하며 병렬 작업
+4. Claude는 SendMessage, Codex는 `send_message`로 소통하며 병렬 작업
 5. `/team-status`로 진행률 확인
 6. 완료 후 `/team-stop`으로 종료
 

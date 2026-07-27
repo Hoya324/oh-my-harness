@@ -21,7 +21,7 @@ function loadTranslations() {
 function i18nKeysInHtml(file) {
   const html = readFileSync(join(docsDir, file), 'utf8');
   const keys = new Set();
-  for (const m of html.matchAll(/data-i18n(?:-html)?="([^"]+)"/g)) keys.add(m[1]);
+  for (const m of html.matchAll(/data-i18n(?:-html|-content)?="([^"]+)"/g)) keys.add(m[1]);
   return keys;
 }
 

@@ -6,6 +6,9 @@ const translations = {
   // ENGLISH
   // ══════════════════════════════════
   en: {
+    'meta.title': 'Oh My Harness — Claude Code and Codex',
+    'meta.description': 'Native Claude Code and Codex harness with a spec-driven autonomous loop, safety guards, model routing, and multi-agent orchestration.',
+
     // ── Common (nav, footer) ──
     'nav.docs': 'Docs',
     'nav.features': 'Features',
@@ -16,14 +19,14 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.4.5 \u00b7 MIT License',
-    'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Smart Defaults for Claude Code</span>',
-    'index.hero.subtitle': 'Smart Defaults for Claude Code',
-    'index.hero.desc': 'A spec-driven autonomous loop with real walls \u2014 plus safety guards, intelligent model routing, and multi-agent orchestration, all through native hooks. Define a goal once; the harness implements, self-verifies, and cross-verifies until the spec is met. Zero config, instant boost.',
+    'index.hero.badge': 'v0.5.0 \u00b7 Claude Code + Codex',
+    'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Native for Claude Code and Codex</span>',
+    'index.hero.subtitle': 'Native for Claude Code and Codex',
+    'index.hero.desc': 'A spec-driven autonomous loop with real walls \u2014 plus safety guards, intelligent model routing, and multi-agent orchestration through native Claude Code and Codex hooks. Define a goal once; the harness implements, self-verifies, and cross-verifies until the spec is met.',
     'index.hero.getStarted': 'Get Started',
     'index.hero.explore': 'Explore Features',
     'index.hero.stat.hooks': 'Hooks',
-    'index.hero.stat.skills': 'Skills',
+    'index.hero.stat.skills': 'Claude/Codex Skills',
     'index.hero.stat.agents': 'Agents',
     'index.hero.stat.features': 'Features',
 
@@ -35,7 +38,7 @@ const translations = {
     // ── Index: Pipeline ──
     'index.pipeline.tag': 'How it works',
     'index.pipeline.title': 'The Hook Pipeline',
-    'index.pipeline.desc': "OMH hooks into Claude Code's lifecycle at every stage.",
+    'index.pipeline.desc': 'OMH hooks into the native Claude Code or Codex lifecycle at every stage.',
     'index.pipeline.s1.title': 'Session Start',
     'index.pipeline.s1.desc': "Auto-detects your project's language, test framework, and linter. Injects conventions as context.",
     'index.pipeline.s2.title': 'Prompt Analysis',
@@ -90,6 +93,28 @@ const translations = {
     'index.features.f6.desc': 'Classifies task weight (Tier 1/2/3); heavy work runs N independent verify+fix rounds rotating Claude, GPT, and Gemini. Plus disk-anchored STATE.md to survive context compaction.',
     'index.features.f7.title': 'Long-Term Memory',
     'index.features.f7.desc': 'A knowledge-graph memory shared across Claude Code and Codex — one store, both runtimes. The loop reads prior learnings and verified commands before planning, then persists reflexions and high-confidence findings so lessons carry into the next session.',
+
+    // ── Index: Codex ──
+    'index.codex.badge': 'Native in both runtimes',
+    'index.codex.title': 'Claude Code and Codex, one harness',
+    'index.codex.desc': 'OMH ships native manifests, lifecycle hooks, skills, and role guidance for the Codex CLI and desktop while preserving the existing Claude Code plugin.',
+    'index.codex.installClaude': 'Claude Code plugin',
+    'index.codex.installCodex': 'Codex CLI / desktop local marketplace',
+    'index.codex.marketplaceNote': 'This registers the source; install or enable oh-my-harness from the marketplace flow in your Codex build.',
+    'index.codex.installLocal': 'Local project installation',
+    'index.codex.localPrereq': 'If the oh-my-harness CLI is not already on PATH, clone the repository and link it first.',
+    'index.codex.parity.title': 'Runtime feature parity',
+    'index.codex.parity.capability': 'Capability',
+    'index.codex.parity.hooks': 'Lifecycle hooks',
+    'index.codex.parity.nativeClaude': 'Native Claude contract',
+    'index.codex.parity.nativeCodex': 'Native Codex contract through a shared-core bridge',
+    'index.codex.parity.workflows': 'Spec, loop, and verify',
+    'index.codex.parity.state': 'Project state and memory',
+    'index.codex.parity.status': 'Status presentation',
+    'index.codex.parity.claudeHud': 'Custom status-line HUD',
+    'index.codex.parity.codexStatus': 'Hook messages and omh-status',
+    'index.codex.trust': "After Codex installation, open /hooks and review the lifecycle hooks before trusting them. OMH never bypasses Codex's native trust boundary.",
+    'index.codex.hud': 'Codex has no equivalent custom status-line extension, so the Claude HUD is not rendered there. Use omh-status for tier, loop, verification, usage, and memory state.',
 
     // ── Index: Agents ──
     'index.agents.tag': 'Model Routing',
@@ -452,6 +477,9 @@ const translations = {
   // KOREAN
   // ══════════════════════════════════
   ko: {
+    'meta.title': 'Oh My Harness — Claude Code와 Codex',
+    'meta.description': '스펙 기반 자율 루프, 안전 가드, 모델 라우팅, 멀티 에이전트 오케스트레이션을 제공하는 Claude Code와 Codex 네이티브 하네스.',
+
     // ── Common (nav, footer) ──
     'nav.docs': '\ubb38\uc11c',
     'nav.features': '\uae30\ub2a5',
@@ -462,14 +490,14 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.4.5 \u00b7 MIT \ub77c\uc774\uc120\uc2a4',
-    'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12</span>',
-    'index.hero.subtitle': 'Claude Code\ub97c \uc704\ud55c \uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12',
-    'index.hero.desc': '\uc9c4\uc9dc \ubcbd\uc744 \uac16\ucd98 \uc2a4\ud399 \uae30\ubc18 \uc790\uc728 \ub8e8\ud504 \u2014 \uc5ec\uae30\uc5d0 \uc548\uc804 \uac00\ub4dc, \uc9c0\ub2a5\ud615 \ubaa8\ub378 \ub77c\uc6b0\ud305, \uba40\ud2f0 \uc5d0\uc774\uc804\ud2b8 \uc624\ucf00\uc2a4\ud2b8\ub808\uc774\uc158\uae4c\uc9c0 \ubaa8\ub450 \ub124\uc774\ud2f0\ube0c \ud6c5\uc744 \ud1b5\ud574. \ubaa9\ud45c\ub97c \ud55c \ubc88 \uc815\uc758\ud558\uba74 \ud558\ub124\uc2a4\uac00 \uad6c\ud604\ud558\uace0 \uc790\uccb4 \uac80\uc99d\ud558\uace0 \uad50\ucc28 \uac80\uc99d\ud558\uc5ec \uc2a4\ud399\uc774 \ucda9\uc871\ub420 \ub54c\uae4c\uc9c0 \ubc18\ubcf5\ud569\ub2c8\ub2e4. \uc124\uc815 \uc5c6\uc774, \uc989\uc2dc \ud5a5\uc0c1.',
+    'index.hero.badge': 'v0.5.0 \u00b7 Claude Code + Codex',
+    'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Claude Code\uc640 Codex \ub124\uc774\ud2f0\ube0c \uc9c0\uc6d0</span>',
+    'index.hero.subtitle': 'Claude Code\uc640 Codex \ub124\uc774\ud2f0\ube0c \uc9c0\uc6d0',
+    'index.hero.desc': 'Claude Code\uc640 Codex \ub124\uc774\ud2f0\ube0c \ud6c5\uc744 \ud1b5\ud574 \uc9c4\uc9dc \ubcbd\uc744 \uac16\ucd98 \uc2a4\ud399 \uae30\ubc18 \uc790\uc728 \ub8e8\ud504, \uc548\uc804 \uac00\ub4dc, \uc9c0\ub2a5\ud615 \ubaa8\ub378 \ub77c\uc6b0\ud305, \uba40\ud2f0 \uc5d0\uc774\uc804\ud2b8 \uc624\ucf00\uc2a4\ud2b8\ub808\uc774\uc158\uc744 \uc81c\uacf5\ud569\ub2c8\ub2e4.',
     'index.hero.getStarted': '\uc2dc\uc791\ud558\uae30',
     'index.hero.explore': '\uae30\ub2a5 \uc0b4\ud3b4\ubcf4\uae30',
     'index.hero.stat.hooks': '\ud6c5',
-    'index.hero.stat.skills': '\uc2a4\ud0ac',
+    'index.hero.stat.skills': 'Claude/Codex \uc2a4\ud0ac',
     'index.hero.stat.agents': '\uc5d0\uc774\uc804\ud2b8',
     'index.hero.stat.features': '\uae30\ub2a5',
 
@@ -481,7 +509,7 @@ const translations = {
     // ── Index: Pipeline ──
     'index.pipeline.tag': '\uc791\ub3d9 \ubc29\uc2dd',
     'index.pipeline.title': '\ud6c5 \ud30c\uc774\ud504\ub77c\uc778',
-    'index.pipeline.desc': 'OMH\ub294 Claude Code\uc758 \ub77c\uc774\ud504\uc0ac\uc774\ud074 \ubaa8\ub4e0 \ub2e8\uacc4\uc5d0 \ud6c5\uc744 \uac78\uc5b4\uc90d\ub2c8\ub2e4.',
+    'index.pipeline.desc': 'OMH\ub294 \ubaa8\ub4e0 \ub2e8\uacc4\uc5d0\uc11c \ub124\uc774\ud2f0\ube0c Claude Code \ub610\ub294 Codex \ub77c\uc774\ud504\uc0ac\uc774\ud074\uc5d0 \ud6c5\uc744 \uac78\uc5b4\uc90d\ub2c8\ub2e4.',
     'index.pipeline.s1.title': '\uc138\uc158 \uc2dc\uc791',
     'index.pipeline.s1.desc': '\ud504\ub85c\uc81d\ud2b8\uc758 \uc5b8\uc5b4, \ud14c\uc2a4\ud2b8 \ud504\ub808\uc784\uc6cc\ud06c, \ub9b0\ud130\ub97c \uc790\ub3d9 \uac10\uc9c0\ud569\ub2c8\ub2e4. \ucee8\ubca4\uc158\uc744 \ucee8\ud14d\uc2a4\ud2b8\ub85c \uc8fc\uc785\ud569\ub2c8\ub2e4.',
     'index.pipeline.s2.title': '\ud504\ub86c\ud504\ud2b8 \ubd84\uc11d',
@@ -536,6 +564,28 @@ const translations = {
     'index.features.f6.desc': '\uc791\uc5c5 \ubb34\uac8c(Tier 1/2/3)\ub97c \ud310\uc815 \u2014 \ubb34\uac70\uc6b4 \uc791\uc5c5\uc740 Claude\u00b7GPT\u00b7Gemini\ub97c \ub85c\ud14c\uc774\uc158\ud558\uba70 N\ud68c \ub3c5\ub9bd \uac80\uc99d+\uc218\uc815. \ucef4\ud328\ud2b8\ub97c \uacac\ub514\ub294 \ub514\uc2a4\ud06c \uc575\ucee4 STATE.md \ud3ec\ud568.',
     'index.features.f7.title': '\uc7a5\uae30 \uba54\ubaa8\ub9ac',
     'index.features.f7.desc': 'Claude Code\uc640 Codex\uac00 \uacf5\uc720\ud558\ub294 \uc9c0\uc2dd\uadf8\ub798\ud504 \uba54\ubaa8\ub9ac \u2014 \ud558\ub098\uc758 \uc2a4\ud1a0\uc5b4, \ub450 \ub7f0\ud0c0\uc784. \ub8e8\ud504\uac00 \uacc4\ud68d \uc804 \uacfc\uac70 \ud559\uc2b5\u00b7\uac80\uc99d\ub41c \ucee4\ub9e8\ub4dc\ub97c \uc77d\uace0, reflexion\u00b7\uace0\uc2e0\ub8b0 findings\ub97c \uc601\uc18d\ud654\ud574 \uad50\ud6c8\uc774 \ub2e4\uc74c \uc138\uc158\uc73c\ub85c \uc774\uc5b4\uc9d1\ub2c8\ub2e4.',
+
+    // ── Index: Codex ──
+    'index.codex.badge': '\ub450 \ub7f0\ud0c0\uc784 \ubaa8\ub450 \ub124\uc774\ud2f0\ube0c',
+    'index.codex.title': 'Claude Code\uc640 Codex, \ud558\ub098\uc758 \ud558\ub124\uc2a4',
+    'index.codex.desc': '\uae30\uc874 Claude Code \ud50c\ub7ec\uadf8\uc778\uc744 \ubcf4\uc874\ud558\uba74\uc11c Codex CLI\uc640 \ub370\uc2a4\ud06c\ud1b1\uc6a9 \ub124\uc774\ud2f0\ube0c \ub9e4\ub2c8\ud398\uc2a4\ud2b8, \uc218\uba85\uc8fc\uae30 \ud6c5, \uc2a4\ud0ac, \uc5ed\ud560 \uc9c0\uce68\uc744 \uc81c\uacf5\ud569\ub2c8\ub2e4.',
+    'index.codex.installClaude': 'Claude Code \ud50c\ub7ec\uadf8\uc778',
+    'index.codex.installCodex': 'Codex CLI / \ub370\uc2a4\ud06c\ud1b1 \ub85c\uceec \ub9c8\ucf13\ud50c\ub808\uc774\uc2a4',
+    'index.codex.marketplaceNote': '\uc774 \uba85\ub839\uc740 \uc18c\uc2a4\ub97c \ub4f1\ub85d\ud569\ub2c8\ub2e4. \uc0ac\uc6a9 \uc911\uc778 Codex \ube4c\ub4dc\uc758 \ub9c8\ucf13\ud50c\ub808\uc774\uc2a4 \ud750\ub984\uc5d0\uc11c oh-my-harness\ub97c \uc124\uce58\ud558\uac70\ub098 \ud65c\uc131\ud654\ud558\uc138\uc694.',
+    'index.codex.installLocal': '\ub85c\uceec \ud504\ub85c\uc81d\ud2b8 \uc124\uce58',
+    'index.codex.localPrereq': 'oh-my-harness CLI\uac00 PATH\uc5d0 \uc5c6\ub2e4\uba74 \uba3c\uc800 \uc800\uc7a5\uc18c\ub97c \ud074\ub860\ud558\uace0 \ub9c1\ud06c\ud558\uc138\uc694.',
+    'index.codex.parity.title': '\ub7f0\ud0c0\uc784 \uae30\ub2a5 \ub300\uc751',
+    'index.codex.parity.capability': '\uae30\ub2a5',
+    'index.codex.parity.hooks': '\uc218\uba85\uc8fc\uae30 \ud6c5',
+    'index.codex.parity.nativeClaude': '\ub124\uc774\ud2f0\ube0c Claude \uacc4\uc57d',
+    'index.codex.parity.nativeCodex': '\uacf5\uc720 \ucf54\uc5b4 \ube0c\ub9ac\uc9c0\ub97c \ud1b5\ud55c \ub124\uc774\ud2f0\ube0c Codex \uacc4\uc57d',
+    'index.codex.parity.workflows': '\uc2a4\ud399, \ub8e8\ud504, \uac80\uc99d',
+    'index.codex.parity.state': '\ud504\ub85c\uc81d\ud2b8 \uc0c1\ud0dc\uc640 \uba54\ubaa8\ub9ac',
+    'index.codex.parity.status': '\uc0c1\ud0dc \ud45c\ud604',
+    'index.codex.parity.claudeHud': '\ucee4\uc2a4\ud140 \uc0c1\ud0dc \ud45c\uc2dc\uc904 HUD',
+    'index.codex.parity.codexStatus': '\ud6c5 \uba54\uc2dc\uc9c0\uc640 omh-status',
+    'index.codex.trust': 'Codex \uc124\uce58 \ud6c4 /hooks\ub97c \uc5f4\uc5b4 \uc218\uba85\uc8fc\uae30 \ud6c5\uc744 \uac80\ud1a0\ud55c \ub4a4 \uc2e0\ub8b0\ud558\uc138\uc694. OMH\ub294 Codex\uc758 \ub124\uc774\ud2f0\ube0c \uc2e0\ub8b0 \uacbd\uacc4\ub97c \uc6b0\ud68c\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.',
+    'index.codex.hud': 'Codex\uc5d0\ub294 \ub3d9\ub4f1\ud55c \ucee4\uc2a4\ud140 \uc0c1\ud0dc \ud45c\uc2dc\uc904 \ud655\uc7a5\uc774 \uc5c6\uc73c\ubbc0\ub85c Claude HUD\uac00 \ud45c\uc2dc\ub418\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4. \ud2f0\uc5b4, \ub8e8\ud504, \uac80\uc99d, \uc0ac\uc6a9\ub7c9, \uba54\ubaa8\ub9ac \uc0c1\ud0dc\ub294 omh-status\ub85c \ud655\uc778\ud558\uc138\uc694.',
 
     // ── Index: Agents ──
     'index.agents.tag': '\ubaa8\ub378 \ub77c\uc6b0\ud305',
@@ -919,6 +969,12 @@ function applyTranslations(lang) {
     const key = el.getAttribute('data-i18n-html');
     if (translations[lang] && translations[lang][key]) {
       el.innerHTML = translations[lang][key];
+    }
+  });
+  document.querySelectorAll('[data-i18n-content]').forEach(el => {
+    const key = el.getAttribute('data-i18n-content');
+    if (translations[lang] && translations[lang][key]) {
+      el.setAttribute('content', translations[lang][key]);
     }
   });
 }

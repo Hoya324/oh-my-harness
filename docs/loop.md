@@ -1,8 +1,20 @@
 # Autonomous Loop
 
+## Codex Support
+
+Codex uses the same spec, tier budgets, cheap-first verification ladder, state, and guardrails as Claude Code. Its native `Stop` bridge preserves the loop continuation contract at the top level:
+
+```json
+{"decision":"block","reason":"Run the next iteration."}
+```
+
+When the goal remains unmet and budgets allow, that response requests another Codex turn. When the spec passes or a guardrail fires, the hook emits no continuation. `stop_hook_active` is checked first to prevent the continuation hook from recursively triggering itself. Malformed state and auxiliary failures fail open; dangerous and explicit scope-policy denials remain fail closed.
+
+Start and stop with the same public skills: `/omh-spec`, `/omh-loop`, and `/omh-loop stop`. Both runtimes use `.claude/.omh/loop-state.json`, `PROGRESS.md`, and the same shared memory, so do not run competing writers against one project loop state.
+
 > **New in 0.3.0** — the headline feature. Define the goal once in a `SPEC.md`, and OMH loops — implementing, self-verifying, and cross-verifying — until the spec is objectively met, with enforceable guardrails so autonomy never becomes runaway.
 
-The Autonomous Loop is a **spec-driven, tiered, self- and cross-verifying** loop that runs entirely on Claude Code's native hooks. Two skills drive it (`/omh-spec`, `/omh-loop`); the Stop hook `hooks/loop-guard.mjs` is the loop engine *and* the safety enforcer.
+The Autonomous Loop is a **spec-driven, tiered, self- and cross-verifying** loop that runs through the native Claude Code or Codex hook adapter. Two skills drive it (`/omh-spec`, `/omh-loop`); the shared Stop hook `hooks/loop-guard.mjs` is the loop engine *and* the safety enforcer.
 
 ---
 

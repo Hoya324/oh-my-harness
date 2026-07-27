@@ -2,6 +2,30 @@
 
 설정은 `.claude/.omh/harness.config.json`에 있습니다.
 
+## Codex 지원
+
+로컬 CLI는 정확히 `--runtime claude|codex|both`를 허용합니다. 생략하면 이전 버전과 호환되는 `claude` 기본값을 유지합니다. `--scope project|user`는 런타임 등록 범위에 적용됩니다:
+
+```bash
+oh-my-harness init --runtime codex --scope project
+oh-my-harness init --runtime both --scope project
+oh-my-harness update --runtime codex
+oh-my-harness status --runtime both
+oh-my-harness reset --runtime codex
+```
+
+Codex 프로젝트 설치는 `.codex/hooks.json`, `.codex/agents/`, `.agents/skills/`, `AGENTS.md`의 표시 블록을 사용합니다. Claude와 Codex는 계속 `.claude/.omh/harness.config.json`과 모든 프로젝트 상태를 공유합니다. 업데이트는 관리되는 훅, 역할, 내장 스킬, 표시된 지침만 갱신하며 사용자 설정, 커스텀 스킬, 무관한 훅, 표시 밖 지침을 보존합니다. 한 런타임만 reset하면 다른 런타임이 등록된 동안 공유 상태를 보존합니다. Reset은 사용되지 않는 `.claude/.omh/` 프로젝트 상태를 제거할 수 있지만 별도 장기 메모리 저장소 `~/.omh/memory/graph.jsonl`은 삭제하지 않습니다.
+
+Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 조건이 아닙니다:
+
+| 역할 | 기본 모델 | 추론 수준 | 용도 |
+|---|---|---|---|
+| quick | `gpt-5.6-luna` | low | 읽기 전용 조회와 좁은 탐색 |
+| standard | `gpt-5.6-terra` | medium | 집중 구현, 테스트, 리뷰 |
+| architect | `gpt-5.6-sol` | xhigh | 아키텍처, 복잡한 계획, 보안, 독립 검증 |
+
+설치 후 `/hooks`에서 신뢰 대상을 검토하세요. Codex 상태는 `omh-status`로 확인하며 Claude HUD는 Codex에 설치되지 않습니다.
+
 ## 설정 탐색 순서 (프로젝트 → 전역)
 
 훅은 다음 순서로 config를 찾아 **먼저 존재하는 것**을 사용합니다:
@@ -221,11 +245,13 @@
 ## CLI 명령어
 
 ```bash
-oh-my-harness init      # 현재 프로젝트에 하네스 설정
-oh-my-harness update    # 설정에서 세팅 재생성
-oh-my-harness status    # 현재 설정 표시
-oh-my-harness reset     # 모든 하네스 파일 제거 (완전 삭제)
+oh-my-harness init [--runtime claude|codex|both] [--scope project|user]
+oh-my-harness update [--runtime claude|codex|both]
+oh-my-harness status [--runtime claude|codex|both]
+oh-my-harness reset [--runtime claude|codex|both]
 ```
+
+런타임 기본값은 `claude`입니다. `update`는 관리되는 런타임 파일을 갱신하고 `reset`은 선택한 관리 등록만 제거하며, 사용자 소유 내용과 다른 등록이 계속 사용하는 상태를 보존합니다.
 
 ## 슬래시 명령어 (스킬)
 
@@ -244,6 +270,8 @@ oh-my-harness reset     # 모든 하네스 파일 제거 (완전 삭제)
 | `/omh-spec [목표]` | 기계 검증 가능한 `SPEC.md` 작성 (EARS 인수 기준) |
 | `/omh-loop [목표\|SPEC.md]` | 스펙 기반 자율 루프 실행 |
 | `/omh-loop stop` | 실행 중인 루프 중단 (킬 스위치) |
+| `/omh-verify [N]` | 독립 다중 모델 검증+수정 N라운드 실행 |
+| `omh-status` | 티어, 루프, 검증, 사용량, 메모리를 읽기 전용으로 요약하는 Codex 전용 스킬 |
 
 ---
 
