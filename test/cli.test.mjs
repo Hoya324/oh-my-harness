@@ -478,6 +478,65 @@ describe('cli reset', () => {
     assert.ok(!existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop')));
   });
 
+  it('reset both at user scope preserves an independent project Codex lifecycle', () => {
+    runCli('init', '--runtime', 'codex', '--scope', 'project');
+    runCli('init', '--runtime', 'both', '--scope', 'user');
+
+    runCli('reset', '--runtime', 'both', '--scope', 'user');
+
+    const projectSharedRoot = join(TMP, '.claude', '.omh');
+    assert.ok(!existsSync(join(TEST_HOME, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TEST_HOME, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
+    assert.ok(!existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop')));
+    assert.ok(existsSync(join(projectSharedRoot, 'harness.config.json')));
+    assert.ok(existsSync(join(projectSharedRoot, 'runtime', 'hooks', 'codex', 'run.mjs')));
+    assert.ok(existsSync(join(projectSharedRoot, 'codex-ownership.json')));
+    assert.ok(existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(existsSync(join(TMP, '.codex', 'agents', 'quick.toml')));
+    assert.ok(existsSync(join(TMP, '.agents', 'skills', 'omh-loop', 'SKILL.md')));
+    assert.ok(readFileSync(join(TMP, '.gitignore'), 'utf8').includes('.claude/.omh/'));
+    assertInstalledDangerousHookDenies(TMP);
+
+    runCli('update', '--runtime', 'codex', '--scope', 'project');
+    assertInstalledDangerousHookDenies(TMP);
+    runCli('reset', '--runtime', 'codex', '--scope', 'project');
+
+    assert.ok(!existsSync(projectSharedRoot));
+    assert.ok(!existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TMP, '.codex', 'agents', 'quick.toml')));
+    assert.ok(!existsSync(join(TMP, '.agents', 'skills', 'omh-loop')));
+  });
+
+  it('reset both at project scope preserves an independent user Codex lifecycle', () => {
+    runCli('init', '--runtime', 'codex', '--scope', 'user');
+    runCli('init', '--runtime', 'both', '--scope', 'project');
+
+    runCli('reset', '--runtime', 'both', '--scope', 'project');
+
+    const userSharedRoot = join(TEST_HOME, '.claude', '.omh');
+    assert.ok(!existsSync(join(TMP, '.claude', '.omh')));
+    assert.ok(!existsSync(join(TMP, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TMP, '.codex', 'agents', 'quick.toml')));
+    assert.ok(!existsSync(join(TMP, '.agents', 'skills', 'omh-loop')));
+    assert.ok(existsSync(join(userSharedRoot, 'harness.config.json')));
+    assert.ok(existsSync(join(userSharedRoot, 'runtime', 'hooks', 'codex', 'run.mjs')));
+    assert.ok(existsSync(join(userSharedRoot, 'codex-ownership.json')));
+    assert.ok(existsSync(join(TEST_HOME, '.codex', 'hooks.json')));
+    assert.ok(existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
+    assert.ok(existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop', 'SKILL.md')));
+    assertInstalledDangerousHookDenies(TEST_HOME);
+
+    runCli('update', '--runtime', 'codex', '--scope', 'user');
+    assertInstalledDangerousHookDenies(TEST_HOME);
+    runCli('reset', '--runtime', 'codex', '--scope', 'user');
+
+    assert.ok(!existsSync(userSharedRoot));
+    assert.ok(!existsSync(join(TEST_HOME, '.codex', 'hooks.json')));
+    assert.ok(!existsSync(join(TEST_HOME, '.codex', 'agents', 'quick.toml')));
+    assert.ok(!existsSync(join(TEST_HOME, '.agents', 'skills', 'omh-loop')));
+  });
+
   it('reset Claude preserves project Codex state until Codex is reset', () => {
     runCli('init', '--runtime', 'both', '--scope', 'project');
 

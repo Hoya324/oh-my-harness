@@ -1273,11 +1273,18 @@ function reset(root, runtime) {
     return;
   }
   resetCodex(root, scope, { preserveShared: true });
-  resetClaude(root);
-  const selectedSharedState = omhDir(codexStateRoot(root, scope));
+  resetClaude(root, {
+    preserveShared: codexRegistrationUsesStateRoot(root, root),
+  });
+  const selectedStateRoot = codexStateRoot(root, scope);
+  const selectedSharedState = omhDir(selectedStateRoot);
   if (existsSync(selectedSharedState)) {
-    rmSync(selectedSharedState, { recursive: true });
-    logDone('Removed selected-scope shared .claude/.omh/ state');
+    if (codexRegistrationUsesStateRoot(root, selectedStateRoot)) {
+      logInfo('Selected-scope shared .claude/.omh/ state preserved for remaining Codex');
+    } else {
+      rmSync(selectedSharedState, { recursive: true });
+      logDone('Removed selected-scope shared .claude/.omh/ state');
+    }
   }
 }
 
