@@ -1,6 +1,6 @@
 {
   "name": "oh-my-harness",
-  "version": "0.4.5",
+  "version": "0.5.0",
   "description": "Spec-driven autonomous Claude Code harness — autonomous loop with self/cross-verification, weight-aware routing & multi-model independent verify, smart defaults, test enforcement, model routing",
   "type": "module",
   "bin": {
@@ -17,8 +17,11 @@
     "lib",
     "skills",
     "agents",
+    "codex",
     "templates",
+    ".codex-plugin",
     ".claude-plugin",
+    ".mcp.json",
     "CLAUDE.md",
     "README.md"
   ],

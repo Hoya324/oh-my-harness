@@ -7,7 +7,7 @@
     {
       "name": "oh-my-harness",
       "description": "Zero-config harness: spec-driven autonomous loop (self/cross-verification, tiered guardrails) + weight-aware routing & multi-model independent verify, convention detection, test enforcement, model routing, ambiguity guard, dangerous guard, multi-agent with git worktrees, native team orchestration",
-      "version": "0.4.5",
+      "version": "0.5.0",
       "author": { "name": "Hoya324" },
       "source": "./",
       "category": "productivity",
@@ -15,5 +15,5 @@
       "tags": ["harness", "hooks", "autonomous-loop", "agentic-loop", "self-verification", "multi-agent", "worktree", "native-team", "test-enforcement"]
     }
   ],
-  "version": "0.4.5"
+  "version": "0.5.0"
 }
