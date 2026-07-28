@@ -36,7 +36,7 @@ graph LR
     A[프롬프트 입력] --> B{OMH 훅}
     B --> C["모호한 요청? 먼저 질문"]
     B --> D["3개 이상 작업? Plan 모드"]
-    B --> E["rm -rf? 경고"]
+    B --> E["rm -rf? 차단"]
     B --> F["코드 변경? 테스트 리마인드"]
     B --> G["git commit? 컨벤션 체크"]
     style B fill:#7C3AED,color:#fff
@@ -50,7 +50,7 @@ graph LR
 
 이전의 OMH는 "벽이 아니라 경고"를 지향했습니다. 자율 루프는 정작 중요한 곳에서 이 방향을 바꿉니다. 멈출 수 없는 루프는 위험하고, 너무 일찍 멈추는 루프는 쓸모가 없습니다 — 그래서 루프에는 **진짜 벽**이 있습니다. 목표가 충족되지 않았고 예산 안에 있는 동안 하네스는 *계속을 강제*하고, 객관적 신호(검증 사다리 통과 + 교차 검증, 또는 반복/벽시계 예산·진척 없음·진동 같은 가드레일)가 발생하면 *종료를 강제*합니다. 모델이 스스로 "끝났다"고 판단하는 일은 없습니다 — 기계가 검증 가능한 수용 기준에 비추어 하네스가 판단합니다.
 
-그 외의 모든 곳에서 OMH는 거의 의식하지 못할 만큼 가벼운 하네스로 남습니다 — 경고로 안내하는 스마트 기본값과, 감지된 스택에서 자동 스캐폴딩되어 직접 소유하고 커스터마이즈하는 **프로젝트 전용 스킬**(테스트 컨벤션, 리뷰 체크리스트, 린트 워크플로우)이 그것입니다.
+그 외의 모든 곳에서 OMH는 거의 의식하지 못할 만큼 가벼운 하네스로 남습니다 — advisory 기본값은 경고로 안내하고 critical 실행 전 guard는 안전하지 않은 작업을 차단하며, 감지된 스택에서 자동 스캐폴딩되는 **프로젝트 전용 스킬**(테스트 컨벤션, 리뷰 체크리스트, 린트 워크플로우)은 직접 소유하고 커스터마이즈할 수 있습니다.
 
 - **내장 스킬**(에이전트 관리, 설정)은 플러그인에 남습니다
 - **프로젝트 스킬**(code-review, test-write, lint-fix)은 Claude Code의 `.claude/skills/`와 Codex의 `.agents/skills/`에 위치하며, `--runtime both`는 둘 다 생성합니다 — 당신의 프로젝트, 당신의 규칙
@@ -85,11 +85,11 @@ oh-my-harness init --runtime codex
 oh-my-harness init --runtime both
 ```
 
-위 Codex 명령은 마켓플레이스 소스를 등록합니다. **Codex CLI**를 실행하고 `/plugins`를 입력한 뒤, 구성된 마켓플레이스에서 `oh-my-harness`를 설치하고 **새 세션**을 시작하세요. **Codex 데스크톱**에서는 **Plugins**를 열고 **Personal** 아래의 구성된 마켓플레이스에서 설치한 뒤 새 채팅을 여세요. [공식 Codex 플러그인 가이드](https://developers.openai.com/codex/plugins)도 참고하세요. 로컬 CLI 기본값은 계속 `--runtime claude`입니다. `--runtime both`는 두 런타임을 등록하되 하나의 설정과 상태 저장소를 공유합니다. 플러그인 설치 후에는 **별도 설정이 필요 없습니다**. `/harness-setup`은 `harness.config.json`을 조정할 때만 사용하는 선택 사항입니다.
+위 Codex 명령은 마켓플레이스 소스를 등록합니다. **Codex CLI**를 실행하고 `/plugins`를 입력한 뒤, 구성된 마켓플레이스에서 `oh-my-harness`를 설치하고 **새 세션**을 시작하세요. **Codex 데스크톱**에서는 **Plugins**를 열고 **Personal** 아래의 구성된 마켓플레이스에서 설치한 뒤 새 채팅을 여세요. [공식 Codex 플러그인 가이드](https://developers.openai.com/codex/plugins)도 참고하세요. 마켓플레이스 설치가 자동으로 번들하는 범위는 Codex hooks, skills, MCP 서버입니다. quick/standard/architect 역할 프로필과 지속 `AGENTS.md` 지침을 추가하려면 번들된 `/harness-setup`을 호출해 쓰기를 승인하거나 `oh-my-harness init --runtime codex`를 실행하세요(두 런타임은 `--runtime both`). 로컬 CLI 기본값은 계속 `--runtime claude`입니다.
 
 ## Codex 지원
 
-OMH 0.5.0은 네이티브 [`.codex-plugin`](.codex-plugin/plugin.json) 매니페스트, Codex 수명주기 훅, Codex 네이티브 스킬, 지속 지침용 `AGENTS.md`, quick/standard/architect 역할을 통해 Codex CLI와 Codex 데스크톱을 지원합니다.
+OMH 0.5.0은 네이티브 [`.codex-plugin`](.codex-plugin/plugin.json) 매니페스트로 Codex CLI와 데스크톱을 지원합니다. 마켓플레이스 payload는 수명주기 hooks, Codex 네이티브 skills, MCP 메모리를 제공하고, `/harness-setup` 또는 직접 로컬 CLI init이 별도의 지속 `AGENTS.md` 지침과 quick/standard/architect 역할을 프로비저닝합니다.
 
 | 기능 | Claude Code | Codex CLI / 데스크톱 |
 |---|---|---|
@@ -105,6 +105,10 @@ OMH 0.5.0은 네이티브 [`.codex-plugin`](.codex-plugin/plugin.json) 매니페
 Codex의 네이티브 훅 신뢰 경계는 그대로 유지됩니다. 설치 후 `/hooks`를 열어 OMH 수명주기 훅을 검토하고 승인할 항목만 신뢰하세요. 설치 프로그램은 이 검토를 우회하지 않습니다. Codex에는 동등한 확장 지점이 없으므로 커스텀 상태 표시줄 HUD는 Claude 전용입니다. Codex에서는 `omh-status`를 호출해 현재 티어, 루프, 검증, 사용량, MCP 메모리 상태를 확인하세요.
 
 > 호환성을 위해 `.claude/.omh/`라는 이름을 유지합니다. Claude Code와 Codex는 동일한 설정, `STATE.md`, 루프 상태, 사용량 데이터, 학습을 의도적으로 함께 읽고 씁니다. 장기 메모리도 `~/.omh/memory/graph.jsonl`에서 공유합니다.
+
+Codex는 이벤트마다 **one orchestrator** 명령을 등록합니다. 공식 Codex sibling handler는 concurrent로 실행되지만 OMH orchestrator는 공유 handler를 **sequential**하게 실행해 안전 순서를 결정적으로 유지합니다. 중요한 `PreToolUse` guard는 안전 확인 실패 시 fail closed이고, advisory hook은 경고하거나 계속하며 fail open입니다.
+
+`omh-status`는 프로젝트 상태를 먼저 보고 **user-global fallback**을 사용합니다. lifecycle 대상을 결정적으로 지정하려면 `--scope project` 또는 `--scope user`를 사용하세요. 생략하면 CLI가 문서화된 prompt, 기본값, 또는 감지된 registration 선택을 사용합니다. Claude 프로젝트/사용자 lifecycle은 서로 격리(isolated)됩니다. malformed 관리 config, settings, guidance block은 **before mutation** preflight에서 실패합니다.
 
 ---
 
@@ -139,15 +143,19 @@ OMH의 기능은 세 그룹으로 나뉩니다 — 모든 세션에서 자동으
 | 무게 라우팅 (Tier 1/2/3) | `UserPromptSubmit` | ON | 프롬프트 무게를 분류해 가드 강도 조절; Tier 3은 완료 전 검증 강제 |
 | 모호성 가드 | `UserPromptSubmit` | ON | 모호한 요청에 대해 명확화 강제 |
 | 자동 Plan 모드 | `UserPromptSubmit` | ON | 3개 이상 작업 감지 시 계획 수립 제안 |
-| 위험 명령 가드 | `PreToolUse` | ON | `rm -rf`, `git push --force`, `.env` 쓰기 전 경고 |
+| 위험 명령 가드 | `PreToolUse` | ON | 파괴적 명령과 민감 파일 쓰기를 안전한 요청으로 바꿀 때까지 차단 |
 | 플랜 게이트 | `PreToolUse` (plan-gate) | ON | Tier 3 프롬프트는 편집 전 plan모드 구현 플랜 작성 강제 |
 | 커밋 컨벤션 | `PostToolUse` | ON | 커밋 형식 안내 (Conventional / Gitmoji) |
-| 스코프 가드 | `PostToolUse` | OFF | 허용된 경로 외 파일 수정 시 경고 |
+| 스코프 가드 | Codex `PreToolUse` / Claude `PostToolUse` | OFF | Codex는 범위 밖 편집과 감사 가능한 경로가 없는 인식된 파일시스템 mutation을 차단하고 Claude는 도구 실행 후 보고 |
 | 사용량 추적 | `PostToolUse` | ON | 세션별 도구 사용량 기록 |
 | 테스트 강제 | `Stop` | ON | 코드 변경 후 테스트 확인 리마인드 |
 | 검증 게이트 | `Stop` (verify-gate) | ON | 매 턴 diff 위험도를 판단해 verify 사다리를 직접 실행; 민감/무테스트 변경이 red면 차단 (세션을 가두지 않음) |
 | 컨텍스트 스냅샷 | `PreCompact` | ON | 컨텍스트 압축 전 작업 상태 저장 |
 | Living State (`STATE.md`) | `SessionStart` / `PreCompact` | ON | 디스크 앵커 목표/phase/결정을 세션 넘어 재주입해 context rot 방어 |
+
+Tier 3 작업에서 Claude는 `Edit`/`Write` 계열 도구를 막고 `ExitPlanMode`로 해제합니다. Codex는 `apply_patch`를 edit로 매핑하고, 비어 있지 않으며 각 항목의 `step`이 비어 있지 않고 `status`가 허용 값인 `update_plan`만 해제 신호로 매핑합니다. 그 밖의 payload는 게이트를 해제하지 않으며 denial 상한은 세션을 가두지 않는 최종 탈출구로 남습니다.
+
+스코프 이벤트는 런타임별로 의도적으로 다릅니다. **Codex PreToolUse** 집행은 중요한 orchestrator 안에서 도구 실행 전에 동작하고, **Claude PostToolUse**는 기존 관측 계약을 유지합니다. Codex 스코프 설정을 읽을 수 없으면 프로젝트 경계를 fallback으로 사용해 프로젝트 내부 경로는 허용하고 외부로 나가는 traversal은 차단합니다.
 
 ### B. 자율 실행 — 직접 호출
 
@@ -223,11 +231,12 @@ oh-my-harness init --runtime codex --scope user
 node ~/.claude/.omh/runtime/lib/memory.mjs stats
 ```
 
-- **백엔드** — 레퍼런스 지식그래프 서버(`@modelcontextprotocol/server-memory`): 로컬, API 키 불필요, JSONL 파일에 엔티티+관계+observation. Claude 플러그인 모드는 `.mcp.json`을 사용합니다. 로컬 Codex init은 `.claude/.omh/runtime/bin/omh-memory.sh`와 `.claude/.omh/runtime/lib/memory.mjs`를 설치하고 Codex 설정의 `[mcp_servers.omh-memory]`를 관리합니다. 둘 다 `~/.omh/memory/graph.jsonl`을 가리킵니다.
+- **백엔드** — 고정 버전 지식그래프 서버 `@modelcontextprotocol/server-memory@2026.7.4`: 로컬, API 키 불필요, JSONL 파일에 엔티티+관계+observation. 플러그인 MCP는 plugin root로 이동해 `bin/omh-memory.sh`를 실행합니다. 로컬 Codex init은 선택한 scope 아래 같은 launcher/library를 설치하고 `[mcp_servers.omh-memory]`를 관리합니다. 둘 다 `~/.omh/memory/graph.jsonl`을 가리킵니다.
 - **루프가 읽음** — 계획 전에 `/omh-loop`·`/omh-spec`이 그래프에서 과거 학습·이미 검증된 `quickCheck`/`verify` 커맨드·기존 함정을 조회해 계획에 반영합니다(이미 아는 것을 재탐지하지 않음).
 - **루프가 씀** — 실패한 iteration의 Reflexion은 `Learning` 엔티티가 되고, 통과한 verify는 검증된 커맨드를 `Project`에 적립하며, `/omh-verify`는 **고신뢰 findings**(2+ 모델 합의)를 영속화해 다음 실행이 재발견하지 않게 합니다.
 - **에이전트 + 프로그래매틱 접근** — 플러그인 사용자는 `omh-memory` MCP 도구를 실시간으로 사용합니다. 로컬 Codex 설치는 위에 표시된 범위별 관리 `runtime/lib/memory.mjs` 도우미(원자적 쓰기, 서버와 포맷 호환)를 사용할 수 있습니다.
 - **Graceful degradation** — MCP 서버가 미연결(또는 오프라인)이면 LTM 단계는 조용히 스킵됩니다. 루프는 메모리 때문에 막히지 않습니다.
+- **실행과 플랫폼** — launcher는 `npx --yes --prefer-offline`을 사용하지만 처음 uncached 실행은 npm registry/network 접근이 필요합니다. release 검증은 macOS 현재 머신 cache에 이 정확한 패키지를 warm합니다. Native Windows의 Codex hooks는 `commandWindows`로 실행할 수 있지만 MCP launcher 자체에는 Bash가 필요합니다.
 
 > **동시성 주의.** 지식그래프 서버는 인메모리 복사본을 두고 mutation마다 파일 전체를 다시 쓰므로, 한 번에 한 writer를 전제로 설계됐습니다. 개인용(한 번에 한 에이전트)엔 무해하나, Claude Code와 Codex가 동시에 대량 쓰기하는 것은 피하세요.
 
@@ -263,11 +272,11 @@ startup_timeout_sec = 60
 
 > 전체 내용: [docs/architecture.ko.md](docs/architecture.ko.md)
 
-OMH는 **네 개의 계층**으로 구성됩니다. 핵심 판단 로직은 순수하게 유지되어 단위 테스트되고, 외부 세계와 맞닿는 훅은 얇고 fail-open 하게 유지됩니다.
+OMH는 **네 개의 계층**으로 구성됩니다. 핵심 판단은 순수하게 유지되어 단위 테스트되고 네이티브 adapter가 올바른 실패 정책을 적용합니다.
 
 | 계층 | 구성 요소 | 역할 |
 |------|-----------|------|
-| **① 훅** | 공유 스크립트 11개(생명주기 가드/관측기 9개 + 게이트 2개), Codex 브리지 모듈 2개 | 얇은 **fail-open** 래퍼 — 부수효과 신호(git, 시간, stdin)를 모아 판단을 출력 |
+| **① 훅** | 공유 스크립트 11개(생명주기 가드/관측기 9개 + 게이트 2개), Codex 브리지 모듈 2개 | Codex는 이벤트마다 one orchestrator를 두고 handler를 sequential 실행; critical guard는 fail closed, advisory hook은 계속 |
 | **② 순수 코어** (`lib/`) | `loop` · `tier` · `detect` · `config` · `verify` · `state` · `dictionary` | 모든 판단 로직을 **순수 함수**(fs / git / 시간 없음)로 → 완전한 단위 테스트 |
 | **③ 스킬** | Claude 13개 / Codex 14개 스킬 | 사용자 호출 워크플로우 (`/omh-loop`, `/omh-verify`, `/team-spawn`, `omh-status`, …) |
 | **④ 에이전트** | `quick` · `standard` · `architect` | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
@@ -337,8 +346,8 @@ graph TB
 |-----------------|-----|------|
 | `SessionStart` | `session-start.mjs` | 컨벤션 감지 · `STATE.md` 주입 |
 | `UserPromptSubmit` | `pre-prompt.mjs` | 무게 티어 · 모호성 가드 · 자동 Plan |
-| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | 위험 명령 경고 · **플랜 게이트 (Tier 3)** |
-| `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | 커밋 형식 · 스코프 · 사용량 통계 |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** · `scope-guard` (Codex) | 파괴적 작업 또는 malformed hook 입력 차단 · **플랜 게이트 (Tier 3)** · Codex 스코프 집행 |
+| `PostToolUse` | `commit-convention` · `scope-guard` (Claude) · `usage-tracker` | 커밋 형식 · Claude 스코프 보고 · 사용량 통계 |
 | `PreCompact` | `pre-compact.mjs` | 컨텍스트 스냅샷 · `STATE.md` 갱신 |
 | `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | **자율 루프 엔진** · **위험도 기반 검증 게이트** · 테스트 강제 |
 
@@ -360,7 +369,7 @@ sequenceDiagram
 
     Note over CC,OMH: 도구 실행
     CC->>OMH: PreToolUse (Bash: rm -rf dist/)
-    OMH-->>CC: 경고: rm -rf 감지. 사용자 확인 필요.
+    OMH-->>CC: 차단: rm -rf 감지. 요청을 안전하게 변경.
 
     CC->>OMH: PostToolUse (Bash: git commit)
     OMH-->>CC: 컨벤션: feat(scope): description

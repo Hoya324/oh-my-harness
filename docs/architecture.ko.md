@@ -4,7 +4,7 @@ OMH는 네이티브 **Claude Code 또는 Codex 플러그인**(권장), 또는 **
 
 ## Codex 지원
 
-OMH는 런타임 중립 공유 코어와 얇은 네이티브 어댑터를 사용합니다. 기존 `.claude-plugin` 패키지와 Claude 훅은 그대로 유지되고, [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json)은 Codex가 `codex/skills/`, `.mcp.json`, `hooks/codex/hooks.json`을 사용하도록 연결합니다. 두 모듈 `hooks/codex/adapter.mjs`와 `hooks/codex/run.mjs`로 된 Codex 브리지가 이벤트 입력을 정규화하고 동일한 훅과 `lib/` 판단을 실행한 뒤 Codex 네이티브 출력으로 직렬화합니다.
+OMH는 런타임 중립 공유 코어와 네이티브 adapter를 사용합니다. 기존 `.claude-plugin` 패키지와 Claude hooks는 그대로 유지되고, [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json)은 Codex가 `codex/skills/`, `.mcp.json`, `hooks/codex/hooks.json`을 사용하도록 연결합니다. Bridge는 `hooks/codex/adapter.mjs`와 sequential orchestrator `hooks/codex/run.mjs`입니다. Marketplace 설치가 번들하는 것은 이 skills, hooks, MCP뿐입니다. 커스텀 Codex 역할 프로필과 지속 `AGENTS.md` 지침은 번들된 `/harness-setup` 또는 `oh-my-harness init --runtime codex|both`가 필요합니다.
 
 런타임별 등록은 분리되지만 프로젝트 상태는 분리되지 않습니다. 두 런타임은 `.claude/.omh/harness.config.json`, `STATE.md`, `loop-state.json`, 학습, 컨벤션, 사용량을 함께 읽습니다. `~/.omh/memory/graph.jsonl`도 공유합니다. 이번 호환성 릴리스에서 `.claude/.omh/`를 유지해 상태 마이그레이션을 피합니다.
 
@@ -15,15 +15,15 @@ OMH는 런타임 중립 공유 코어와 얇은 네이티브 어댑터를 사용
 | Stop 연속 실행 | 최상위 `decision: "block"` | 동일한 최상위 연속 실행 형태 |
 | fail-open 성공 | 종료 코드 0 | 출력 없이 종료 코드 0 |
 
-보조 관측 훅은 fail-open입니다. 위험 명령과 명시적 범위 정책 위반은 fail-closed입니다. Codex 훅 신뢰는 네이티브 경계를 유지하며 `/hooks`에서 검토해야 합니다.
+공식 Codex sibling hook handler는 concurrent입니다. OMH는 대신 이벤트마다 **one orchestrator**를 등록하고 공유 handler를 **sequential**하게 실행합니다. Critical `PreToolUse` guard는 실행/출력으로 안전을 확인할 수 없으면 fail closed이고 advisory 관측 hook은 경고하거나 계속하며 fail open입니다. Codex hook 신뢰는 네이티브 경계를 유지하며 `/hooks`에서 검토해야 합니다.
 
 ## 계층 구조
 
-OMH는 네 개의 계층으로 구성됩니다. 설계 원칙은 이렇습니다 — **모든 판단 로직은 순수하고 단위 테스트된 코어 모듈에 두고, git·시간·stdin과 맞닿는 훅은 얇고 fail-open 하게 유지한다.** 이 분리 덕분에 자율 루프의 핵심 종료 로직을 라이브 세션 없이 단위 테스트할 수 있습니다.
+OMH는 네 개의 계층으로 구성됩니다. 판단 로직은 순수하고 단위 테스트된 코어 모듈에 두고 각 native adapter가 이벤트의 안전 정책을 적용합니다. 이 분리 덕분에 핵심 로직을 라이브 세션 없이 테스트할 수 있습니다.
 
 | 계층 | 구성 요소 | 역할 |
 |------|-----------|------|
-| **① 훅** | 등록된 공유 스크립트 11개: 생명주기 가드/관측기 9개 + `plan-gate.mjs`, `verify-gate.mjs`; Codex 브리지 모듈 2개 추가 | 얇은 **fail-open** 래퍼 — 부수효과 신호를 모아 판단을 출력; 오류가 나도 세션을 가두지 않고 조용히 통과 |
+| **① 훅** | Codex 이벤트 orchestrator 6개 뒤의 공유 스크립트 11개, Codex 브리지 모듈 2개 | 이벤트마다 one orchestrator, sequential 공유 handler, critical guard fail closed, advisory hook fail open |
 | **② 순수 코어** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | 판단 로직을 **순수 함수**(fs / git / `Date.now` / child_process 없음)로 → 완전한 단위 테스트 |
 | **③ 스킬** | Claude 스킬 13개 (`skills/`) / Codex 스킬 14개 (`codex/skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 / Codex 상태 |
 | **④ 에이전트** | `quick` / `standard` / `architect` (`agents/`) | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
@@ -34,14 +34,18 @@ OMH는 네 개의 계층으로 구성됩니다. 설계 원칙은 이렇습니다
 |-----------------|-----|------|
 | `SessionStart` | `session-start.mjs` | 컨벤션 감지 · `STATE.md` 주입 |
 | `UserPromptSubmit` | `pre-prompt.mjs` | 무게 티어 · 모호성 가드 · 자동 Plan |
-| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | 위험 명령 경고 · 플랜 게이트 (Tier 3은 편집 전 계획 필수) |
-| `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | 커밋 형식 · 스코프 · 사용량 통계 |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** · `scope-guard` (Codex) | 파괴적 작업 또는 malformed hook 입력 차단 · 플랜 게이트 · Codex 스코프 집행 |
+| `PostToolUse` | `commit-convention` · `scope-guard` (Claude) · `usage-tracker` | 커밋 형식 · Claude 스코프 보고 · 사용량 통계 |
 | `PreCompact` | `pre-compact.mjs` | 컨텍스트 스냅샷 · `STATE.md` 갱신 |
 | `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | 자율 루프 엔진 · 위험도 기반 검증 게이트 · 테스트 강제 |
 
 아래 다이어그램은 이 계층들이 설정과 디스크 데이터에 어떻게 연결되는지를 보여줍니다.
 
 Stop 훅 게이트는 **두 개**입니다: `loop-guard.mjs`는 활성 `/omh-loop` 안에서 검증을 소유하고, `verify-gate.mjs`는 평범한 세션에서 소유합니다(루프가 활성이면 비켜남). 둘 다 동일한 최상위 `{decision:'block'}` 계약으로 계속을 강제합니다.
+
+Tier 3 Plan Gate의 네이티브 신호는 런타임별로 다릅니다. Claude는 `Edit`/`Write`/`NotebookEdit`/`MultiEdit`를 막고 `ExitPlanMode`로 해제합니다. Codex는 `apply_patch`를 edit로 매핑하고, 비어 있지 않으며 각 항목의 `step`이 비어 있지 않고 `status`가 허용 값인 `update_plan`만 공유 해제 신호로 매핑합니다. 그 밖의 payload는 해제하지 않으며 denial 상한은 non-wedging fallback으로 남습니다.
+
+스코프 배치도 런타임마다 다릅니다. **Codex PreToolUse**는 실행 전에 세 번째 critical 단계로 스코프 가드를 수행하고, **Claude PostToolUse**는 기존 observer 등록을 유지합니다. Codex가 스코프 설정을 읽지 못하면 프로젝트 경계를 fallback allowlist로 삼고 그 밖으로 나가는 traversal을 차단합니다.
 
 ## 개요
 
@@ -135,7 +139,7 @@ sequenceDiagram
 
     Note over CC,OMH: 도구 실행
     CC->>OMH: PreToolUse (Bash: rm -rf dist/)
-    OMH-->>CC: 경고: rm -rf 감지. 사용자 확인 필요.
+    OMH-->>CC: 차단: rm -rf 감지. 요청을 안전하게 변경.
 
     CC->>OMH: PostToolUse (Bash: git commit)
     OMH-->>CC: 컨벤션: feat(scope): description
@@ -187,7 +191,9 @@ flowchart TD
 
 ## 플러그인 모드 (권장)
 
-Claude Code는 `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, `skills/`를 로드합니다. Codex는 `.codex-plugin`, Codex 훅/스킬, `AGENTS.md`를 로드하며 둘 다 동일한 코어를 가리킵니다:
+Claude Code는 `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, `skills/`를 로드합니다. Codex marketplace manifest는 `.codex-plugin`, Codex hooks/skills, MCP를 로드하지만 역할 프로필이나 지속 `AGENTS.md` 지침은 설치하지 않습니다. 그 등록 표면은 확인된 `/harness-setup` 또는 직접 로컬 CLI init만 추가합니다.
+
+메모리 MCP는 **plugin root**에서 `bin/omh-memory.sh`를 실행하고, launcher는 `npx --yes --prefer-offline @modelcontextprotocol/server-memory@2026.7.4`를 호출합니다. 처음 uncached 실행은 npm registry/network 접근이 필요하며 release 검증은 macOS 현재 머신 cache를 warm합니다. Native Windows Codex hooks에는 `commandWindows`가 있지만 MCP launcher에는 Bash가 필요합니다.
 
 ```
 oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
@@ -207,9 +213,9 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 │   ├── lib/hook-config.mjs       <- config 로더 (프로젝트 → ~/.claude 전역 fallback)
 │   ├── session-start.mjs         <- 컨벤션 감지 + STATE.md 주입
 │   ├── pre-prompt.mjs            <- 모호성 + 자동 Plan + 무게 라우팅
-│   ├── dangerous-guard.mjs       <- 위험 명령 경고
+│   ├── dangerous-guard.mjs       <- 파괴적/malformed 요청 차단
 │   ├── commit-convention.mjs     <- 커밋 형식 안내
-│   ├── scope-guard.mjs           <- 경로 제한 경고
+│   ├── scope-guard.mjs           <- Codex 실행 전 집행 / Claude 실행 후 보고
 │   ├── usage-tracker.mjs         <- 도구 사용량 기록
 │   ├── pre-compact.mjs           <- 컨텍스트 스냅샷
 │   ├── loop-guard.mjs            <- Stop 훅: 루프 엔진 + 안전장치 (lib/loop.mjs의 얇은 래퍼)

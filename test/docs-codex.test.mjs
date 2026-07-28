@@ -375,3 +375,133 @@ test('rendered agents table matches Claude definitions and Codex profile prefere
     assert.match(rows.get(role), new RegExp(profile.effort));
   }
 });
+
+test('marketplace delivery docs separate bundled surfaces from explicit Codex registration', () => {
+  const packageJson = JSON.parse(read('package.json'));
+  const claudePlugin = JSON.parse(read('.claude-plugin/plugin.json'));
+  const marketplace = JSON.parse(read('.claude-plugin/marketplace.json'));
+  for (const [label, description] of [
+    ['package', packageJson.description],
+    ['Claude plugin', claudePlugin.description],
+    ['marketplace', marketplace.description],
+    ['marketplace entry', marketplace.plugins[0].description],
+  ]) {
+    assert.match(description, /Claude Code.*Codex|Codex.*Claude Code/i, `${label}: dual-runtime description`);
+    assert.doesNotMatch(description, /zero[- ](?:config|setup)/i, `${label}: no overbroad zero-setup claim`);
+  }
+  assert.ok(packageJson.keywords.includes('codex'));
+
+  for (const file of ['README.md', 'README.ko.md']) {
+    const body = read(file);
+    for (const fact of ['hooks', 'skills', 'MCP', '/harness-setup', 'oh-my-harness init --runtime codex', 'AGENTS.md', 'quick/standard/architect']) {
+      assert.ok(body.includes(fact), `${file}: delivery contract missing ${fact}`);
+    }
+    assert.doesNotMatch(body, /Zero setup is required|별도 설정이 필요 없습니다/);
+    assert.doesNotMatch(body, /harness-setup.*optional|harness-setup.*선택 사항/i);
+  }
+
+  const site = read('docs/index.html') + read('docs/docs.html');
+  const i18n = read('docs/i18n.js');
+  for (const key of ['index.codex.delivery', 'docs.installation.delivery']) {
+    assert.ok(site.includes(`data-i18n-html="${key}"`) || site.includes(`data-i18n="${key}"`));
+    assert.equal((i18n.match(new RegExp(`'${key.replaceAll('.', '\\.')}'\\s*:`, 'g')) || []).length, 2);
+  }
+});
+
+test('hook architecture documents sequential orchestration and mixed failure policy', () => {
+  for (const file of ['README.md', 'README.ko.md', 'docs/architecture.md', 'docs/architecture.ko.md', 'CHANGELOG.md']) {
+    const body = read(file);
+    for (const fact of ['one orchestrator', 'sequential', 'concurrent', 'fail closed', 'advisory']) {
+      assert.ok(body.toLowerCase().includes(fact), `${file}: hook contract missing ${fact}`);
+    }
+    assert.doesNotMatch(body, /Thin \*\*fail-open\*\* wrappers|얇은 \*\*fail-open\*\* 래퍼/);
+  }
+  const html = read('docs/docs.html');
+  const i18n = read('docs/i18n.js');
+  for (const key of ['docs.hooks.orchestration', 'docs.hooks.failurePolicy']) {
+    assert.ok(html.includes(`data-i18n="${key}"`) || html.includes(`data-i18n-html="${key}"`));
+    assert.equal((i18n.match(new RegExp(`'${key.replaceAll('.', '\\.')}'\\s*:`, 'g')) || []).length, 2);
+  }
+});
+
+test('guard docs distinguish Codex pre-tool scope enforcement from Claude post-tool reporting', () => {
+  for (const file of [
+    'README.md', 'README.ko.md',
+    'docs/features.md', 'docs/features.ko.md',
+    'docs/architecture.md', 'docs/architecture.ko.md',
+  ]) {
+    const body = read(file);
+    assert.ok(body.includes('Codex PreToolUse'), `${file}: missing Codex scope event`);
+    assert.ok(body.includes('Claude PostToolUse'), `${file}: missing Claude scope event`);
+    assert.doesNotMatch(body, /Warning only.*does not block|경고만.*차단하지 않/s);
+  }
+
+  const html = read('docs/docs.html');
+  const i18n = read('docs/i18n.js');
+  assert.ok(html.includes('data-i18n-html="docs.hooks.scopeEvents"'));
+  assert.equal((i18n.match(/'docs\.hooks\.scopeEvents'\s*:/g) || []).length, 2);
+  for (const stale of ['Guide with warnings, never block', 'Warning only — does not block execution']) {
+    assert.ok(!html.includes(stale), `docs HTML stale guard claim: ${stale}`);
+    assert.ok(!i18n.includes(stale), `i18n stale guard claim: ${stale}`);
+  }
+});
+
+test('plan-gate docs distinguish Codex update_plan from Claude ExitPlanMode', () => {
+  for (const file of [
+    'README.md', 'README.ko.md',
+    'docs/features.md', 'docs/features.ko.md',
+    'docs/configuration.md', 'docs/configuration.ko.md',
+    'docs/architecture.md', 'docs/architecture.ko.md',
+    'CHANGELOG.md',
+  ]) {
+    const body = read(file);
+    for (const fact of ['apply_patch', 'update_plan', 'ExitPlanMode']) {
+      assert.ok(body.includes(fact), `${file}: plan-gate runtime mapping missing ${fact}`);
+    }
+  }
+  const html = read('docs/docs.html');
+  const i18n = read('docs/i18n.js');
+  assert.ok(html.includes('data-i18n-html="docs.planGate.runtimeMapping"'));
+  assert.equal((i18n.match(/'docs\.planGate\.runtimeMapping'\s*:/g) || []).length, 2);
+});
+
+test('memory docs describe the pinned offline-first launcher and platform boundary', () => {
+  const files = [
+    'README.md', 'README.ko.md',
+    'docs/features.md', 'docs/features.ko.md',
+    'docs/architecture.md', 'docs/architecture.ko.md',
+    'CHANGELOG.md',
+  ];
+  for (const file of files) {
+    const body = read(file);
+    for (const fact of [
+      '@modelcontextprotocol/server-memory@2026.7.4',
+      '--prefer-offline',
+      'registry',
+      'plugin root',
+      'Bash',
+      'commandWindows',
+      'macOS',
+    ]) {
+      assert.ok(body.includes(fact), `${file}: memory/platform contract missing ${fact}`);
+    }
+  }
+  const html = read('docs/docs.html');
+  const i18n = read('docs/i18n.js');
+  assert.ok(html.includes('data-i18n-html="docs.installation.memoryLaunch"'));
+  assert.equal((i18n.match(/'docs\.installation\.memoryLaunch'\s*:/g) || []).length, 2);
+});
+
+test('lifecycle docs cover status fallback, explicit scopes, and atomic preflight failures', () => {
+  for (const file of ['README.md', 'README.ko.md', 'docs/configuration.md', 'docs/configuration.ko.md', 'CHANGELOG.md']) {
+    const body = read(file);
+    for (const fact of ['omh-status', 'user-global fallback', '--scope project', '--scope user', 'malformed', 'before mutation']) {
+      assert.ok(body.includes(fact), `${file}: lifecycle contract missing ${fact}`);
+    }
+    assert.match(body, /Claude.*(?:isolated|\uaca9\ub9ac)/s, `${file}: Claude scope isolation`);
+  }
+  const html = read('docs/docs.html');
+  const i18n = read('docs/i18n.js');
+  assert.ok(html.includes('data-i18n-html="docs.lifecycle.scopeSafety"'));
+  assert.equal((i18n.match(/'docs\.lifecycle\.scopeSafety'\s*:/g) || []).length, 2);
+});

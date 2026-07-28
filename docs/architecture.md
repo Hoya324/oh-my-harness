@@ -4,7 +4,7 @@ OMH installs as a native **Claude Code or Codex plugin** (recommended), or throu
 
 ## Codex Support
 
-OMH uses a shared runtime-neutral core with thin native adapters. The existing `.claude-plugin` package and Claude hooks remain intact; [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json) points Codex at `codex/skills/`, `.mcp.json`, and `hooks/codex/hooks.json`. The two-module Codex bridge — `hooks/codex/adapter.mjs` and `hooks/codex/run.mjs` — normalizes event input, invokes the same hook and `lib/` decisions, then serializes Codex-native output.
+OMH uses a shared runtime-neutral core with native adapters. The existing `.claude-plugin` package and Claude hooks remain intact; [`.codex-plugin/plugin.json`](../.codex-plugin/plugin.json) points Codex at `codex/skills/`, `.mcp.json`, and `hooks/codex/hooks.json`. The bridge is `hooks/codex/adapter.mjs` plus the sequential `hooks/codex/run.mjs` orchestrator. Marketplace installation bundles those skills, hooks, and MCP only. Custom Codex role profiles and durable `AGENTS.md` guidance require the bundled `/harness-setup` flow or `oh-my-harness init --runtime codex|both`.
 
 Runtime-specific registrations remain separate, but project state does not. Both runtimes read `.claude/.omh/harness.config.json`, `STATE.md`, `loop-state.json`, learnings, conventions, and usage. They also share `~/.omh/memory/graph.jsonl`. Retaining `.claude/.omh/` avoids a state migration in this compatibility release.
 
@@ -15,15 +15,15 @@ Runtime-specific registrations remain separate, but project state does not. Both
 | Stop continuation | Top-level `decision: "block"` | The same top-level continuation shape |
 | Fail-open success | Exit zero | Exit zero with no output |
 
-Auxiliary observation hooks fail open. Dangerous commands and explicit scope-policy violations fail closed. Codex hook trust remains native and must be reviewed in `/hooks`.
+Official Codex sibling hook handlers are concurrent. OMH instead registers **one orchestrator** per event, and that orchestrator runs the shared handlers **sequentially**. Critical `PreToolUse` guards fail closed if execution or output cannot establish safety; advisory observation hooks warn or continue and fail open. Codex hook trust remains native and must be reviewed in `/hooks`.
 
 ## Layers
 
-OMH is built in four layers. The design rule: **all decision logic lives in pure, unit-tested core modules; the hooks that touch git, time, and stdin stay thin and fail-open.** That separation is why the load-bearing termination logic of the autonomous loop can be unit-tested without a live session.
+OMH is built in four layers. The design rule keeps decision logic in pure, unit-tested core modules while each native adapter applies the event's safety policy. That separation makes load-bearing logic testable without a live session.
 
 | Layer | Components | Role |
 |-------|-----------|------|
-| **① Hooks** | 11 registered shared scripts: 9 lifecycle guards/observers plus `plan-gate.mjs` and `verify-gate.mjs`; Codex adds 2 bridge modules | Thin **fail-open** wrappers — gather impure signals and emit decisions; any error stays silent rather than trapping the session |
+| **① Hooks** | 11 shared scripts behind 6 Codex event orchestrators; Codex adds 2 bridge modules | One orchestrator per event, sequential shared handlers, fail closed critical guards, fail-open advisory hooks |
 | **② Pure Core** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | Decision logic as **pure functions** (no fs / git / `Date.now` / child_process) → fully unit-tested |
 | **③ Skills** | 13 Claude skills (`skills/`) / 14 Codex skills (`codex/skills/`) | User-invoked workflows: setup, agents, teams, spec / loop / verify / Codex status |
 | **④ Agents** | `quick` / `standard` / `architect` (`agents/`) | Model routing — haiku / sonnet / opus by task weight |
@@ -34,14 +34,18 @@ Lifecycle events can run an ordered chain of hooks; `PreToolUse`, `PostToolUse`,
 |-----------------|------|-------------|
 | `SessionStart` | `session-start.mjs` | Detect conventions · inject `STATE.md` |
 | `UserPromptSubmit` | `pre-prompt.mjs` | Weight tier · ambiguity guard · auto-plan |
-| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | Warn on destructive commands · plan gate (Tier-3 prompts must plan before editing) |
-| `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | Commit format · scope · usage stats |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** · `scope-guard` (Codex) | Deny destructive operations or malformed hook input · plan gate · enforce Codex scope |
+| `PostToolUse` | `commit-convention` · `scope-guard` (Claude) · `usage-tracker` | Commit format · report Claude scope · usage stats |
 | `PreCompact` | `pre-compact.mjs` | Snapshot context · refresh `STATE.md` |
 | `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | Autonomous loop engine · risk-gated verify gate · test enforcement |
 
 The diagram below shows how these layers connect to config and on-disk data.
 
 There are **two Stop-hook gates**: `loop-guard.mjs` owns verification inside an active `/omh-loop`; `verify-gate.mjs` owns it in plain sessions (it defers when a loop is active). Both force continuation via the same top-level `{decision:'block'}` contract.
+
+The Tier-3 Plan Gate has runtime-specific native signals. Claude blocks `Edit`/`Write`/`NotebookEdit`/`MultiEdit` and clears through `ExitPlanMode`. Codex maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`; other payloads do not clear it. The denial cap remains a non-wedging fallback.
+
+Scope placement also differs by runtime: **Codex PreToolUse** runs the scope guard as the third critical step before execution, while **Claude PostToolUse** retains the existing observer registration. If Codex cannot load scope configuration, the project boundary becomes the fallback allowlist and traversal outside it is denied.
 
 ## Overview
 
@@ -135,7 +139,7 @@ sequenceDiagram
 
     Note over CC,OMH: Tool execution
     CC->>OMH: PreToolUse (Bash: rm -rf dist/)
-    OMH-->>CC: WARNING: rm -rf detected. Confirm with user.
+    OMH-->>CC: DENY: rm -rf detected. Make the request safe.
 
     CC->>OMH: PostToolUse (Bash: git commit)
     OMH-->>CC: Convention: feat(scope): description
@@ -193,7 +197,9 @@ The classifier is pure and unit-tested; the hook is a thin wrapper that emits th
 
 ## Plugin Mode (recommended)
 
-Claude Code loads `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, and `skills/`. Codex loads `.codex-plugin`, Codex hooks/skills, and `AGENTS.md`; both point into the same core:
+Claude Code loads `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, and `skills/`. The Codex marketplace manifest loads `.codex-plugin`, Codex hooks/skills, and MCP; it does not install role profiles or durable `AGENTS.md` guidance. Those registration surfaces are added only by confirmed `/harness-setup` or direct local CLI init.
+
+Memory MCP starts from the **plugin root** and runs `bin/omh-memory.sh`, which invokes `npx --yes --prefer-offline @modelcontextprotocol/server-memory@2026.7.4`. A first uncached launch needs npm registry/network access; release verification on macOS warms the current machine's cache. Native Windows Codex hooks have `commandWindows`, while the MCP launcher requires Bash.
 
 ```
 oh-my-harness/                    <- plugin root ($CLAUDE_PLUGIN_ROOT)
@@ -213,9 +219,9 @@ oh-my-harness/                    <- plugin root ($CLAUDE_PLUGIN_ROOT)
 │   ├── lib/hook-config.mjs       <- config loader (project → ~/.claude global fallback)
 │   ├── session-start.mjs         <- convention detection + STATE.md injection
 │   ├── pre-prompt.mjs            <- ambiguity + auto-plan + weight routing
-│   ├── dangerous-guard.mjs       <- destructive command warning
+│   ├── dangerous-guard.mjs       <- destructive/malformed request denial
 │   ├── commit-convention.mjs     <- commit format reminder
-│   ├── scope-guard.mjs           <- path restriction warning
+│   ├── scope-guard.mjs           <- Codex pre-tool enforcement / Claude post-tool report
 │   ├── usage-tracker.mjs         <- tool usage recording
 │   ├── pre-compact.mjs           <- context snapshot
 │   ├── loop-guard.mjs            <- Stop hook: loop engine + safety (thin wrapper over lib/loop.mjs)

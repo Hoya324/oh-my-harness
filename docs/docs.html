@@ -177,7 +177,7 @@ oh-my-harness init --runtime both</code></pre>
       <p data-i18n-html="docs.installation.codexDesktop">In <strong>Codex desktop</strong>, open <strong>Plugins</strong>, choose the configured marketplace under <strong>Personal</strong>, install it, and open a new chat.</p>
       <p data-i18n-html="docs.installation.trust">After installation, review OMH hooks in <code>/hooks</code>. Codex keeps its native trust boundary. Use <code>omh-status</code> for tier, loop, verification, usage, and memory state.</p>
 
-      <blockquote><p data-i18n="docs.installation.note">Zero setup required — harness features (including the autonomous loop) activate automatically. <code>/harness-setup</code> is optional.</p></blockquote>
+      <blockquote><p data-i18n-html="docs.installation.delivery">Marketplace installation bundles hooks, skills, and MCP only. To add Codex quick/standard/architect profiles and durable <code>AGENTS.md</code> guidance, invoke <code>/harness-setup</code> and approve those writes, or run <code>oh-my-harness init --runtime codex|both</code>.</p></blockquote>
 
       <h3 data-i18n="docs.installation.updating">Updating</h3>
       <pre><code>claude plugin update oh-my-harness@oh-my-harness
@@ -186,13 +186,14 @@ oh-my-harness init --runtime both</code></pre>
 oh-my-harness update --runtime codex</code></pre>
       <blockquote><p data-i18n="docs.installation.updateNote">Updates preserve <code>harness.config.json</code> and user-owned skills. Codex update refreshes managed hooks, skills, roles, guidance, and memory runtime; Claude plugin update follows its plugin setup flow.</p></blockquote>
       <p data-i18n-html="docs.installation.memory">Claude plugin mode loads memory through <code>.mcp.json</code> and exposes MCP tools. Local Codex init provisions <code>.claude/.omh/runtime/bin/omh-memory.sh</code> and <code>.claude/.omh/runtime/lib/memory.mjs</code>, and manages <code>[mcp_servers.omh-memory]</code>. User-scoped init uses <code>~/.claude/.omh/runtime/</code>. Both use <code>~/.omh/memory/graph.jsonl</code>.</p>
+      <p data-i18n-html="docs.installation.memoryLaunch">MCP changes to the plugin root and runs <code>bin/omh-memory.sh</code>, which invokes <code>npx --yes --prefer-offline @modelcontextprotocol/server-memory@2026.7.4</code>. A first uncached launch needs npm registry/network access; release verification on macOS warms the current machine cache. Native Windows hooks use <code>commandWindows</code>, while the MCP launcher requires Bash.</p>
 
       <!-- Quick Start -->
       <h2 id="quick-start" data-i18n="docs.quickStart.title">Quick Start</h2>
-      <p data-i18n="docs.quickStart.intro">After installation, OMH works immediately. Here's what happens in your first session:</p>
+      <p data-i18n="docs.quickStart.intro">Bundled hooks, skills, and MCP are available after installation; provision Codex profiles and durable guidance explicitly. In your first session:</p>
       <ol>
         <li data-i18n-html="docs.quickStart.step1"><strong>Convention detected</strong> — OMH scans your project and outputs: <code>[omh:convention-detect] Project: node | test: vitest | lint: eslint</code></li>
-        <li data-i18n-html="docs.quickStart.step2"><strong>Guards active</strong> — Ambiguity detection, dangerous command warnings, and test enforcement are all ON by default.</li>
+        <li data-i18n-html="docs.quickStart.step2"><strong>Guards active</strong> — Ambiguity guidance, dangerous-command denial, and test enforcement are all ON by default.</li>
         <li data-i18n-html="docs.quickStart.step3"><strong>Model routing ready</strong> — Claude automatically delegates to haiku/sonnet/opus based on task complexity.</li>
       </ol>
       <p data-i18n-html="docs.quickStart.scaffold">Run <code>/init-project</code> to scaffold project-specific skills (code review, test writing, lint fixing) for your detected stack.</p>
@@ -314,7 +315,7 @@ oh-my-harness update --runtime codex</code></pre>
 
       <!-- Architecture -->
       <h2 id="architecture" data-i18n="docs.architecture.title">Architecture</h2>
-      <p data-i18n="docs.architecture.intro">OMH is built in four layers. All decision logic lives in pure, unit-tested core modules; the hooks that touch git, time, and stdin stay thin and fail-open. The tables below detail each layer.</p>
+      <p data-i18n="docs.architecture.intro">OMH is built in four layers. Pure, unit-tested decisions are separated from native adapters that apply each event's safety policy.</p>
 
       <table>
         <thead>
@@ -331,6 +332,8 @@ oh-my-harness update --runtime codex</code></pre>
       <!-- Hooks -->
       <h2 id="hooks" data-i18n="docs.hooks.title">Hooks</h2>
       <p data-i18n="docs.hooks.intro">OMH hooks into the native Claude Code or Codex lifecycle. Ordered event chains share the same decision core; Codex uses two bridge modules.</p>
+      <p data-i18n="docs.hooks.orchestration">Official Codex sibling handlers are concurrent. OMH registers one orchestrator per event and runs shared handlers sequentially for deterministic safety ordering.</p>
+      <p data-i18n="docs.hooks.failurePolicy">Critical PreToolUse guards fail closed when safety cannot be verified; advisory hooks warn or continue and fail open.</p>
 
       <table>
         <thead>
@@ -339,10 +342,10 @@ oh-my-harness update --runtime codex</code></pre>
         <tbody>
           <tr><td><code>session-start.mjs</code></td><td>SessionStart</td><td data-i18n="docs.hooks.r1.desc">Convention detection, skill hints</td></tr>
           <tr><td><code>pre-prompt.mjs</code></td><td>UserPromptSubmit</td><td data-i18n="docs.hooks.r2.desc">Ambiguity guard, auto-plan mode</td></tr>
-          <tr><td><code>dangerous-guard.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r3.desc">Warns before destructive commands</td></tr>
+          <tr><td><code>dangerous-guard.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r3.desc">Denies destructive operations or malformed hook input</td></tr>
           <tr><td><code>plan-gate.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r11.desc">Plan gate — requires a plan before edits</td></tr>
           <tr><td><code>commit-convention.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r4.desc">Reminds commit format</td></tr>
-          <tr><td><code>scope-guard.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r5.desc">Warns about out-of-scope edits</td></tr>
+          <tr><td><code>scope-guard.mjs</code></td><td data-i18n-html="docs.hooks.scopeEvents">Codex: PreToolUse<br>Claude: PostToolUse</td><td data-i18n="docs.hooks.r5.desc">Codex denies before execution; Claude reports after execution</td></tr>
           <tr><td><code>usage-tracker.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r6.desc">Records tool usage</td></tr>
           <tr><td><code>pre-compact.mjs</code></td><td>PreCompact</td><td data-i18n="docs.hooks.r7.desc">Saves context snapshot</td></tr>
           <tr><td><code>loop-guard.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r9.desc">Autonomous loop engine + safety enforcer</td></tr>
@@ -351,16 +354,18 @@ oh-my-harness update --runtime codex</code></pre>
         </tbody>
       </table>
 
+      <p data-i18n-html="docs.planGate.runtimeMapping">For Tier-3 work, Claude gates Edit/Write-class tools and clears with <code>ExitPlanMode</code>. Codex maps <code>apply_patch</code> to an edit and clears only for a non-empty <code>update_plan</code> whose entries each have a nonblank <code>step</code> and an allowed <code>status</code>; other payloads do not clear it. The denial cap remains a non-wedging fallback.</p>
+
       <h3 data-i18n-html="docs.hooks.featureTags">Feature Tags — <code>[omh:*]</code></h3>
       <p data-i18n="docs.hooks.featureTagsIntro">Every OMH action is prefixed with a tag so you always know which feature fired:</p>
       <pre><code>[omh:convention-detect]       → Detected project conventions
 [omh:ambiguity-guard]        → Asking for clarification
 [omh:auto-plan]              → Detected 3+ tasks
-[omh:dangerous-guard]        → Warning before destructive command
+[omh:dangerous-guard]        → Denial of destructive or malformed request
 [omh:model-routing → sonnet] → Delegating to sonnet
 [omh:test-enforcement]       → Reminding to verify tests
 [omh:commit-convention]      → Showing commit format
-[omh:scope-guard]            → Warning about edit outside paths
+[omh:scope-guard]            → Codex denial / Claude report outside paths
 [omh:context-snapshot]       → Saving state before compaction</code></pre>
 
       <!-- Skills -->
@@ -431,7 +436,7 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><td>Dangerous Guard</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>Plan Gate</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>Commit Convention</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Scope Guard</td><td>PostToolUse</td><td><span class="feature-badge badge-off">OFF</span></td></tr>
+          <tr><td>Scope Guard</td><td data-i18n-html="docs.hooks.scopeEvents">Codex: PreToolUse<br>Claude: PostToolUse</td><td><span class="feature-badge badge-off">OFF</span></td></tr>
           <tr><td>Usage Tracking</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>Test Enforcement</td><td>Stop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
           <tr><td>Verify Gate</td><td>Stop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
@@ -486,7 +491,7 @@ oh-my-harness update --runtime codex</code></pre>
       </table>
 
       <h3 data-i18n="docs.safetyGuards.dangerous.title">Dangerous Guard</h3>
-      <p data-i18n="docs.safetyGuards.dangerous.intro">Warns before potentially destructive operations:</p>
+      <p data-i18n="docs.safetyGuards.dangerous.intro">Denies potentially destructive operations before execution:</p>
       <table>
         <thead>
           <tr><th data-i18n="docs.safetyGuards.dangerous.th.pattern">Pattern</th><th data-i18n="docs.safetyGuards.dangerous.th.warning">Warning</th></tr>
@@ -502,10 +507,10 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><td><code>id_rsa</code>, <code>.pem</code>, <code>.key</code></td><td data-i18n="docs.safetyGuards.dangerous.r8">Private keys</td></tr>
         </tbody>
       </table>
-      <blockquote><p data-i18n="docs.safetyGuards.dangerous.note">Warning only — does not block execution. Asks Claude to confirm with user.</p></blockquote>
+      <blockquote><p data-i18n="docs.safetyGuards.dangerous.note">Hard PreToolUse guard — denies detected unsafe operations or malformed hook input until the request is made safe.</p></blockquote>
 
       <h3 data-i18n="docs.safetyGuards.scope.title">Scope Guard</h3>
-      <p data-i18n="docs.safetyGuards.scope.intro">When enabled, warns if Edit/Write targets files outside allowed directories.</p>
+      <p data-i18n="docs.safetyGuards.scope.intro">When enabled, Codex denies out-of-scope edits and recognized filesystem mutations with no auditable path before execution; Claude retains post-tool reporting.</p>
       <pre><code>{
   "features": { "scopeGuard": true },
   "scopeGuard": { "allowedPaths": ["src/auth", "src/utils"] }
@@ -694,7 +699,7 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><td><code>features.testEnforcement</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r2">Remind about tests after changes</td></tr>
           <tr><td><code>features.autoPlanMode</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r3">Suggest plan mode for multi-task</td></tr>
           <tr><td><code>features.ambiguityDetection</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r4">Force clarification for vague requests</td></tr>
-          <tr><td><code>features.dangerousGuard</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r5">Warn before destructive commands</td></tr>
+          <tr><td><code>features.dangerousGuard</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r5">Deny destructive operations or malformed hook input</td></tr>
           <tr><td><code>features.scopeGuard</code></td><td>bool</td><td>false</td><td data-i18n="docs.settingsRef.r6">Restrict file modification scope</td></tr>
           <tr><td><code>features.usageTracking</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r7">Track tool usage</td></tr>
           <tr><td><code>testEnforcement.minCases</code></td><td>number</td><td>2</td><td data-i18n="docs.settingsRef.r8">Minimum test cases per file</td></tr>
@@ -724,6 +729,7 @@ oh-my-harness reset --runtime claude
 oh-my-harness reset --runtime codex
 oh-my-harness reset --runtime both</code></pre>
       <p data-i18n-html="docs.cliCommands.scopeNote">Use <code>--scope user</code> to provision user-scoped Codex configuration and memory runtime. A bare reset retains the Claude-only default.</p>
+      <p data-i18n-html="docs.lifecycle.scopeSafety"><code>omh-status</code> reads project state first, then the user-global fallback. Explicit <code>--scope project</code> and <code>--scope user</code> keep Claude lifecycles isolated. A malformed managed config, settings file, or guidance block fails preflight before mutation.</p>
 
       <!-- Compatibility -->
       <h2 id="compatibility" data-i18n="docs.compatibility.title">OMC Compatibility</h2>

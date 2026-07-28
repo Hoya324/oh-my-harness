@@ -11,10 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Native Codex CLI and desktop support.** A `.codex-plugin` manifest, Codex lifecycle-hook bridge, local marketplace entry, and Codex-native workflow package expose OMH without changing the existing Claude Code plugin.
-- **Codex hooks and trust-aware installation.** `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, and `Stop` map into the shared core. Dangerous commands and explicit scope violations deny before tool use; auxiliary hooks fail open. Native `/hooks` review is required and never bypassed.
-- **Codex skills, roles, and collaboration.** Fourteen bundled Codex skills cover setup, spec/loop/verify/status, tmux/worktree agents, and native teams. Overrideable quick/standard/architect roles map to Codex models and reasoning levels; native team skills use Codex collaboration operations.
+- **Codex hooks and trust-aware installation.** `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, and `Stop` map into the shared core. Each event registers one orchestrator that runs shared handlers sequentially instead of relying on official Codex concurrent sibling handlers. Critical guards fail closed; advisory hooks warn or continue. Native `/hooks` review is required and never bypassed.
+- **Codex skills, roles, and collaboration.** Fourteen marketplace-bundled Codex skills cover setup, spec/loop/verify/status, tmux/worktree agents, and native teams. The marketplace plugin also bundles hooks and MCP; quick/standard/architect roles and durable `AGENTS.md` guidance require confirmed `/harness-setup` or local CLI init. Native team skills use Codex collaboration operations.
 - **Runtime-aware local CLI.** `init`, `update`, `status`, and `reset` accept `--runtime claude|codex|both` with project/user scopes. Managed Codex hooks, roles, skills, config blocks, and `AGENTS.md` guidance update idempotently while preserving user-owned content.
-- **Long-term memory (LTM).** OMH now persists cross-session, **cross-runtime** learnings to a knowledge-graph MCP server (`omh-memory`, backed by `@modelcontextprotocol/server-memory`) whose store — `~/.omh/memory/graph.jsonl` — is **shared by Claude Code and Codex**.
+- **Long-term memory (LTM).** OMH now persists cross-session, **cross-runtime** learnings to `omh-memory`, pinned to `@modelcontextprotocol/server-memory@2026.7.4`, whose store — `~/.omh/memory/graph.jsonl` — is **shared by Claude Code and Codex**.
   - The plugin's `.mcp.json` auto-provisions Claude Code. Local Codex init copies `bin/omh-memory.sh` and `lib/memory.mjs` into the managed scope runtime and registers `[mcp_servers.omh-memory]`: project scope uses `.codex/config.toml` plus `.claude/.omh/runtime/`; user scope uses `~/.codex/config.toml` plus `~/.claude/.omh/runtime/`.
   - The managed `runtime/lib/memory.mjs` helper supports `read`, `search`, `add-learning`, `add-observation`, and `stats`; plugin users access memory through MCP tools.
   - `/omh-loop` reads prior learnings, already-verified commands, and known pitfalls before planning, and persists Reflexions (on failure) + verified commands (on green); `/omh-verify` persists high-confidence findings (2+ model consensus); `/omh-spec` reuses previously-verified commands. All LTM steps **degrade gracefully** when the server is unavailable — the loop never blocks on memory.
@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Claude Code and Codex share `.claude/.omh/` project config/state and `~/.omh/memory/graph.jsonl`; no state migration or second memory store is introduced.
 - Claude Code retains its custom status-line HUD. Codex exposes equivalent collected state through hook messages and the read-only `omh-status` skill because Codex has no equivalent custom status-line extension.
+- **Plan Gate runtime mapping.** Claude continues to gate Edit/Write/NotebookEdit/MultiEdit and clear with `ExitPlanMode`. Codex maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`; other payloads do not clear it. Its denial cap remains the non-wedging fallback.
+- **MCP launch contract.** Plugin MCP starts from the plugin root and calls `bin/omh-memory.sh`, whose exact command is `npx --yes --prefer-offline @modelcontextprotocol/server-memory@2026.7.4`. A first uncached launch requires npm registry/network access; release verification on macOS warms the current machine cache. Native Windows Codex hooks declare `commandWindows`, while the MCP launcher requires Bash.
+- **Scope safety.** `omh-status` resolves project state before the user-global fallback. Explicit `--scope project` and `--scope user` Claude lifecycles remain isolated. A malformed managed config, settings file, or guidance block fails preflight before mutation, including combined-runtime lifecycle operations.
 
 ## [0.4.5] - 2026-06-25
 
@@ -81,12 +84,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lib/risk.mjs` — pure, unit-tested gate core: `computeRisk`, `evaluateGate`, `globMatch`, `classifyFiles`, `diffSignature`, `tierFloor`. Mirrors the pure-core/impure-wrapper split of `lib/loop.mjs`.
 - `features.verifyGate` (default ON) + `verifyGate` config block (`riskThreshold`, `maxBlocks`, `runLadder`, `recommendCrossVerify`, `largeFiles`/`largeLines`, `ladderTimeoutSec`, `quickCheckCommand`/`verifyCommand`, `sensitivePaths`).
 - `hooks/pre-prompt.mjs` now persists the classified tier to `.claude/.omh/last-prompt.json` so the gate can use it as a risk floor.
-- **Plan Gate** — a PreToolUse hook (`plan-gate.mjs`) that enforces planning on heavy work. A Tier-3 prompt arms a per-prompt marker (via `pre-prompt.mjs`) + injects a plan directive; the hook then **denies** mutating tools (Edit/Write/NotebookEdit/MultiEdit) until the model enters plan mode and `ExitPlanMode` clears it. Read-only tools always pass. Pure core `lib/plan-gate.mjs`.
+- **Plan Gate** — a PreToolUse hook (`plan-gate.mjs`) that enforces planning on heavy work. In the original Claude contract, a Tier-3 prompt arms a per-prompt marker (via `pre-prompt.mjs`) + injects a plan directive; the hook then **denies** mutating tools (Edit/Write/NotebookEdit/MultiEdit) until the model enters plan mode and `ExitPlanMode` clears it. Read-only tools always pass. Pure core `lib/plan-gate.mjs`. The later Codex `apply_patch` / validated `update_plan` mapping is documented under 0.5.0.
 - `features.planGate` (default ON) + `planGate` config block (`minTier`, `maxDenials`, `gatedTools`).
 
 ### Safety
 - The Verify Gate **cannot wedge a session**: a per-diff `maxBlocks` cap guarantees it eventually allows the stop, with a `stop_hook_active` re-entry guard, already-verified skip, defer-to-active-loop, empty-ladder/git-missing pass-through, off switches (`features.verifyGate`, `DISABLE_HARNESS`, `STOP`), and fail-open on any error.
-- The Plan Gate **cannot wedge a session** either: a per-prompt `maxDenials` cap eventually allows the edit, read-only tools are never gated, and it fails open on a corrupt marker or with `features.planGate:false` / `DISABLE_HARNESS`.
+- The Plan Gate **cannot wedge a session** either: a per-prompt `maxDenials` cap eventually allows the edit and read-only tools are never gated. The original Claude wrapper fails open on a corrupt marker or with `features.planGate:false` / `DISABLE_HARNESS`; the 0.5.0 Codex critical bridge fails closed for an armed corrupt marker.
 
 ### Tests
 - 246 pass (added `risk` 33, `verify-gate` 10, `plan-gate` 9 + hook 6, `config` 1).

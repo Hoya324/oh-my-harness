@@ -1,7 +1,7 @@
 {
   "name": "oh-my-harness",
   "version": "0.5.0",
-  "description": "Spec-driven autonomous Claude Code harness — autonomous loop with self/cross-verification, weight-aware routing & multi-model independent verify, smart defaults, test enforcement, model routing",
+  "description": "Spec-driven autonomous harness for Claude Code and Codex with safety gates, verification, memory, and multi-agent workflows",
   "type": "module",
   "bin": {
     "oh-my-harness": "./bin/cli.mjs"
@@ -25,7 +25,7 @@
     "CLAUDE.md",
     "README.md"
   ],
-  "keywords": ["claude-code", "harness", "ai", "developer-tools"],
+  "keywords": ["claude-code", "codex", "harness", "ai", "developer-tools"],
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"

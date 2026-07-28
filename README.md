@@ -36,7 +36,7 @@ graph LR
     A[You type a prompt] --> B{OMH Hooks}
     B --> C[Ambiguity? Ask first]
     B --> D[3+ tasks? Plan mode]
-    B --> E[rm -rf? Warn]
+    B --> E[rm -rf? Deny]
     B --> F[Code changed? Test reminder]
     B --> G[git commit? Convention check]
     style B fill:#7C3AED,color:#fff
@@ -50,7 +50,7 @@ graph LR
 
 Earlier OMH was "warnings instead of walls." The autonomous loop changes that where it counts: a loop that can't be stopped is dangerous, and a loop that stops too early is useless — so the loop has **real walls**. The harness *forces continuation* while the goal is unmet and under budget, and *forces termination* on objective signals (verify ladder green + cross-verify, or a guardrail: iteration/wall-clock budget, no-progress, oscillation). The model never decides it's "done"; the harness does, against machine-checkable acceptance criteria.
 
-Everywhere else, OMH stays the harness you barely notice — smart defaults that guide with warnings, and **project-specific skills** auto-scaffolded from your detected stack (test conventions, review checklists, lint workflows) that you own and customize.
+Everywhere else, OMH stays the harness you barely notice — advisory defaults guide with warnings, critical pre-tool guards deny unsafe operations, and **project-specific skills** are auto-scaffolded from your detected stack (test conventions, review checklists, lint workflows) for you to own and customize.
 
 - **Built-in skills** (agent management, setup) stay in the plugin
 - **Project skills** (code-review, test-write, lint-fix) live in `.claude/skills/` for Claude Code and `.agents/skills/` for Codex; `--runtime both` scaffolds both — your project, your rules
@@ -85,11 +85,11 @@ oh-my-harness init --runtime codex
 oh-my-harness init --runtime both
 ```
 
-The Codex command above registers the marketplace source. In the **Codex CLI**, start Codex, enter `/plugins`, choose the configured marketplace, install `oh-my-harness`, then start a **new session**. In **Codex desktop**, open **Plugins**, select the configured marketplace under **Personal**, install `oh-my-harness`, then open a new chat. See the [official Codex plugin guide](https://developers.openai.com/codex/plugins). The local CLI default remains `--runtime claude`; `--runtime both` registers both runtimes while sharing one configuration and state store. **Zero setup is required** after plugin installation. `/harness-setup` is optional and only needed to tune `harness.config.json`.
+The Codex command above registers the marketplace source. In the **Codex CLI**, start Codex, enter `/plugins`, choose the configured marketplace, install `oh-my-harness`, then start a **new session**. In **Codex desktop**, open **Plugins**, select the configured marketplace under **Personal**, install `oh-my-harness`, then open a new chat. See the [official Codex plugin guide](https://developers.openai.com/codex/plugins). Marketplace installation automatically bundles the Codex hooks, skills, and MCP server only. To add quick/standard/architect role profiles and durable `AGENTS.md` guidance, invoke the bundled `/harness-setup` and approve those writes, or run `oh-my-harness init --runtime codex` (use `--runtime both` for both runtimes). The local CLI default remains `--runtime claude`.
 
 ## Codex Support
 
-OMH 0.5.0 supports the Codex CLI and Codex desktop through the native [`.codex-plugin`](.codex-plugin/plugin.json) manifest, Codex lifecycle hooks, Codex-native skills, durable `AGENTS.md` guidance, and quick/standard/architect roles.
+OMH 0.5.0 supports the Codex CLI and Codex desktop through the native [`.codex-plugin`](.codex-plugin/plugin.json) manifest. The marketplace payload exposes lifecycle hooks, Codex-native skills, and MCP memory; `/harness-setup` or direct local CLI init provisions the separate durable `AGENTS.md` guidance and quick/standard/architect roles.
 
 | Capability | Claude Code | Codex CLI / desktop |
 |---|---|---|
@@ -105,6 +105,10 @@ OMH 0.5.0 supports the Codex CLI and Codex desktop through the native [`.codex-p
 Codex keeps its native hook-trust boundary. After installing, open `/hooks`, review the OMH lifecycle hooks, and trust only the entries you approve; the installer never bypasses this review. The custom status-line HUD remains Claude-only because Codex has no equivalent extension surface. In Codex, invoke `omh-status` for the current tier, loop, verification, usage, and MCP memory status.
 
 > The `.claude/.omh/` name is retained for compatibility. Claude Code and Codex intentionally read and write the same config, `STATE.md`, loop state, usage data, and learnings. Long-term memory also remains shared at `~/.omh/memory/graph.jsonl`.
+
+Codex registers **one orchestrator** command per event. Although official Codex sibling handlers are concurrent, OMH's orchestrator runs shared handlers **sequentially** so safety order is deterministic. Critical `PreToolUse` guards fail closed when they cannot verify safety; advisory hooks warn or continue and remain fail open.
+
+`omh-status` resolves project state first and then the **user-global fallback**. For deterministic lifecycle targeting, pass `--scope project` or `--scope user`; when omitted, the CLI uses its documented prompt, default, or detected-registration selection. Claude project and user lifecycles remain isolated. A malformed managed config, settings file, or guidance block fails preflight **before mutation**.
 
 ---
 
@@ -139,15 +143,19 @@ OMH's features fall into three groups — **automatic guards** that fire on ever
 | Weight Routing (Tier 1/2/3) | `UserPromptSubmit` | ON | Classifies prompt weight and routes guardrails proportionally; Tier 3 enforces verification before completion |
 | Ambiguity Guard | `UserPromptSubmit` | ON | Forces clarification for vague requests |
 | Auto-Plan Mode | `UserPromptSubmit` | ON | Detects 3+ tasks and suggests planning first |
-| Dangerous Guard | `PreToolUse` | ON | Warns before `rm -rf`, `git push --force`, `.env` writes |
+| Dangerous Guard | `PreToolUse` | ON | Denies destructive commands and sensitive writes until the request is made safe |
 | Plan Gate | `PreToolUse` (plan-gate) | ON | Tier-3 prompts must produce a plan-mode implementation plan before any edit |
 | Commit Convention | `PostToolUse` | ON | Reminds commit format (Conventional / Gitmoji) |
-| Scope Guard | `PostToolUse` | OFF | Warns when modifying files outside allowed paths |
+| Scope Guard | Codex `PreToolUse` / Claude `PostToolUse` | OFF | Codex denies out-of-scope edits and recognized filesystem mutations with no auditable path; Claude reports after the tool |
 | Usage Tracking | `PostToolUse` | ON | Records tool usage per session |
 | Test Enforcement | `Stop` | ON | Reminds to verify tests after every code change |
 | Verify Gate | `Stop` (verify-gate) | ON | Risk-judges each turn's diff and runs the verify ladder itself; blocks on red for sensitive/untested changes (never wedges) |
 | Context Snapshot | `PreCompact` | ON | Saves task state before context compaction |
 | Living State (`STATE.md`) | `SessionStart` / `PreCompact` | ON | Disk-anchored goal/phase/decisions re-injected across sessions to fight context rot |
+
+For Tier-3 work, Claude gates `Edit`/`Write`-class tools and clears on `ExitPlanMode`. Codex maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`; other payloads do not clear the gate. The denial cap remains a final non-wedging escape hatch.
+
+The scope event is intentionally runtime-specific: **Codex PreToolUse** enforcement runs inside the critical orchestrator before the tool, while **Claude PostToolUse** retains the existing observer contract. When no Codex scope config can be loaded, the project boundary is the fallback: paths inside the project remain allowed and traversal outside it is denied.
 
 ### B. Autonomous execution — you invoke it
 
@@ -223,11 +231,12 @@ oh-my-harness init --runtime codex --scope user
 node ~/.claude/.omh/runtime/lib/memory.mjs stats
 ```
 
-- **Backend** — the reference knowledge-graph server (`@modelcontextprotocol/server-memory`): local, no API key, entities + relations + observations in a JSONL file. Claude plugin mode uses `.mcp.json`; local Codex init installs `.claude/.omh/runtime/bin/omh-memory.sh` and `.claude/.omh/runtime/lib/memory.mjs`, then manages `[mcp_servers.omh-memory]` in Codex config. Both point at `~/.omh/memory/graph.jsonl`.
+- **Backend** — the pinned knowledge-graph server `@modelcontextprotocol/server-memory@2026.7.4`: local, no API key, entities + relations + observations in a JSONL file. The plugin MCP changes to the plugin root and launches `bin/omh-memory.sh`; local Codex init installs the same launcher and library under the selected scope, then manages `[mcp_servers.omh-memory]`. Both point at `~/.omh/memory/graph.jsonl`.
 - **The loop reads it** — before planning, `/omh-loop` and `/omh-spec` query the graph for prior learnings, already-verified `quickCheck`/`verify` commands, and known pitfalls, and fold them into the plan (no re-detecting what's already known).
 - **The loop writes it** — a failed iteration's Reflexion becomes a `Learning` entity; a green verify appends the verified commands to the `Project`; `/omh-verify` persists **high-confidence findings** (2+ models agree) so the next run doesn't rediscover them.
 - **Agent + programmatic access** — plugin users use the `omh-memory` MCP tools live. Local Codex installs may use the managed scope-specific `runtime/lib/memory.mjs` helper shown above (atomic writes, format-compatible with the server).
 - **Graceful degradation** — if the MCP server isn't connected (or offline), LTM steps are skipped silently; the loop never blocks on memory.
+- **Launch and platforms** — the launcher uses `npx --yes --prefer-offline`; a first uncached launch still needs npm registry/network access. Release verification on macOS warms this exact package in the current machine's cache. Native Windows can run Codex hooks through `commandWindows`, but the MCP launcher itself requires Bash.
 
 > **Concurrency note.** The knowledge-graph server keeps an in-memory copy and rewrites the whole file per mutation, so it is designed for one writer at a time. For personal single-agent use this is fine; avoid heavy simultaneous writes from Claude Code and Codex at the same instant.
 
@@ -263,11 +272,11 @@ Full details, the verifier lenses, and the tier policy live in [docs/verify.md](
 
 > Full details: [docs/architecture.md](docs/architecture.md)
 
-OMH is built in **four layers**, so the load-bearing decision logic stays pure and unit-tested while the hooks that touch the outside world stay thin and fail-open.
+OMH is built in **four layers**, so load-bearing decisions stay pure and unit-tested while native adapters apply the correct failure policy.
 
 | Layer | Components | Role |
 |-------|-----------|------|
-| **① Hooks** | 11 shared scripts (9 lifecycle guards/observers + 2 gates) and 2 Codex bridge modules | Thin **fail-open** wrappers — gather impure signals (git, time, stdin) and emit decisions |
+| **① Hooks** | 11 shared scripts (9 lifecycle guards/observers + 2 gates) and 2 Codex bridge modules | Codex uses one orchestrator per event and executes handlers sequentially; critical guards fail closed, advisory hooks continue |
 | **② Pure Core** (`lib/`) | `loop` · `tier` · `detect` · `config` · `verify` · `state` · `dictionary` | All decision logic as **pure functions** (no fs / git / time) → fully unit-tested |
 | **③ Skills** | 13 Claude / 14 Codex skills | User-invoked workflows (`/omh-loop`, `/omh-verify`, `/team-spawn`, `omh-status`, …) |
 | **④ Agents** | `quick` · `standard` · `architect` | Model routing — haiku / sonnet / opus by task weight |
@@ -341,8 +350,8 @@ Lifecycle events can trigger an ordered OMH hook chain; `PreToolUse`, `PostToolU
 |-----------------|------|-------------|
 | `SessionStart` | `session-start.mjs` | Detect conventions · inject `STATE.md` |
 | `UserPromptSubmit` | `pre-prompt.mjs` | Weight tier · ambiguity guard · auto-plan |
-| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** | Warn on destructive commands · **plan gate (Tier 3)** |
-| `PostToolUse` | `commit-convention` · `scope-guard` · `usage-tracker` | Commit format · scope · usage stats |
+| `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** · `scope-guard` (Codex) | Deny destructive operations or malformed hook input · **plan gate (Tier 3)** · enforce Codex scope |
+| `PostToolUse` | `commit-convention` · `scope-guard` (Claude) · `usage-tracker` | Commit format · report Claude scope · usage stats |
 | `PreCompact` | `pre-compact.mjs` | Snapshot context · refresh `STATE.md` |
 | `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | **Autonomous loop engine** · **risk-gated verify gate** · test enforcement |
 
@@ -364,7 +373,7 @@ sequenceDiagram
 
     Note over CC,OMH: Tool execution
     CC->>OMH: PreToolUse (Bash: rm -rf dist/)
-    OMH-->>CC: WARNING: rm -rf detected. Confirm with user.
+    OMH-->>CC: DENY: rm -rf detected. Make the request safe.
 
     CC->>OMH: PostToolUse (Bash: git commit)
     OMH-->>CC: Convention: feat(scope): description

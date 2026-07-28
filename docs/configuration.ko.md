@@ -26,6 +26,8 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
 
 설치 후 `/hooks`에서 신뢰 대상을 검토하세요. Codex 상태는 `omh-status`로 확인하며 Claude HUD는 Codex에 설치되지 않습니다.
 
+읽기 전용 `omh-status` skill은 프로젝트 config/state를 먼저 선택한 뒤 **user-global fallback**을 사용하며 root를 섞지 않습니다. CLI `status`, `update`, `reset`은 명시한 `--scope project` 또는 `--scope user`를 따르고 Claude 프로젝트/사용자 lifecycle은 격리(isolated)됩니다. malformed 관리 config, settings, guidance marker는 결합 런타임 작업에서도 **before mutation** 검증 단계에서 실패합니다.
+
 ## 설정 탐색 순서 (프로젝트 → 전역)
 
 훅은 다음 순서로 config를 찾아 **먼저 존재하는 것**을 사용합니다:
@@ -152,7 +154,7 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
 
 > `features.verifyGate`는 기본값 ON: 평범한 세션(활성 `/omh-loop` 없음)에서 Stop 훅이 매 턴 diff를 점수화(민감 경로·규모·무테스트 소스, 프롬프트 티어가 하한)하고 위험도가 충분하면 verify 사다리를 실행해 실제 red면 차단합니다. 활성 루프엔 비켜나며, `maxBlocks` 상한 + fail-open으로 세션을 절대 가두지 않습니다. `/set-harness features.verifyGate false`로 끌 수 있습니다.
 
-> `features.planGate`는 기본값 ON: Tier 3 프롬프트는 모델이 plan모드에 진입해 구현 플랜(Context · 접근 · 변경 파일 · 검증)을 제시하기 전까지 편집 도구(Edit/Write/NotebookEdit/MultiEdit)를 차단합니다. `ExitPlanMode`가 해제합니다. 읽기 도구는 항상 통과하고, 프롬프트당 `maxDenials` 상한으로 절대 가두지 않습니다. `/set-harness features.planGate false`로 끌 수 있습니다.
+> `features.planGate`는 기본값 ON입니다. Claude는 Edit/Write/NotebookEdit/MultiEdit를 `ExitPlanMode`까지 차단합니다. Codex는 `apply_patch`를 edit로 매핑하고, 비어 있지 않으며 각 항목의 `step`이 비어 있지 않고 `status`가 허용 값인 `update_plan`만 해제 신호로 사용합니다. 그 밖의 payload는 해제하지 않습니다. 읽기 도구는 통과하고 `maxDenials`는 non-wedging 탈출구입니다. `/set-harness features.planGate false`로 끌 수 있습니다.
 
 ---
 

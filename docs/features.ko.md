@@ -37,7 +37,7 @@ OMH는 Claude Code의 기본 상태 표시줄을 실시간 대시보드로 대�
 
 ## 스마트 기본값 — OMH가 자동으로 하는 것들
 
-OMH는 Claude Code의 생명주기에 훅으로 연결되어 자동으로 동작합니다. 수동 설정이 필요 없습니다.
+런타임 등록 후 OMH는 Claude Code 또는 Codex 생명주기에 훅으로 연결되어 자동으로 동작합니다. Codex 프로필과 지속 지침은 `/harness-setup` 또는 CLI init이 필요합니다.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -54,7 +54,7 @@ OMH는 Claude Code의 생명주기에 훅으로 연결되어 자동으로 동작
 │  ┌──────────────────────┐   ┌──────────────────────┐            │
 │  │ 🛡️ 위험 명령 가드     │   │ 📁 스코프 가드        │            │
 │  │ rm -rf / force push? │   │ 허용 경로 밖 수정?     │            │
-│  │ → 경고 + 확인         │   │ → 경고               │            │
+│  │ → 안전할 때까지 차단   │   │ Codex? → 실행 전 차단 │            │
 │  └──────────────────────┘   └──────────────────────┘            │
 │                                                                 │
 │  ┌──────────────────────┐   ┌──────────────────────┐            │
@@ -93,11 +93,11 @@ Claude가 서브에이전트에 작업을 위임할 때, OMH가 자동으로 적
 ```
 [omh:ambiguity-guard]    → 모호한 요청에 대해 명확화 질문
 [omh:auto-plan]          → 3개 이상 작업 감지, plan 모드 제안
-[omh:dangerous-guard]    → 파괴적 명령 전 경고
+[omh:dangerous-guard]    → 파괴적 또는 malformed 요청 차단
 [omh:model-routing → sonnet] → 구현 작업을 sonnet에 위임
 [omh:test-enforcement]   → 코드 변경 후 테스트 확인 리마인드
 [omh:commit-convention]  → git commit 후 커밋 형식 안내
-[omh:scope-guard]        → 허용 경로 밖 수정 경고
+[omh:scope-guard]        → 범위 밖 편집에 대한 Codex 차단 / Claude 보고
 [omh:convention-detect]  → 세션 시작 시 프로젝트 컨벤션 감지
 [omh:context-snapshot]   → 컨텍스트 압축 전 상태 저장
 [omh:loop]               → 자율 루프의 강제 계속 / 중단 결정
@@ -202,7 +202,7 @@ Plan 모드를 제안합니다 — 강제하지 않습니다.
 
 ### 6. 위험 명령 가드
 
-잠재적으로 파괴적인 작업 전에 경고합니다:
+잠재적으로 파괴적인 작업을 실행 전에 차단합니다:
 
 **Bash 도구 패턴:**
 
@@ -229,7 +229,7 @@ Plan 모드를 제안합니다 — 강제하지 않습니다.
 | `secret` | 시크릿 파일 |
 | `id_rsa`, `.pem`, `.key` | 개인 키 파일 |
 
-> 경고만 표시합니다 — 실행을 차단하지 않습니다. Claude에게 사용자 확인을 요청합니다.
+> 이는 hard `PreToolUse` guard입니다. 감지된 안전하지 않은 작업과 malformed hook 입력은 안전한 형태로 바뀔 때까지 차단합니다.
 
 ### 7. 컨텍스트 스냅샷
 
@@ -260,7 +260,7 @@ Plan 모드를 제안합니다 — 강제하지 않습니다.
 
 ### 9. 스코프 가드
 
-`allowedPaths`와 함께 활성화하면, Edit/Write가 허용된 디렉토리 외부 파일을 대상으로 할 때 경고합니다.
+`allowedPaths`와 함께 활성화하면 런타임별 이벤트 계약이 달라집니다. **Codex PreToolUse**는 실행 전에 범위 밖 편집과 감사 가능한 경로가 없는 인식된 파일시스템 mutation을 차단합니다. **Claude PostToolUse**는 기존 observer 등록을 유지하며 도구 실행 후 결과를 보고합니다.
 
 ```json
 {
@@ -269,7 +269,7 @@ Plan 모드를 제안합니다 — 강제하지 않습니다.
 }
 ```
 
-> 기본적으로 OFF입니다. Claude의 쓰기 범위를 제한하고 싶을 때 활성화하세요.
+> 기본적으로 OFF입니다. Codex가 스코프 설정을 읽지 못해도 프로젝트 경계 fallback은 적용되어 프로젝트 내부 경로는 통과하고 외부로 나가는 traversal은 차단됩니다.
 
 ### 10. 사용량 추적
 
@@ -508,13 +508,14 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 **MCP:** `omh-memory` (지식그래프) · **기본값:** ON
 
-세션·런타임을 넘나드는 지식그래프. 레퍼런스 `@modelcontextprotocol/server-memory` 기반, 스토어는 `~/.omh/memory/graph.jsonl` — **Claude Code와 Codex가 공유하는 하나의 스토어**. Claude Code는 플러그인 `.mcp.json`으로 자동 로드합니다. 로컬 Codex init은 `.claude/.omh/runtime/bin/omh-memory.sh`와 `.claude/.omh/runtime/lib/memory.mjs`를 설치하고 그 런처를 가리키는 `[mcp_servers.omh-memory]` 블록을 관리합니다.
+세션·런타임을 넘나드는 지식그래프. 고정 버전 `@modelcontextprotocol/server-memory@2026.7.4` 기반, 스토어는 `~/.omh/memory/graph.jsonl` — **Claude Code와 Codex가 공유하는 하나의 스토어**. 플러그인 MCP는 plugin root로 이동해 `bin/omh-memory.sh`를 실행하고 로컬 Codex init은 선택 scope 아래 launcher/library를 설치해 `[mcp_servers.omh-memory]`를 관리합니다.
 
 - **읽기** — 계획 전에 `/omh-loop`·`/omh-spec`이 과거 학습·이미 검증된 `quickCheck`/`verify` 커맨드·기존 함정을 조회.
 - **쓰기** — 실패한 iteration의 Reflexion은 `Learning`이 되고, 통과한 verify는 검증된 커맨드를 `Project`에 적립, `/omh-verify`는 고신뢰 findings(2+ 모델 합의)를 영속화.
 - **접근** — 플러그인 사용자는 MCP 도구를 실시간으로 사용합니다. 로컬 Codex 프로젝트 설치는 `node .claude/.omh/runtime/lib/memory.mjs <command>`를 사용합니다. `oh-my-harness init --runtime codex --scope user` 실행 후 사용자 범위에서는 `node ~/.claude/.omh/runtime/lib/memory.mjs <command>`를 사용합니다. 시그니처는 `read`, `search <query>`, `add-learning <project> <text...>`, `add-observation <entity> <text...>`, `stats`입니다.
 - **Graceful degradation** — 서버 미연결 시 LTM 단계는 조용히 스킵, 루프는 메모리 때문에 막히지 않음.
 - **동시성** — 그래프 서버는 single-writer 설계. 개인용(한 번에 한 에이전트)엔 무해하나 양 런타임 동시 대량 쓰기는 피할 것.
+- **실행/플랫폼 경계** — `npx --yes --prefer-offline`은 warm cache를 우선하지만 처음 uncached 실행은 npm registry/network 접근이 필요합니다. Release 검증은 macOS 현재 머신의 정확한 package cache를 warm합니다. Native Windows Codex hooks에는 `commandWindows`가 있고 MCP launcher에는 Bash가 필요합니다.
 
 > 스토어: `~/.omh/memory/graph.jsonl`. 번들된 파일 메모리 seed 명령은 없습니다. 라이브 MCP 도구 또는 설치된 범위별 도우미로 observation을 가져오세요.
 
@@ -553,8 +554,10 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 즉 무거운 프롬프트는 모델이 `EnterPlanMode`를 호출해 **Context · 접근 · 변경 파일 · 검증** 구조로 구현 플랜을 작성·제시·승인받은 뒤에야 편집할 수 있게 만듭니다. (훅은 Claude를 plan모드로 직접 전환할 수 없습니다 — 모델이나 사용자만 가능 — 그래서 편집을 막아 간접적으로 강제합니다.)
 
-**세션을 절대 가두지 않습니다.** 프롬프트당 `maxDenials` 상한(기본 3)이 결국 경고와 함께 편집을 허용하고, 읽기 도구는 절대 안 막으며, 마커는 프롬프트 단위(Tier 1/2 프롬프트가 해제)입니다. off 스위치는 `features.planGate` / `DISABLE_HARNESS`이고, 손상된 마커엔 fail-open 합니다. 판단 로직은 순수·단위테스트된 `lib/plan-gate.mjs`입니다.
+이 표는 Claude 계약입니다. Codex bridge는 `apply_patch`를 edit로 매핑하고, 비어 있지 않으며 각 항목의 `step`이 비어 있지 않고 `status`가 허용 값인 `update_plan`만 공유 게이트를 해제합니다. 그 밖의 payload는 해제하지 않으며 denial 상한은 최종 non-wedging 탈출구로 남습니다.
 
-> **한계(v1):** Edit/Write/NotebookEdit/MultiEdit만 막습니다. `Bash` 파일 쓰기(`echo > file`)는 우회 가능합니다. Bash까지 막으면 조사용 명령도 막혀 v1 제외입니다.
+**세션을 절대 가두지 않습니다.** 프롬프트당 `maxDenials` 상한(기본 3)이 결국 경고와 함께 편집을 허용하고, 읽기 도구는 절대 안 막으며, 마커는 프롬프트 단위(Tier 1/2 프롬프트가 해제)입니다. off 스위치는 `features.planGate` / `DISABLE_HARNESS`입니다. Claude wrapper는 손상된 marker에서 fail open이지만, Codex critical preflight는 armed marker가 손상되고 mapped gated tool이면 fail closed입니다. 판단 로직은 순수·단위테스트된 `lib/plan-gate.mjs`입니다.
+
+> **한계(v1):** Claude는 Edit/Write/NotebookEdit/MultiEdit를 막고 Codex는 `apply_patch`도 매핑합니다. `Bash` 파일 쓰기(`echo > file`)는 우회 가능하며 Bash 전체 gating은 조사 명령까지 막으므로 v1 제외입니다.
 
 > `[omh:plan-gate]`를 방출합니다. [설정](configuration.ko.md)의 `planGate` 블록을 참고하세요.

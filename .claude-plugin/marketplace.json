@@ -1,12 +1,12 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "oh-my-harness",
-  "description": "Spec-driven autonomous Claude Code harness — autonomous loop with self/cross-verification, smart defaults, test enforcement, multi-agent orchestration",
+  "description": "Spec-driven autonomous harness for Claude Code and Codex with shared safety, verification, and memory",
   "owner": { "name": "Hoya324" },
   "plugins": [
     {
       "name": "oh-my-harness",
-      "description": "Zero-config harness: spec-driven autonomous loop (self/cross-verification, tiered guardrails) + weight-aware routing & multi-model independent verify, convention detection, test enforcement, model routing, ambiguity guard, dangerous guard, multi-agent with git worktrees, native team orchestration",
+      "description": "Claude Code and Codex plugin bundling hooks, skills, MCP memory, spec-driven loops, verification, and collaboration; Codex role profiles and durable AGENTS guidance are provisioned explicitly by harness-setup or the local CLI",
       "version": "0.5.0",
       "author": { "name": "Hoya324" },
       "source": "./",

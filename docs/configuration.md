@@ -26,6 +26,8 @@ Codex role defaults are overrideable configuration, not workflow invariants:
 
 After installation, review trust in `/hooks`. Codex status is available through `omh-status`; the Claude HUD is not installed in Codex.
 
+The read-only `omh-status` skill selects project config/state first, then the **user-global fallback**, without mixing roots. CLI `status`, `update`, and `reset` honor the explicit `--scope project` or `--scope user`; Claude project and user lifecycles are isolated. A malformed managed config, settings file, or guidance marker fails validation **before mutation**, including combined-runtime operations.
+
 ## Config Resolution (project → global)
 
 Hooks resolve config in this order, using the first that exists:
@@ -173,7 +175,7 @@ This lets you set a global default once (User scope) that applies to every proje
 
 > `features.verifyGate` defaults ON: in a plain session (no active `/omh-loop`), the Stop hook scores each turn's diff (sensitive paths, size, source-without-test) floored by the prompt tier, and runs the verify ladder when the risk warrants it — blocking on real red. It defers to an active loop and can never wedge a session (`maxBlocks` cap + fail-open). Disable with `/set-harness features.verifyGate false`.
 
-> `features.planGate` defaults ON: a Tier-3 prompt blocks mutating tools (Edit/Write/NotebookEdit/MultiEdit) until the model enters plan mode and presents an implementation plan (Context · Approach · Files · Verification); `ExitPlanMode` clears it. Read-only tools always pass, and a per-prompt `maxDenials` cap means it can never wedge. Disable with `/set-harness features.planGate false`.
+> `features.planGate` defaults ON. Claude blocks Edit/Write/NotebookEdit/MultiEdit until `ExitPlanMode`. Codex maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`; other payloads do not clear it. Read-only tools pass, and `maxDenials` is the non-wedging escape hatch. Disable with `/set-harness features.planGate false`.
 
 > `features.weightRouting` defaults ON: every prompt is auto-classified into Tier 1/2/3 by weight, and Tier 3 (heavy/risky work) forces verification. The `tier3.*` thresholds control when a task is forced to Tier 3, and the `verify.*` block configures the `/omh-verify` independent multi-model verify+fix rounds.
 

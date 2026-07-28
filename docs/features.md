@@ -37,7 +37,7 @@ OMH replaces Claude Code's default status line with a real-time dashboard:
 
 ## Smart Defaults — What OMH Does Automatically
 
-OMH hooks into Claude Code's lifecycle and activates automatically. No manual intervention needed.
+After runtime registration, OMH hooks into the Claude Code or Codex lifecycle and activates automatically. Codex profiles and durable guidance still require `/harness-setup` or CLI init.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -54,7 +54,7 @@ OMH hooks into Claude Code's lifecycle and activates automatically. No manual in
 │  ┌──────────────────────┐   ┌──────────────────────┐            │
 │  │ 🛡️ Dangerous Guard   │   │ 📁 Scope Guard       │            │
 │  │ rm -rf / force push? │   │ Edit outside allowed  │            │
-│  │ → Warn + confirm     │   │ paths? → Warn         │            │
+│  │ → Deny until safe    │   │ Codex? → Deny first   │            │
 │  └──────────────────────┘   └──────────────────────┘            │
 │                                                                 │
 │  ┌──────────────────────┐   ┌──────────────────────┐            │
@@ -93,11 +93,11 @@ Every OMH action is prefixed with a tag so you always know which feature fired:
 ```
 [omh:ambiguity-guard]    → Asking for clarification on a vague request
 [omh:auto-plan]          → Detected 3+ tasks, suggesting plan mode
-[omh:dangerous-guard]    → Warning before destructive command
+[omh:dangerous-guard]    → Denial of destructive or malformed request
 [omh:model-routing → sonnet] → Delegating to sonnet for implementation
 [omh:test-enforcement]   → Reminding to verify tests after code change
 [omh:commit-convention]  → Showing commit format after git commit
-[omh:scope-guard]        → Warning about edit outside allowed paths
+[omh:scope-guard]        → Codex denial / Claude report for an out-of-scope edit
 [omh:convention-detect]  → Detected project conventions on session start
 [omh:context-snapshot]   → Saving state before context compaction
 [omh:loop]               → Autonomous loop forced continuation / stop decision
@@ -202,7 +202,7 @@ When score >= threshold, Claude **must** ask for clarification before starting w
 
 ### 6. Dangerous Guard
 
-Warns before potentially destructive operations:
+Denies potentially destructive operations before execution:
 
 **Bash tool patterns:**
 
@@ -229,7 +229,7 @@ Warns before potentially destructive operations:
 | `secret` | Secret files |
 | `id_rsa`, `.pem`, `.key` | Private keys |
 
-> Warning only — does not block execution. Asks Claude to confirm with user.
+> This is a hard `PreToolUse` guard: detected unsafe operations and malformed hook input are denied until the request is made safe.
 
 ### 7. Context Snapshot
 
@@ -260,7 +260,7 @@ When `git commit` is detected, reminds the commit format.
 
 ### 9. Scope Guard
 
-When enabled with `allowedPaths`, warns if Edit/Write targets files outside the allowed directories.
+When enabled with `allowedPaths`, the event contract differs by runtime. **Codex PreToolUse** denies out-of-scope edits and recognized filesystem mutations with no auditable path before execution. **Claude PostToolUse** retains the existing observer registration and reports the result after the tool.
 
 ```json
 {
@@ -269,7 +269,7 @@ When enabled with `allowedPaths`, warns if Edit/Write targets files outside the 
 }
 ```
 
-> OFF by default. Enable when you want to restrict Claude's write scope.
+> OFF by default. If Codex cannot load scope configuration, it still applies a project-boundary fallback: project paths pass, while traversal outside the project is denied.
 
 ### 10. Usage Tracking
 
@@ -522,13 +522,14 @@ A disk-anchored `STATE.md` under `.claude/.omh/` holds goal, current phase, key 
 
 **MCP:** `omh-memory` (knowledge graph) · **Default:** ON
 
-A cross-session, **cross-runtime** knowledge graph, backed by the reference `@modelcontextprotocol/server-memory` and stored at `~/.omh/memory/graph.jsonl` — **one store shared by Claude Code and Codex**. Claude Code auto-loads it via the plugin's `.mcp.json`. Local Codex init installs `.claude/.omh/runtime/bin/omh-memory.sh` and `.claude/.omh/runtime/lib/memory.mjs`, and manages a `[mcp_servers.omh-memory]` block that points at that launcher.
+A cross-session, **cross-runtime** knowledge graph, backed by pinned `@modelcontextprotocol/server-memory@2026.7.4` and stored at `~/.omh/memory/graph.jsonl` — **one store shared by Claude Code and Codex**. The plugin MCP changes to the plugin root and launches `bin/omh-memory.sh`; local Codex init installs the launcher/library under the selected scope and manages `[mcp_servers.omh-memory]`.
 
 - **Read** — before planning, `/omh-loop` and `/omh-spec` query the graph for prior learnings, already-verified `quickCheck`/`verify` commands, and known pitfalls.
 - **Write** — a failed iteration's Reflexion becomes a `Learning`; a green verify appends the verified commands to the `Project`; `/omh-verify` persists high-confidence findings (2+ model consensus).
 - **Access** — plugin users use the MCP tools live. A local Codex project install can run `node .claude/.omh/runtime/lib/memory.mjs <command>`; after `oh-my-harness init --runtime codex --scope user`, user scope uses `node ~/.claude/.omh/runtime/lib/memory.mjs <command>`. Signatures: `read`; `search <query>`; `add-learning <project> <text...>`; `add-observation <entity> <text...>`; `stats`.
 - **Graceful degradation** — if the server is unavailable, LTM steps are skipped silently; the loop never blocks on memory.
 - **Concurrency** — the graph server is single-writer by design; fine for personal single-agent use, avoid heavy simultaneous writes from both runtimes at once.
+- **Launch/platform boundary** — `npx --yes --prefer-offline` uses a warm cache when possible, but a first uncached launch needs npm registry/network access. Release verification on macOS warms the current machine's exact package cache. Native Windows Codex hooks declare `commandWindows`; the MCP launcher requires Bash.
 
 > Store: `~/.omh/memory/graph.jsonl`. There is no bundled file-memory seed command; import observations through the live MCP tools or the installed scope-specific helper.
 
@@ -567,8 +568,10 @@ Where the Verify Gate enforces verification *after* a turn, the Plan Gate enforc
 
 So a heavy prompt forces the model to call `EnterPlanMode` and write an implementation plan with **Context · Approach · Files to change · Verification**, present it, and get approval before any file is touched. (A hook cannot switch Claude into plan mode directly — only the model or the user can — so the gate enforces it indirectly by blocking edits.)
 
-**It can never wedge a session.** A per-prompt `maxDenials` cap (default 3) eventually allows the edit with a warning; read-only tools are never gated; the marker is per-prompt (a Tier-1/2 prompt disarms it); off switches are `features.planGate` / `DISABLE_HARNESS`; and it fails open on a corrupt marker. Decision logic is the pure, unit-tested `lib/plan-gate.mjs`.
+That table is the Claude contract. On Codex, the bridge maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`. Other payloads do not clear the shared gate. The denial cap remains the final non-wedging escape hatch.
 
-> **Limitation (v1):** only Edit/Write/NotebookEdit/MultiEdit are gated; a `Bash` file-write (`echo > file`) can bypass it. Gating all Bash would block investigation commands, so it is out of scope for v1.
+**It can never wedge a session.** A per-prompt `maxDenials` cap (default 3) eventually allows the edit with a warning; read-only tools are never gated; the marker is per-prompt (a Tier-1/2 prompt disarms it); and the off switches are `features.planGate` / `DISABLE_HARNESS`. The Claude wrapper fails open on a corrupt marker; the Codex critical preflight fails closed for an armed corrupt marker and a mapped gated tool. Decision logic is the pure, unit-tested `lib/plan-gate.mjs`.
+
+> **Limitation (v1):** Claude gates Edit/Write/NotebookEdit/MultiEdit and Codex also maps `apply_patch`; a `Bash` file-write (`echo > file`) can bypass it. Gating all Bash would block investigation commands, so it is out of scope for v1.
 
 > Emits `[omh:plan-gate]`. See the `planGate` block in [Configuration](configuration.md).

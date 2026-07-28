@@ -83,7 +83,7 @@
       <div class="philosophy-content">
         <span class="label-tag" data-i18n="index.philosophy.tag">Philosophy</span>
         <h2 data-i18n-html="index.philosophy.title">Autonomy with<br>real walls.</h2>
-        <p data-i18n="index.philosophy.desc">For everyday work OMH stays light — warnings, not walls. But when you run the autonomous loop, the harness owns when to continue and when to stop, never the model's self-assessment. Define a goal once; it loops until the spec is objectively met or a guardrail fires.</p>
+        <p data-i18n="index.philosophy.desc">For everyday work OMH stays light: advisory hooks warn, while critical pre-tool guards deny operations that cannot be verified as safe. In the autonomous loop, the harness owns continuation and termination against the spec.</p>
       </div>
     </div>
   </section>
@@ -93,7 +93,8 @@
     <div class="container">
       <span class="label-tag" data-i18n="index.codex.badge">Native in both runtimes</span>
       <h2 class="section-title" data-i18n="index.codex.title">Claude Code and Codex, one harness</h2>
-      <p class="section-desc" data-i18n="index.codex.desc">OMH ships native manifests, lifecycle hooks, skills, and role guidance for the Codex CLI and desktop while preserving the existing Claude Code plugin.</p>
+      <p class="section-desc" data-i18n="index.codex.desc">OMH ships native manifests, lifecycle hooks, skills, and MCP memory for the Codex CLI and desktop while preserving the existing Claude Code plugin.</p>
+      <p class="section-desc" data-i18n-html="index.codex.delivery">Marketplace installation bundles hooks, skills, and MCP. To add Codex role profiles and durable <code>AGENTS.md</code> guidance, invoke <code>/harness-setup</code> and approve those writes, or run <code>oh-my-harness init --runtime codex</code>.</p>
 
       <div class="feature-rows">
         <div class="feature-row">
@@ -197,7 +198,7 @@
           <div class="stage-marker">3</div>
           <div class="stage-content">
             <h3 data-i18n="index.pipeline.s3.title">Tool Execution</h3>
-            <p data-i18n="index.pipeline.s3.desc">Warns before destructive commands. Routes subagents to the right model tier. Enforces commit conventions.</p>
+            <p data-i18n="index.pipeline.s3.desc">Denies detected destructive operations or malformed hook input before execution. Routes subagents to the right model tier. Enforces commit conventions.</p>
             <code class="stage-tag">[omh:dangerous-guard]</code>
             <code class="stage-tag">[omh:model-routing]</code>
           </div>
@@ -278,7 +279,7 @@
           <div class="feature-icon-col"><div class="feature-num">02</div></div>
           <div class="feature-detail">
             <h3 data-i18n="index.features.f1.title">Safety Guards</h3>
-            <p data-i18n="index.features.f1.desc">Ambiguity detection, dangerous operation warnings, scope restrictions. Guide with warnings, never block.</p>
+            <p data-i18n="index.features.f1.desc">Ambiguity guidance plus hard pre-tool guards for detected destructive operations, malformed hook input, and audited out-of-scope Codex mutations.</p>
           </div>
           <div class="feature-tags">
             <span>Ambiguity Guard</span>
