@@ -733,7 +733,7 @@ describe('scope-guard hook', () => {
       features: { scopeGuard: true },
       scopeGuard: { allowedPaths: ['src'] },
     });
-    const outside = mkdtempSync('/private/tmp/omh-scope-outside-');
+    const outside = mkdtempSync(join(tmpdir(), 'omh-scope-outside-'));
     try {
       const src = join(TMP, 'src');
       mkdirSync(src, { recursive: true });
