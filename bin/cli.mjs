@@ -141,6 +141,7 @@ function installClaudeHookRuntime(root, scope) {
   cpSync(join(PKG_ROOT, 'hooks', 'lib', 'dictionary.mjs'), join(hookLibDir, 'dictionary.mjs'));
   cpSync(join(PKG_ROOT, 'hooks', 'lib', 'hook-config.mjs'), join(hookLibDir, 'hook-config.mjs'));
   cpSync(join(PKG_ROOT, 'hooks', 'lib', 'feature-gate.mjs'), join(hookLibDir, 'feature-gate.mjs'));
+  cpSync(join(PKG_ROOT, 'hooks', 'lib', 'shell-command.mjs'), join(hookLibDir, 'shell-command.mjs'));
   cpSync(join(PKG_ROOT, 'hooks', 'lib', 'tier.mjs'), join(hookLibDir, 'tier.mjs'));
   cpSync(join(PKG_ROOT, 'lib', 'detect.mjs'), join(hookLibDir, 'detect.mjs'));
   cpSync(join(PKG_ROOT, 'lib', 'config.mjs'), join(runtimeLibDir, 'config.mjs'));

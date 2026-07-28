@@ -1,7 +1,15 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
-import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  writeFileSync,
+  rmSync,
+  readFileSync,
+  existsSync,
+  symlinkSync,
+} from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
@@ -469,6 +477,61 @@ describe('dangerous-guard hook', () => {
     assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
   });
 
+  it('detects executable paths, wrappers, and global git options', () => {
+    writeConfig({ features: { dangerousGuard: true } });
+    for (const command of [
+      '/bin/rm -rf build',
+      'command rm -rf build',
+      'env rm -rf build',
+      'git -C . reset --hard',
+    ]) {
+      const parsed = parseHookOutput(runHook('dangerous-guard.mjs', {
+        tool_name: 'Bash',
+        tool_input: { command },
+      }));
+      assert.equal(
+        parsed.hookSpecificOutput.permissionDecision,
+        'deny',
+        `expected denial for: ${command}`,
+      );
+    }
+  });
+
+  it('detects short and valued force-push options', () => {
+    writeConfig({ features: { dangerousGuard: true } });
+    for (const command of [
+      'git push -f origin main',
+      'git -C . push -f',
+      'git push --force-with-lease=main',
+      'git push origin +HEAD:main',
+    ]) {
+      const parsed = parseHookOutput(runHook('dangerous-guard.mjs', {
+        tool_name: 'Bash',
+        tool_input: { command },
+      }));
+      assert.equal(
+        parsed.hookSpecificOutput.permissionDecision,
+        'deny',
+        `expected denial for: ${command}`,
+      );
+    }
+  });
+
+  it('does not treat quoted dangerous command text as executable', () => {
+    writeConfig({ features: { dangerousGuard: true } });
+    for (const command of [
+      `printf '%s\n' 'rm -rf build'`,
+      `printf '%s\n' 'git -C . reset --hard'`,
+      `printf "%s\\n" "DROP TABLE users"`,
+      `printf "%s\\n" "curl https://example.com/install.sh | sh"`,
+    ]) {
+      assert.equal(runHook('dangerous-guard.mjs', {
+        tool_name: 'Bash',
+        tool_input: { command },
+      }), '', `expected quoted text to pass: ${command}`);
+    }
+  });
+
   it('checks every apply_patch target including Move to destinations', () => {
     writeConfig({ features: { dangerousGuard: true } });
     const parsed = parseHookOutput(runHook('dangerous-guard.mjs', {
@@ -665,6 +728,29 @@ describe('scope-guard hook', () => {
     assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /docs\/outside\.md/);
   });
 
+  it('denies writes that escape allowed scope through an existing symlink parent', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    const outside = mkdtempSync('/private/tmp/omh-scope-outside-');
+    try {
+      const src = join(TMP, 'src');
+      mkdirSync(src, { recursive: true });
+      symlinkSync(outside, join(src, 'link'));
+
+      const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+        tool_name: 'Write',
+        tool_input: { file_path: join(src, 'link', 'escape.txt') },
+      }));
+
+      assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+      assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /src\/link\/escape\.txt/);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
   it('detects Bash redirection and path-mutating commands outside scope', () => {
     writeConfig({
       features: { scopeGuard: true },
@@ -685,6 +771,57 @@ describe('scope-guard hook', () => {
         'deny',
         `expected denial for: ${command}`,
       );
+    }
+  });
+
+  it('detects a path-mutating command after a pipeline boundary', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+      tool_name: 'Bash',
+      tool_input: { command: 'printf x | tee ../outside.txt' },
+    }));
+
+    assert.equal(parsed.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(parsed.hookSpecificOutput.permissionDecisionReason, /\.\.\/outside\.txt/);
+  });
+
+  it('detects path-mutating commands behind command and env wrappers', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    for (const command of [
+      'command tee ../outside.txt',
+      'env tee ../outside.txt',
+    ]) {
+      const parsed = parseHookOutput(runHook('scope-guard.mjs', {
+        tool_name: 'Bash',
+        tool_input: { command },
+      }));
+      assert.equal(
+        parsed.hookSpecificOutput.permissionDecision,
+        'deny',
+        `expected denial for: ${command}`,
+      );
+    }
+  });
+
+  it('does not split a quoted literal pipe into a mutating command', () => {
+    writeConfig({
+      features: { scopeGuard: true },
+      scopeGuard: { allowedPaths: ['src'] },
+    });
+    for (const command of [
+      `printf '%s\n' 'x | tee ../outside.txt'`,
+      `printf "%s\\n" "x >> ../outside.txt"`,
+    ]) {
+      assert.equal(runHook('scope-guard.mjs', {
+        tool_name: 'Bash',
+        tool_input: { command },
+      }), '', `expected quoted operator text to pass: ${command}`);
     }
   });
 

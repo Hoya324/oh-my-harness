@@ -1646,6 +1646,10 @@ describe('cli update', () => {
         join(__dirname, '..', 'hooks', 'lib', 'feature-gate.mjs'),
       ],
       [
+        join(TEST_HOME, '.claude', '.omh', 'hooks', 'lib', 'shell-command.mjs'),
+        join(__dirname, '..', 'hooks', 'lib', 'shell-command.mjs'),
+      ],
+      [
         join(TEST_HOME, '.claude', '.omh', 'hooks', 'lib', 'tier.mjs'),
         join(__dirname, '..', 'hooks', 'lib', 'tier.mjs'),
       ],

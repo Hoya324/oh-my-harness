@@ -2,6 +2,11 @@
 import { readFileSync } from 'fs';
 import { hookPreToolDeny, hookSilent, hookDebug } from './lib/output.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
+import {
+  normalizeShellCommand,
+  splitShellSegments,
+  unquotedShellText,
+} from './lib/shell-command.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 
@@ -11,19 +16,75 @@ function readStdin() {
   catch { return { ok: false, value: null }; }
 }
 
-function commandSegments(command, executable) {
-  const escaped = executable.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`(?:^|[;&|]\\s*)${escaped}\\s+([^;&|\\n]*)`, 'gi');
-  return [...String(command || '').matchAll(re)].map((match) => match[1]);
+function hasFlag(args, longFlag, shortFlag) {
+  return args.some((token) =>
+    token === longFlag ||
+    (/^-[^-]+$/.test(token) && token.slice(1).includes(shortFlag)));
 }
 
-function hasForcedRemove(command) {
-  return commandSegments(command, 'rm').some((segment) => {
-    const tokens = segment.match(/"[^"]*"|'[^']*'|\\.|[^\s]+/g) || [];
-    return tokens.some((token) =>
-      token === '--force' ||
-      (/^-[^-]+$/.test(token) && token.slice(1).includes('f')));
-  });
+function gitSubcommand(args) {
+  const valueOptions = new Set([
+    '-C',
+    '-c',
+    '--git-dir',
+    '--work-tree',
+    '--namespace',
+    '--super-prefix',
+    '--config-env',
+    '--exec-path',
+  ]);
+  let index = 0;
+  while (index < args.length) {
+    const token = args[index];
+    if (token === '--') {
+      index += 1;
+      break;
+    }
+    if (!token.startsWith('-')) break;
+    if (valueOptions.has(token)) index += 2;
+    else index += 1;
+  }
+  return {
+    name: args[index] || '',
+    args: args.slice(index + 1),
+  };
+}
+
+function commandWarnings(command) {
+  const warnings = [];
+  for (const invocation of splitShellSegments(command).map(normalizeShellCommand)) {
+    const { executable, args } = invocation;
+    if (executable === 'rm' && hasFlag(args, '--force', 'f')) {
+      warnings.push('rm -rf / rm --force');
+      continue;
+    }
+    if (executable !== 'git') continue;
+
+    const subcommand = gitSubcommand(args);
+    if (subcommand.name === 'push' && (
+      hasFlag(subcommand.args, '--force', 'f')
+      || subcommand.args.some((token) =>
+        token === '--force-with-lease' || token.startsWith('--force-with-lease='))
+      || subcommand.args.some((token) => token.startsWith('+') && token.length > 1)
+    )) {
+      warnings.push('git push --force');
+    }
+    if (subcommand.name === 'reset' && subcommand.args.includes('--hard')) {
+      warnings.push('git reset --hard');
+    }
+    if (subcommand.name === 'clean' && hasFlag(subcommand.args, '--force', 'f')) {
+      warnings.push('git clean -f');
+    }
+    const separator = subcommand.args.indexOf('--');
+    if (
+      subcommand.name === 'checkout'
+      && separator >= 0
+      && subcommand.args[separator + 1] === '.'
+    ) {
+      warnings.push('git checkout -- .');
+    }
+  }
+  return warnings;
 }
 
 function extractPatchTargets(command) {
@@ -79,11 +140,8 @@ try {
 
   if (toolName === 'Bash') {
     const command = typeof rawInput === 'string' ? rawInput : String(rawInput.command || '');
+    const unquotedCommand = unquotedShellText(command);
     const dangerousPatterns = [
-      { pattern: /git\s+push\b[^\n;&|]*\s--force(?:-with-lease)?\b/i, label: 'git push --force' },
-      { pattern: /git\s+reset\s+--hard\b/i, label: 'git reset --hard' },
-      { pattern: /git\s+clean\s+-[a-zA-Z]*f/i, label: 'git clean -f' },
-      { pattern: /git\s+checkout\s+--?\s+\./i, label: 'git checkout -- .' },
       { pattern: /DROP\s+(?:TABLE|DATABASE|SCHEMA)\b/i, label: 'DROP TABLE/DATABASE' },
       { pattern: /TRUNCATE\s+TABLE\b/i, label: 'TRUNCATE TABLE' },
       { pattern: /DELETE\s+FROM\s+\w+\s*;?\s*$/i, label: 'DELETE FROM (no WHERE)' },
@@ -96,9 +154,9 @@ try {
       { pattern: /(?:^|[;&|]\s*)chown\s+/i, label: 'chown (ownership change)' },
       { pattern: /\bln\s+(?:-[a-zA-Z]*s[a-zA-Z]*f|-sf|-fs)\b/i, label: 'ln -sf (force symlink)' },
     ];
-    if (hasForcedRemove(command)) warnings.push('rm -rf / rm --force');
+    warnings.push(...commandWarnings(command));
     for (const { pattern, label } of dangerousPatterns) {
-      if (pattern.test(command)) warnings.push(label);
+      if (pattern.test(unquotedCommand)) warnings.push(label);
     }
   }
 

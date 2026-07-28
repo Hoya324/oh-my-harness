@@ -1,8 +1,14 @@
 #!/usr/bin/env node
-import { readFileSync } from 'fs';
-import { isAbsolute, join, relative, resolve } from 'path';
+import { existsSync, readFileSync, realpathSync } from 'fs';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'path';
 import { hookPreToolDeny, hookSilent, hookDebug } from './lib/output.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
+import {
+  normalizeShellCommand,
+  shellTokenDetails,
+  shellTokens,
+  splitShellSegments,
+} from './lib/shell-command.mjs';
 
 const projectRoot = resolve(process.env.PROJECT_PATH || process.cwd());
 
@@ -18,18 +24,6 @@ function extractApplyPatchTargets(command) {
   )].map((match) => match[1] || match[2]);
 }
 
-function unquote(token) {
-  const value = String(token || '').trim();
-  if ((value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))) return value.slice(1, -1);
-  return value.replace(/\\([\\ "'`$])/g, '$1');
-}
-
-function shellTokens(segment) {
-  return (String(segment).match(/"(?:\\.|[^"])*"|'[^']*'|[^\s]+/g) || [])
-    .map(unquote);
-}
-
 function operands(tokens, start = 1) {
   return tokens.slice(start)
     .filter((token) => token !== '--' && !token.startsWith('-'))
@@ -38,19 +32,29 @@ function operands(tokens, start = 1) {
 
 function redirectionTargets(command) {
   const targets = [];
-  const re = /(?:^|[\s;|&])(?:\d*)>>?\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/g;
-  for (const match of String(command || '').matchAll(re)) {
-    const target = match[1] || match[2] || match[3];
-    if (target && target !== '/dev/null') targets.push(target);
+  for (const segment of splitShellSegments(command)) {
+    const details = shellTokenDetails(segment);
+    for (let index = 0; index < details.length; index += 1) {
+      const token = details[index];
+      if (token.quoted) continue;
+      const operatorIndex = token.raw.indexOf('>');
+      if (operatorIndex === -1) continue;
+      const attached = token.raw.slice(operatorIndex).replace(/^>+/, '');
+      const target = attached
+        ? shellTokenDetails(attached)[0]?.value
+        : details[index + 1]?.value;
+      if (target && target !== '/dev/null') targets.push(target);
+      if (!attached) index += 1;
+    }
   }
   return targets;
 }
 
 function commandMutationTargets(segment) {
-  const tokens = shellTokens(segment);
-  while (tokens[0] && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[0])) tokens.shift();
-  if (tokens.length === 0) return [];
-  const command = tokens[0].split(/[\\/]/).at(-1);
+  const invocation = normalizeShellCommand(segment);
+  const command = invocation.executable;
+  const tokens = [command, ...invocation.args];
+  if (!command) return [];
 
   if (['touch', 'mkdir', 'mkfifo', 'truncate', 'rm', 'rmdir', 'unlink'].includes(command)) {
     return operands(tokens);
@@ -90,7 +94,7 @@ function extractBashTargets(command, initialCwd) {
   const targets = redirectionTargets(command)
     .map((path) => ({ path, cwd: initialCwd }));
   let cwd = initialCwd;
-  const segments = String(command || '').split(/&&|\|\||;|\r?\n/);
+  const segments = splitShellSegments(command);
   for (const segment of segments) {
     const tokens = shellTokens(segment);
     if (tokens[0] === 'cd' && tokens[1]) {
@@ -133,6 +137,22 @@ function absoluteTarget(target, cwd) {
   return isAbsolute(target) ? resolve(target) : resolve(cwd, target);
 }
 
+function physicalPath(target) {
+  let existingPrefix = resolve(target);
+  const suffix = [];
+  while (!existsSync(existingPrefix)) {
+    const parent = dirname(existingPrefix);
+    if (parent === existingPrefix) return resolve(target);
+    suffix.unshift(basename(existingPrefix));
+    existingPrefix = parent;
+  }
+  try {
+    return resolve(realpathSync(existingPrefix), ...suffix);
+  } catch {
+    return resolve(target);
+  }
+}
+
 function within(base, target) {
   const rel = relative(base, target);
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
@@ -166,6 +186,7 @@ try {
   if (allowedPaths.length === 0) process.exit(0); // explicit empty policy = unrestricted
   const allowedRoots = allowedPaths.map((path) =>
     isAbsolute(path) ? resolve(path) : resolve(projectRoot, path));
+  const physicalAllowedRoots = allowedRoots.map(physicalPath);
 
   const parsedInput = readStdin();
   if (!parsedInput.ok) {
@@ -211,7 +232,7 @@ try {
     .filter(({ path }) => typeof path === 'string' && path.trim())
     .map(({ path, cwd: candidateCwd }) => absoluteTarget(path, candidateCwd)))];
   const outOfScope = resolvedTargets.find((target) =>
-    !allowedRoots.some((allowedRoot) => within(allowedRoot, target)));
+    !physicalAllowedRoots.some((allowedRoot) => within(allowedRoot, physicalPath(target))));
 
   if (outOfScope) {
     deny(
