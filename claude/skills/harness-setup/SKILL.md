@@ -32,7 +32,7 @@ Check if `.claude/.omh/harness.config.json` exists.
 
 Run the duck ASCII art to greet the user:
 ```bash
-bash "$CLAUDE_PLUGIN_ROOT/lib/duck.sh" 2>/dev/null || bash "$(dirname "$(realpath "$0")")/../../lib/duck.sh" 2>/dev/null || true
+bash "$CLAUDE_PLUGIN_ROOT/lib/duck.sh" 2>/dev/null || bash "$(dirname "$(realpath "$0")")/../../../lib/duck.sh" 2>/dev/null || true
 ```
 
 ### 2. Welcome Message

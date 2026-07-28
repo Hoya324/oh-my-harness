@@ -401,6 +401,19 @@ test('harness setup resolves the bundled defaults from the installed skill locat
   );
 });
 
+test('Claude harness setup fallback resolves the bundled duck after skill isolation', () => {
+  const setup = readFileSync(join(root, 'claude/skills/harness-setup/SKILL.md'), 'utf8');
+  assert.ok(
+    setup.includes('/../../../lib/duck.sh'),
+    'Claude harness-setup fallback points from claude/skills/harness-setup to root lib',
+  );
+  assert.equal(
+    existsSync(join(root, 'claude/skills/harness-setup/../../../lib/duck.sh')),
+    true,
+    'the fallback duck path resolves inside the packaged plugin',
+  );
+});
+
 test('harness setup explicitly provisions role and guidance surfaces unsupported by the manifest', () => {
   const setup = readFileSync(join(root, 'codex/skills/harness-setup/SKILL.md'), 'utf8');
 
