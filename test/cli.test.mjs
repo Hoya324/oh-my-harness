@@ -425,6 +425,44 @@ describe('cli init', () => {
     assert.match(output.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
   });
 
+  it('runs the dangerous guard when the only available config is corrupt', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    writeFileSync(
+      join(TEST_HOME, '.claude', '.omh', 'harness.config.json'),
+      '{ invalid\n',
+    );
+    const project = join(TMP, 'corrupt-global-only');
+    mkdirSync(project, { recursive: true });
+
+    const result = runInstalledClaudeDangerousHook(project);
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
+  });
+
+  it('runs the dangerous guard when the installed feature gate is missing', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    rmSync(join(
+      TEST_HOME,
+      '.claude',
+      '.omh',
+      'hooks',
+      'lib',
+      'feature-gate.mjs',
+    ));
+    const project = join(TMP, 'missing-feature-gate');
+    mkdirSync(project, { recursive: true });
+
+    const result = runInstalledClaudeDangerousHook(project);
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
+  });
+
   it('preflights existing Claude settings before init creates any payload', () => {
     const settingsPath = join(TMP, '.claude', 'settings.local.json');
     mkdirSync(dirname(settingsPath), { recursive: true });

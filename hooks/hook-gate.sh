@@ -25,10 +25,18 @@ if [ "${DISABLE_HARNESS:-}" = "1" ]; then
   exit 0
 fi
 
-# Pass when any requested feature is enabled after semantic config resolution.
-if node "$FEATURE_GATE" "$ROOT" "$@"; then
+# Status 0 means enabled; only status 10 is a resolved disabled result.
+# Missing/corrupt config, helper failures, and unexpected statuses run the real
+# hook so safety-sensitive hooks can apply their own fail-closed behavior.
+if node "$FEATURE_GATE" "$ROOT" "$@" 2>/dev/null; then
   exec node "$HOOK"
+else
+  GATE_STATUS=$?
 fi
 
-# All features disabled → silent
-echo '{"continue":true,"suppressOutput":true}'
+if [ "$GATE_STATUS" -eq 10 ]; then
+  echo '{"continue":true,"suppressOutput":true}'
+  exit 0
+fi
+
+exec node "$HOOK"
