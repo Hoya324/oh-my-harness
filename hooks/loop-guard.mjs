@@ -33,8 +33,13 @@ function readStdin() {
 function writeStateAtomic(state) {
   mkdirSync(omhDir, { recursive: true });
   const tmp = `${statePath}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
-  renameSync(tmp, statePath);
+  try {
+    writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
+    renameSync(tmp, statePath);
+  } catch (error) {
+    try { unlinkSync(tmp); } catch {}
+    throw error;
+  }
 }
 
 function git(args) {
@@ -146,7 +151,16 @@ try {
   const next = { ...result.nextState };
   delete next.pending;
   if (result.stopCause) next.stopCause = result.stopCause;
-  try { writeStateAtomic(next); } catch (e) { hookDebug('loop-guard:write', e); }
+  try {
+    writeStateAtomic(next);
+  } catch (e) {
+    hookDebug('loop-guard:write', e);
+    console.log(hookOutput(
+      'Stop',
+      '[omh:loop] State persistence failed; allowing stop to avoid a wedged session. Check write access to .claude/.omh.',
+    ));
+    process.exit(0);
+  }
 
   if (result.action === 'continue') {
     console.log(hookStopContinue(result.reason));

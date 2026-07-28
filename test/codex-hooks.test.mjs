@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -358,6 +358,51 @@ describe('Codex hook bridge', () => {
 
     assert.equal(denied.hookSpecificOutput.permissionDecision, 'deny');
     assert.match(denied.hookSpecificOutput.permissionDecisionReason, /\[omh:plan-gate\]/);
+  });
+
+  it('fails open when Codex preflight cannot persist an update_plan clear signal', () => {
+    writePlanMarker();
+    rmSync(join(tempProject, '.claude', '.omh', 'harness.config.json'));
+    const omhDir = join(tempProject, '.claude', '.omh');
+    chmodSync(omhDir, 0o555);
+    try {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const output = runCodexHook('PreToolUse', {
+          tool_name: 'update_plan',
+          tool_input: {
+            plan: [
+              { step: 'Inspect', status: 'completed' },
+              { step: 'Implement', status: 'in_progress' },
+            ],
+          },
+        });
+        assert.notEqual(output?.hookSpecificOutput?.permissionDecision, 'deny');
+        assert.match(output?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
+      }
+    } finally {
+      chmodSync(omhDir, 0o755);
+    }
+  });
+
+  it('does not repeatedly deny when Codex preflight cannot persist a denial count', () => {
+    writePlanMarker();
+    rmSync(join(tempProject, '.claude', '.omh', 'harness.config.json'));
+    const omhDir = join(tempProject, '.claude', '.omh');
+    chmodSync(omhDir, 0o555);
+    try {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const output = runCodexHook('PreToolUse', {
+          tool_name: 'apply_patch',
+          tool_input: {
+            command: '*** Begin Patch\n*** Add File: src/new.js\n+true\n*** End Patch',
+          },
+        });
+        assert.notEqual(output?.hookSpecificOutput?.permissionDecision, 'deny');
+        assert.match(output?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
+      }
+    } finally {
+      chmodSync(omhDir, 0o755);
+    }
   });
 });
 

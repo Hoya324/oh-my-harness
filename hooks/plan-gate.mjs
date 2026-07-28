@@ -22,8 +22,13 @@ function readStdin() { try { return JSON.parse(readFileSync(0, 'utf8')); } catch
 function writeMarkerAtomic(state) {
   mkdirSync(omhDir, { recursive: true });
   const tmp = `${markerPath}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
-  renameSync(tmp, markerPath);
+  try {
+    writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
+    renameSync(tmp, markerPath);
+  } catch (error) {
+    try { unlinkSync(tmp); } catch {}
+    throw error;
+  }
 }
 
 try {
@@ -66,7 +71,16 @@ try {
   // stopCause values come from evaluatePlanGate: 'plan_done' (clear),
   // 'plan_required' (deny), 'max_denials' (allow-after-cap).
   if (['plan_done', 'plan_required', 'max_denials'].includes(result.stopCause)) {
-    try { writeMarkerAtomic(result.nextState); } catch (e) { hookDebug('plan-gate:write', e); }
+    try {
+      writeMarkerAtomic(result.nextState);
+    } catch (e) {
+      hookDebug('plan-gate:write', e);
+      console.log(hookOutput(
+        'PreToolUse',
+        '[omh:plan-gate] State persistence failed; allowing this tool call to avoid repeated denials. Check write access to .claude/.omh.',
+      ));
+      process.exit(0);
+    }
   }
 
   if (result.action === 'deny') { console.log(hookPreToolDeny(result.reason)); process.exit(0); }

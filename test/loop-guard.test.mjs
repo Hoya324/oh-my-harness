@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { chmodSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
@@ -61,6 +61,21 @@ describe('loop-guard hook', () => {
     assert.ok(!parsed.hookSpecificOutput, 'must NOT nest under hookSpecificOutput for Stop');
     assert.match(parsed.reason, /\[omh:loop\]/);
     assert.match(parsed.reason, /Iteration 1\/8/);
+  });
+
+  it('fails open on repeated continuation attempts when loop state cannot be persisted', () => {
+    writeConfig({ features: { autonomousLoop: true }, loop: {} });
+    writeState(activeState());
+    chmodSync(OMH, 0o555);
+    try {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const parsed = parse(runHook({ session_id: 's1', stop_hook_active: false }));
+        assert.notEqual(parsed?.decision, 'block');
+        assert.match(parsed?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
+      }
+    } finally {
+      chmodSync(OMH, 0o755);
+    }
   });
 
   it('binds the loop to the session on first fire when sessionId is null', () => {

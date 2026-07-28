@@ -37,8 +37,13 @@ function readStdin() {
 function writeStateAtomic(state) {
   mkdirSync(omhDir, { recursive: true });
   const tmp = `${gateStatePath}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
-  renameSync(tmp, gateStatePath);
+  try {
+    writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
+    renameSync(tmp, gateStatePath);
+  } catch (error) {
+    try { unlinkSync(tmp); } catch {}
+    throw error;
+  }
 }
 
 function git(args) {
@@ -183,7 +188,16 @@ try {
   if (result.action === 'soft') { console.log(hookOutput('Stop', softMessage(result.factors))); process.exit(0); }
 
   // allow / block both persist state.
-  try { writeStateAtomic(result.nextState); } catch (e) { hookDebug('verify-gate:write', e); }
+  try {
+    writeStateAtomic(result.nextState);
+  } catch (e) {
+    hookDebug('verify-gate:write', e);
+    console.log(hookOutput(
+      'Stop',
+      '[omh:verify-gate] State persistence failed; allowing stop to avoid repeated verification blocks. Check write access to .claude/.omh.',
+    ));
+    process.exit(0);
+  }
 
   if (result.action === 'block') {
     console.log(hookStopContinue(result.reason));

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'child_process';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { translateHookOutput } from './adapter.mjs';
@@ -89,8 +89,24 @@ function writePlanMarker(projectRoot, state) {
   const markerPath = join(omhDir, 'plan-gate.json');
   mkdirSync(omhDir, { recursive: true });
   const temporary = `${markerPath}.${process.pid}.codex.tmp`;
-  writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`);
-  renameSync(temporary, markerPath);
+  try {
+    writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`);
+    renameSync(temporary, markerPath);
+  } catch (error) {
+    try { unlinkSync(temporary); } catch {}
+    throw error;
+  }
+}
+
+function planPersistenceFailOpen() {
+  return JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      additionalContext:
+        '[omh:plan-gate] State persistence failed; allowing this tool call to avoid repeated denials. ' +
+        'Check write access to .claude/.omh.',
+    },
+  });
 }
 
 function codexPlanPreflight(input, env) {
@@ -133,7 +149,11 @@ function codexPlanPreflight(input, env) {
     isPlanFile: false,
   });
   if (['plan_done', 'plan_required', 'max_denials'].includes(result.stopCause)) {
-    writePlanMarker(projectRoot, result.nextState);
+    try {
+      writePlanMarker(projectRoot, result.nextState);
+    } catch {
+      return { handled: true, output: planPersistenceFailOpen() };
+    }
   }
   if (result.action === 'deny') {
     return {
