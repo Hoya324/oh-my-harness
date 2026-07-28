@@ -14,6 +14,7 @@ import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import { createInterface } from 'readline';
+import { parse as parseToml } from 'smol-toml';
 import { scaffoldProjectSkills } from '../lib/scaffold-skills.mjs';
 import { parseRuntime, parseScope, runtimeIncludes } from '../lib/runtime.mjs';
 
@@ -127,48 +128,11 @@ function showDuck() {
   }
 }
 
-// --- INIT ---
-async function initClaude(root, scope) {
-  const installRoot = claudeInstallRoot(root, scope);
+function installClaudeHookRuntime(root, scope) {
   const stateRoot = claudeStateRoot(root, scope);
   const omh = omhDir(stateRoot);
   const hooksDir = join(omh, 'hooks');
-  const cmdDir = join(installRoot, COMMANDS_DIR);
-  const isFirstRun = !existsSync(join(omh, 'harness.config.json'));
-  const totalSteps = 8;
-
-  // Header
-  if (isFirstRun) {
-    showDuck();
-    log(`  ${BOLD}Welcome to oh-my-harness!${RESET} ${DIM}v${getVersion()}${RESET}`);
-    log(`  ${DIM}Smart defaults for Claude Code — test enforcement, guard rails,${RESET}`);
-    log(`  ${DIM}convention detection, and model routing, all in one harness.${RESET}`);
-  } else {
-    log(`\n  ${BOLD}Updating oh-my-harness${RESET} ${DIM}v${getVersion()}${RESET}`);
-  }
-
-  const scopeLabel = scope === 'user' ? 'User (global)' : 'Project (local)';
-  log(`\n  ${GRAY}Scope: ${RESET}${BOLD}${scopeLabel}${RESET}`);
-  log('');
-
-  // Step 1: Config
-  logStep(1, totalSteps, 'Configuration');
   mkdirSync(hooksDir, { recursive: true });
-  mkdirSync(cmdDir, { recursive: true });
-
-  const configDest = join(omh, 'harness.config.json');
-  if (!existsSync(configDest)) {
-    writeFileAtomic(
-      configDest,
-      readFileSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), 'utf8'),
-    );
-    logDone('Created harness.config.json');
-  } else {
-    logDone('Config preserved (existing)');
-  }
-
-  // Step 2: Hooks
-  logStep(2, totalSteps, 'Hooks');
   const hookLibDir = join(hooksDir, 'lib');
   const runtimeLibDir = join(omh, 'lib');
   mkdirSync(hookLibDir, { recursive: true });
@@ -189,6 +153,49 @@ async function initClaude(root, scope) {
     cpSync(join(PKG_ROOT, 'hooks', hook), join(hooksDir, hook));
   }
   cpSync(join(PKG_ROOT, 'hooks', 'hook-gate.sh'), join(hooksDir, 'hook-gate.sh'));
+}
+
+// --- INIT ---
+async function initClaude(root, scope) {
+  const installRoot = claudeInstallRoot(root, scope);
+  const stateRoot = claudeStateRoot(root, scope);
+  const omh = omhDir(stateRoot);
+  const cmdDir = join(installRoot, COMMANDS_DIR);
+  const isFirstRun = !existsSync(join(omh, 'harness.config.json'));
+  const totalSteps = 8;
+
+  // Header
+  if (isFirstRun) {
+    showDuck();
+    log(`  ${BOLD}Welcome to oh-my-harness!${RESET} ${DIM}v${getVersion()}${RESET}`);
+    log(`  ${DIM}Smart defaults for Claude Code — test enforcement, guard rails,${RESET}`);
+    log(`  ${DIM}convention detection, and model routing, all in one harness.${RESET}`);
+  } else {
+    log(`\n  ${BOLD}Updating oh-my-harness${RESET} ${DIM}v${getVersion()}${RESET}`);
+  }
+
+  const scopeLabel = scope === 'user' ? 'User (global)' : 'Project (local)';
+  log(`\n  ${GRAY}Scope: ${RESET}${BOLD}${scopeLabel}${RESET}`);
+  log('');
+
+  // Step 1: Config
+  logStep(1, totalSteps, 'Configuration');
+  mkdirSync(cmdDir, { recursive: true });
+
+  const configDest = join(omh, 'harness.config.json');
+  if (!existsSync(configDest)) {
+    writeFileAtomic(
+      configDest,
+      readFileSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), 'utf8'),
+    );
+    logDone('Created harness.config.json');
+  } else {
+    logDone('Config preserved (existing)');
+  }
+
+  // Step 2: Hooks
+  logStep(2, totalSteps, 'Hooks');
+  installClaudeHookRuntime(root, scope);
   logDone(`8 hooks + gate + shared libraries`);
   logInfo('session-start, pre-prompt, post-task, dangerous-guard,');
   logInfo('pre-compact, commit-convention, scope-guard, usage-tracker');
@@ -606,424 +613,29 @@ function tomlError(message) {
   return new Error(`Invalid TOML: ${message}`);
 }
 
-function splitTomlExpressions(content) {
-  const expressions = [];
-  let current = '';
-  let squareDepth = 0;
-  let curlyDepth = 0;
-  let quote = null;
-
-  for (let index = 0; index < content.length; index += 1) {
-    let char = content[index];
-    if (quote) {
-      if (quote === 'basic' || quote === 'literal') {
-        if (char === '\n' || char === '\r') {
-          throw tomlError('single-line string contains a newline');
-        }
-        current += char;
-        if (quote === 'basic' && char === '\\') {
-          index += 1;
-          if (index >= content.length) throw tomlError('unterminated escape sequence');
-          current += content[index];
-        } else if (
-          (quote === 'basic' && char === '"')
-          || (quote === 'literal' && char === "'")
-        ) {
-          quote = null;
-        }
-        continue;
-      }
-
-      const delimiter = quote === 'multibasic' ? '"""' : "'''";
-      if (content.startsWith(delimiter, index)) {
-        current += delimiter;
-        index += 2;
-        quote = null;
-        continue;
-      }
-      current += char;
-      if (quote === 'multibasic' && char === '\\' && index + 1 < content.length) {
-        current += content[index + 1];
-        index += 1;
-      }
-      continue;
-    }
-
-    if (char === '#') {
-      while (index < content.length && content[index] !== '\n') index += 1;
-      if (index >= content.length) break;
-      char = '\n';
-    } else if (content.startsWith('"""', index)) {
-      current += '"""';
-      index += 2;
-      quote = 'multibasic';
-      continue;
-    } else if (content.startsWith("'''", index)) {
-      current += "'''";
-      index += 2;
-      quote = 'multiliteral';
-      continue;
-    } else if (char === '"') {
-      current += char;
-      quote = 'basic';
-      continue;
-    } else if (char === "'") {
-      current += char;
-      quote = 'literal';
-      continue;
-    }
-
-    if (char === '[') squareDepth += 1;
-    if (char === ']') squareDepth -= 1;
-    if (char === '{') curlyDepth += 1;
-    if (char === '}') curlyDepth -= 1;
-    if (squareDepth < 0 || curlyDepth < 0) {
-      throw tomlError('unmatched closing delimiter');
-    }
-
-    if (char === '\n' && squareDepth === 0 && curlyDepth === 0) {
-      if (current.trim()) expressions.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-
-  if (quote) throw tomlError('unterminated string');
-  if (squareDepth !== 0 || curlyDepth !== 0) throw tomlError('unclosed delimiter');
-  if (current.trim()) expressions.push(current.trim());
-  return expressions;
-}
-
-function decodeTomlBasicKey(content) {
-  let decoded = '';
-  for (let index = 0; index < content.length; index += 1) {
-    const char = content[index];
-    if (char !== '\\') {
-      decoded += char;
-      continue;
-    }
-    const escape = content[++index];
-    const simple = {
-      b: '\b',
-      t: '\t',
-      n: '\n',
-      f: '\f',
-      r: '\r',
-      '"': '"',
-      '\\': '\\',
-    };
-    if (simple[escape] !== undefined) {
-      decoded += simple[escape];
-      continue;
-    }
-    const width = escape === 'u' ? 4 : escape === 'U' ? 8 : 0;
-    if (width === 0) throw tomlError(`invalid key escape \\${escape || ''}`);
-    const hex = content.slice(index + 1, index + 1 + width);
-    if (!new RegExp(`^[0-9A-Fa-f]{${width}}$`).test(hex)) {
-      throw tomlError('invalid Unicode key escape');
-    }
-    const codePoint = Number.parseInt(hex, 16);
-    try {
-      decoded += String.fromCodePoint(codePoint);
-    } catch {
-      throw tomlError('invalid Unicode key code point');
-    }
-    index += width;
-  }
-  return decoded;
-}
-
-function parseTomlKey(text) {
-  const segments = [];
-  let index = 0;
-  const skipWhitespace = () => {
-    while (index < text.length && /[ \t]/.test(text[index])) index += 1;
-  };
-
-  while (index < text.length) {
-    skipWhitespace();
-    if (index >= text.length) throw tomlError('empty dotted key segment');
-
-    let segment = '';
-    if (text[index] === '"' || text[index] === "'") {
-      const delimiter = text[index++];
-      let raw = '';
-      let closed = false;
-      while (index < text.length) {
-        const char = text[index++];
-        if (char === delimiter) {
-          closed = true;
-          break;
-        }
-        if (delimiter === '"' && char === '\\') {
-          if (index >= text.length) throw tomlError('unterminated key escape');
-          raw += char + text[index++];
-        } else {
-          if (char === '\n' || char === '\r') throw tomlError('newline in quoted key');
-          raw += char;
-        }
-      }
-      if (!closed) throw tomlError('unterminated quoted key');
-      segment = delimiter === '"' ? decodeTomlBasicKey(raw) : raw;
-    } else {
-      const start = index;
-      while (index < text.length && /[A-Za-z0-9_-]/.test(text[index])) index += 1;
-      if (index === start) throw tomlError(`invalid bare key near ${text.slice(index)}`);
-      segment = text.slice(start, index);
-    }
-    segments.push(segment);
-    skipWhitespace();
-    if (index >= text.length) break;
-    if (text[index] !== '.') throw tomlError(`invalid dotted key near ${text.slice(index)}`);
-    index += 1;
-  }
-
-  if (segments.length === 0) throw tomlError('empty key');
-  return segments;
-}
-
-function findTomlEquals(expression) {
-  let quote = null;
-  for (let index = 0; index < expression.length; index += 1) {
-    const char = expression[index];
-    if (quote) {
-      if (quote === 'basic' && char === '\\') {
-        index += 1;
-      } else if (
-        (quote === 'basic' && char === '"')
-        || (quote === 'literal' && char === "'")
-      ) {
-        quote = null;
-      }
-      continue;
-    }
-    if (char === '"') quote = 'basic';
-    else if (char === "'") quote = 'literal';
-    else if (char === '=') return index;
-  }
-  return -1;
-}
-
-function skipTomlWhitespace(text, index) {
-  while (index < text.length && /\s/.test(text[index])) index += 1;
-  return index;
-}
-
-function parseTomlStringValue(text, start) {
-  const delimiter = text[start];
-  const triple = text.startsWith(delimiter.repeat(3), start);
-  let index = start + (triple ? 3 : 1);
-  while (index < text.length) {
-    if (triple && text.startsWith(delimiter.repeat(3), index)) return index + 3;
-    const char = text[index];
-    if (!triple && char === delimiter) return index + 1;
-    if (!triple && (char === '\n' || char === '\r')) {
-      throw tomlError('newline in single-line string value');
-    }
-    if (delimiter === '"' && char === '\\') {
-      const escape = text[index + 1];
-      if (triple && (escape === '\n' || escape === '\r')) {
-        index += 2;
-        while (index < text.length && /\s/.test(text[index])) index += 1;
-        continue;
-      }
-      if ('btnfr"\\'.includes(escape)) {
-        index += 2;
-        continue;
-      }
-      const width = escape === 'u' ? 4 : escape === 'U' ? 8 : 0;
-      if (width === 0) throw tomlError(`invalid string escape \\${escape || ''}`);
-      const hex = text.slice(index + 2, index + 2 + width);
-      if (!new RegExp(`^[0-9A-Fa-f]{${width}}$`).test(hex)) {
-        throw tomlError('invalid Unicode string escape');
-      }
-      index += width + 2;
-      continue;
-    }
-    index += 1;
-  }
-  throw tomlError('unterminated string value');
-}
-
-function validTomlScalar(value) {
-  if (/^(?:true|false|[+-]?(?:inf|nan))$/.test(value)) return true;
-  if (/^[+-]?(?:0|[1-9](?:_?\d)*)(?:\.(?:\d(?:_?\d)*))?(?:[eE][+-]?\d(?:_?\d)*)?$/.test(value)) {
-    return true;
-  }
-  if (/^0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*$/.test(value)) return true;
-  if (/^0o[0-7](?:_?[0-7])*$/.test(value)) return true;
-  if (/^0b[01](?:_?[01])*$/.test(value)) return true;
-  if (/^\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)?$/.test(value)) {
-    return true;
-  }
-  return /^\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value);
-}
-
-function parseTomlValueAt(text, start) {
-  let index = skipTomlWhitespace(text, start);
-  if (index >= text.length) throw tomlError('missing value');
-
-  if (text[index] === '"' || text[index] === "'") {
-    return parseTomlStringValue(text, index);
-  }
-  if (text[index] === '[') {
-    index = skipTomlWhitespace(text, index + 1);
-    if (text[index] === ']') return index + 1;
-    while (index < text.length) {
-      index = parseTomlValueAt(text, index);
-      index = skipTomlWhitespace(text, index);
-      if (text[index] === ']') return index + 1;
-      if (text[index] !== ',') throw tomlError('array values must be comma-separated');
-      index = skipTomlWhitespace(text, index + 1);
-      if (text[index] === ']') return index + 1;
-    }
-    throw tomlError('unterminated array');
-  }
-  if (text[index] === '{') {
-    index = skipTomlWhitespace(text, index + 1);
-    if (text[index] === '}') return index + 1;
-    const values = new Set();
-    const tables = new Set();
-    while (index < text.length) {
-      const equals = findTomlEquals(text.slice(index));
-      if (equals === -1) throw tomlError('inline table entry is missing =');
-      const equalsIndex = index + equals;
-      const key = parseTomlKey(text.slice(index, equalsIndex).trim());
-      for (let length = 1; length < key.length; length += 1) {
-        const prefixKey = tomlPathKey(key.slice(0, length));
-        if (values.has(prefixKey)) {
-          throw tomlError('inline dotted key extends an existing value');
-        }
-        tables.add(prefixKey);
-      }
-      const serialized = tomlPathKey(key);
-      if (values.has(serialized) || tables.has(serialized)) {
-        throw tomlError('duplicate or conflicting inline table key');
-      }
-      values.add(serialized);
-      index = parseTomlValueAt(text, equalsIndex + 1);
-      index = skipTomlWhitespace(text, index);
-      if (text[index] === '}') return index + 1;
-      if (text[index] !== ',') throw tomlError('inline table entries must be comma-separated');
-      index = skipTomlWhitespace(text, index + 1);
-      if (text[index] === '}') throw tomlError('inline tables cannot end with a trailing comma');
-    }
-    throw tomlError('unterminated inline table');
-  }
-
-  const scalarStart = index;
-  while (index < text.length && !/[\],}]/.test(text[index])) index += 1;
-  const scalar = text.slice(scalarStart, index).trim();
-  if (!validTomlScalar(scalar)) throw tomlError(`invalid scalar value ${scalar}`);
-  return scalarStart + text.slice(scalarStart, index).lastIndexOf(scalar) + scalar.length;
-}
-
-function validateTomlValue(text) {
-  const end = skipTomlWhitespace(text, parseTomlValueAt(text, 0));
-  if (end !== text.length) throw tomlError(`unexpected value suffix ${text.slice(end)}`);
-}
-
-function tomlPathKey(path) {
-  return JSON.stringify(path);
-}
-
 function analyzeToml(content) {
-  const tables = new Set();
-  const values = new Set();
-  const explicitTables = new Set();
-  const arrayTables = new Set();
-  let currentTable = [];
-  let currentArrayElement = null;
-
-  const defineTable = (path, isArray) => {
-    for (let length = 1; length < path.length; length += 1) {
-      const prefixKey = tomlPathKey(path.slice(0, length));
-      if (values.has(prefixKey)) throw tomlError('table extends an existing value');
-      tables.add(prefixKey);
-    }
-    const key = tomlPathKey(path);
-    if (values.has(key)) throw tomlError('table conflicts with an existing value');
-    if (isArray) {
-      if (explicitTables.has(key)) throw tomlError('array table conflicts with a table');
-      arrayTables.add(key);
-    } else {
-      if (explicitTables.has(key) || arrayTables.has(key)) {
-        throw tomlError('duplicate table declaration');
-      }
-      explicitTables.add(key);
-    }
-    tables.add(key);
-  };
-
-  for (const expression of splitTomlExpressions(content)) {
-    if (expression.startsWith('[[')) {
-      if (!expression.endsWith(']]') || expression.length < 5) {
-        throw tomlError('malformed array table header');
-      }
-      currentTable = parseTomlKey(expression.slice(2, -2).trim());
-      defineTable(currentTable, true);
-      currentArrayElement = { values: new Set(), tables: new Set() };
-      continue;
-    }
-    if (expression.startsWith('[')) {
-      if (!expression.endsWith(']') || expression.length < 3) {
-        throw tomlError('malformed table header');
-      }
-      currentTable = parseTomlKey(expression.slice(1, -1).trim());
-      defineTable(currentTable, false);
-      currentArrayElement = null;
-      continue;
-    }
-
-    const equals = findTomlEquals(expression);
-    if (equals === -1) throw tomlError('key/value expression is missing =');
-    const key = parseTomlKey(expression.slice(0, equals).trim());
-    validateTomlValue(expression.slice(equals + 1).trim());
-    const path = [...currentTable, ...key];
-    if (currentArrayElement) {
-      for (let length = 1; length < key.length; length += 1) {
-        const prefixKey = tomlPathKey(key.slice(0, length));
-        if (currentArrayElement.values.has(prefixKey)) {
-          throw tomlError('array-table dotted key extends an existing value');
-        }
-        currentArrayElement.tables.add(prefixKey);
-      }
-      const elementPathKey = tomlPathKey(key);
-      if (
-        currentArrayElement.values.has(elementPathKey)
-        || currentArrayElement.tables.has(elementPathKey)
-      ) {
-        throw tomlError('duplicate or conflicting array-table key');
-      }
-      currentArrayElement.values.add(elementPathKey);
-    }
-    for (let length = 1; length < path.length; length += 1) {
-      const prefixKey = tomlPathKey(path.slice(0, length));
-      if (values.has(prefixKey)) throw tomlError('dotted key extends an existing value');
-      tables.add(prefixKey);
-    }
-    const pathKey = tomlPathKey(path);
-    const repeatedArrayValue = currentArrayElement
-      && path.length > currentTable.length
-      && values.has(pathKey);
-    if (
-      !repeatedArrayValue
-      && (values.has(pathKey) || tables.has(pathKey))
-    ) {
-      throw tomlError('duplicate or conflicting key');
-    }
-    values.add(pathKey);
+  try {
+    return parseToml(content);
+  } catch (error) {
+    throw tomlError(error.message);
   }
-
-  return { tables, values };
 }
 
-function tomlPathOccupied(analysis, path) {
-  for (let length = 1; length <= path.length; length += 1) {
-    if (analysis.values.has(tomlPathKey(path.slice(0, length)))) return true;
+function tomlPathOccupied(content, analysis, path, declaration) {
+  let current = analysis;
+  for (const segment of path) {
+    if (!isPlainObject(current)) return true;
+    if (!Object.prototype.hasOwnProperty.call(current, segment)) {
+      try {
+        analyzeToml(`${content.trimEnd()}\n${declaration}\n`);
+        return false;
+      } catch {
+        return true;
+      }
+    }
+    current = current[segment];
   }
-  return analysis.tables.has(tomlPathKey(path));
+  return true;
 }
 
 function projectedCodexRoles(root, scope, ownership) {
@@ -1047,25 +659,36 @@ function codexConfigCandidate(root, scope, ownership) {
     architect: 'Architecture, complex planning, security review, and independent verification.',
   };
   const lines = [TOML_START];
-  if (!tomlPathOccupied(analysis, ['mcp_servers', 'omh-memory'])) {
-    const memoryLauncher = join(
-      omhDir(codexStateRoot(root, scope)),
-      'runtime',
-      'bin',
-      'omh-memory.sh',
-    );
+  const memoryLauncher = join(
+    omhDir(codexStateRoot(root, scope)),
+    'runtime',
+    'bin',
+    'omh-memory.sh',
+  );
+  const memoryDeclaration = [
+    '[mcp_servers.omh-memory]',
+    'command = "bash"',
+    `args = [${JSON.stringify(memoryLauncher)}]`,
+  ].join('\n');
+  if (!tomlPathOccupied(
+    userOwned,
+    analysis,
+    ['mcp_servers', 'omh-memory'],
+    memoryDeclaration,
+  )) {
     lines.push('');
-    lines.push('[mcp_servers.omh-memory]');
-    lines.push('command = "bash"');
-    lines.push(`args = [${JSON.stringify(memoryLauncher)}]`);
+    lines.push(memoryDeclaration);
   }
   for (const role of CODEX_ROLES) {
     if (!ownership.roles.includes(role)) continue;
-    if (tomlPathOccupied(analysis, ['agents', role])) continue;
+    const roleDeclaration = [
+      `[agents.${role}]`,
+      `description = ${JSON.stringify(descriptions[role])}`,
+      'config_file = "agents/' + role + '.toml"',
+    ].join('\n');
+    if (tomlPathOccupied(userOwned, analysis, ['agents', role], roleDeclaration)) continue;
     lines.push('');
-    lines.push(`[agents.${role}]`);
-    lines.push(`description = ${JSON.stringify(descriptions[role])}`);
-    lines.push('config_file = "agents/' + role + '.toml"');
+    lines.push(roleDeclaration);
   }
   lines.push(TOML_END);
   const candidate = renderManagedBlock(
@@ -1624,6 +1247,7 @@ function updateClaude(root, scope = 'project') {
     return false;
   }
   ensureSharedConfig(root, scope);
+  installClaudeHookRuntime(root, scope);
   mergeSettings(root, scope);
   appendClaudeMd(root, scope);
   log(`  ${CHECK} oh-my-harness updated from config.`);

@@ -21,6 +21,11 @@ PROJECT_CONFIG="$ROOT/.claude/.omh/harness.config.json"
 USER_HOME="${HOME:-${USERPROFILE:-}}"
 USER_CONFIG="${USER_HOME:+$USER_HOME/.claude/.omh/harness.config.json}"
 
+is_valid_json() {
+  node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$1" \
+    >/dev/null 2>&1
+}
+
 # Global kill-switch
 if [ "${DISABLE_HARNESS:-}" = "1" ]; then
   echo '{"continue":true,"suppressOutput":true}'
@@ -28,10 +33,10 @@ if [ "${DISABLE_HARNESS:-}" = "1" ]; then
 fi
 
 # Project configuration has precedence. Fall back to the user-scoped
-# installation only when the project has no configuration of its own.
-if [ -f "$PROJECT_CONFIG" ]; then
+# installation when the project configuration is absent or invalid.
+if [ -f "$PROJECT_CONFIG" ] && is_valid_json "$PROJECT_CONFIG"; then
   CONFIG="$PROJECT_CONFIG"
-elif [ -n "$USER_CONFIG" ] && [ -f "$USER_CONFIG" ]; then
+elif [ -n "$USER_CONFIG" ] && [ -f "$USER_CONFIG" ] && is_valid_json "$USER_CONFIG"; then
   CONFIG="$USER_CONFIG"
 else
   echo '{"continue":true,"suppressOutput":true}'

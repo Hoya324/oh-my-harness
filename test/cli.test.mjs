@@ -380,6 +380,21 @@ describe('cli init', () => {
     });
   });
 
+  it('falls back to valid user-global hook config when project config is corrupt', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    const project = join(TMP, 'corrupt-project-config');
+    const configPath = join(project, '.claude', '.omh', 'harness.config.json');
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, '{ invalid\n');
+
+    const result = runInstalledClaudeDangerousHook(project);
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
+  });
+
   it('preflights existing Claude settings before init creates any payload', () => {
     const settingsPath = join(TMP, '.claude', 'settings.local.json');
     mkdirSync(dirname(settingsPath), { recursive: true });
@@ -781,6 +796,14 @@ describe('cli runtime matrix', () => {
       'hex = 0x1',
       'negative = -1',
       'positive = +1',
+      '[[products]]',
+      'name = "first"',
+      '[products.details]',
+      'color = "red"',
+      '[[products]]',
+      'name = "second"',
+      '[products.details]',
+      'color = "blue"',
       '',
     ].join('\n');
     const project = join(TMP, 'valid-toml-counterexamples');
@@ -1541,6 +1564,43 @@ describe('cli update', () => {
     const refreshedUserSettings = JSON.parse(readFileSync(userSettings, 'utf8'));
     assert.equal(refreshedUserSettings.user, 'drifted');
     assert.ok(refreshedUserSettings.hooks?.SessionStart);
+  });
+
+  it('repairs the full user-scoped Claude hook dependency closure on update', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    const dependencyPairs = [
+      [
+        join(TEST_HOME, '.claude', '.omh', 'hooks', 'lib', 'hook-config.mjs'),
+        join(__dirname, '..', 'hooks', 'lib', 'hook-config.mjs'),
+      ],
+      [
+        join(TEST_HOME, '.claude', '.omh', 'hooks', 'lib', 'tier.mjs'),
+        join(__dirname, '..', 'hooks', 'lib', 'tier.mjs'),
+      ],
+      [
+        join(TEST_HOME, '.claude', '.omh', 'lib', 'config.mjs'),
+        join(__dirname, '..', 'lib', 'config.mjs'),
+      ],
+      [
+        join(TEST_HOME, '.claude', '.omh', 'lib', 'state.mjs'),
+        join(__dirname, '..', 'lib', 'state.mjs'),
+      ],
+    ];
+    for (const [installed] of dependencyPairs) rmSync(installed);
+
+    runCli('update', '--runtime', 'claude', '--scope', 'user');
+
+    for (const [installed, source] of dependencyPairs) {
+      assert.equal(readFileSync(installed, 'utf8'), readFileSync(source, 'utf8'));
+    }
+    const cleanProject = join(TMP, 'updated-user-hook-project');
+    mkdirSync(cleanProject, { recursive: true });
+    const result = runInstalledClaudeDangerousHook(cleanProject);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      JSON.parse(result.stdout).hookSpecificOutput.permissionDecision,
+      'deny',
+    );
   });
 
   it('preflights Claude guidance before a both-runtime update mutates Codex', () => {

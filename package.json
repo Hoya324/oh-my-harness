@@ -29,5 +29,8 @@
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "smol-toml": "^1.7.1"
   }
 }
