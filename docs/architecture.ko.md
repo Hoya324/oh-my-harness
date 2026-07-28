@@ -25,7 +25,7 @@ OMH는 네 개의 계층으로 구성됩니다. 판단 로직은 순수하고 �
 |------|-----------|------|
 | **① 훅** | Codex 이벤트 orchestrator 6개 뒤의 공유 스크립트 11개, Codex 브리지 모듈 2개 | 이벤트마다 one orchestrator, sequential 공유 handler, critical guard fail closed, advisory hook fail open |
 | **② 순수 코어** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | 판단 로직을 **순수 함수**(fs / git / `Date.now` / child_process 없음)로 → 완전한 단위 테스트 |
-| **③ 스킬** | Claude 스킬 13개 (`skills/`) / Codex 스킬 14개 (`codex/skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 / Codex 상태 |
+| **③ 스킬** | Claude 스킬 13개 (`claude/skills/`) / Codex 스킬 14개 (`codex/skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 / Codex 상태 |
 | **④ 에이전트** | `quick` / `standard` / `architect` (`agents/`) | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
 
 생명주기 이벤트는 순서가 있는 여러 훅을 실행할 수 있습니다. `PreToolUse`, `PostToolUse`, `Stop`은 의도적으로 둘 이상을 실행하며, 자율 루프는 `Stop` 체인에 있습니다:
@@ -191,7 +191,7 @@ flowchart TD
 
 ## 플러그인 모드 (권장)
 
-Claude Code는 `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, `skills/`를 로드합니다. Codex marketplace manifest는 `.codex-plugin`, Codex hooks/skills, MCP를 로드하지만 역할 프로필이나 지속 `AGENTS.md` 지침은 설치하지 않습니다. 그 등록 표면은 확인된 `/harness-setup` 또는 직접 로컬 CLI init만 추가합니다.
+Claude Code는 `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, `claude/skills/`를 로드합니다. Codex marketplace manifest는 `.codex-plugin`, `codex/skills/`, Codex hooks, MCP를 로드합니다. Additive discovery가 런타임 variant를 중복 노출하지 않도록 기본 root `skills/`는 의도적으로 두지 않습니다. Marketplace는 역할 프로필이나 지속 `AGENTS.md` 지침을 설치하지 않으며, 그 등록 표면은 확인된 `/harness-setup` 또는 직접 로컬 CLI init만 추가합니다.
 
 메모리 MCP는 **plugin root**에서 `bin/omh-memory.sh`를 실행하고, launcher는 `npx --yes --prefer-offline @modelcontextprotocol/server-memory@2026.7.4`를 호출합니다. 처음 uncached 실행은 npm registry/network 접근이 필요하며 release 검증은 macOS 현재 머신 cache를 warm합니다. Native Windows Codex hooks에는 `commandWindows`가 있지만 MCP launcher에는 Bash가 필요합니다.
 
@@ -220,7 +220,7 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 │   ├── pre-compact.mjs           <- 컨텍스트 스냅샷
 │   ├── loop-guard.mjs            <- Stop 훅: 루프 엔진 + 안전장치 (lib/loop.mjs의 얇은 래퍼)
 │   └── post-task.mjs             <- 테스트 강제
-├── skills/                       <- 슬래시 명령어 (자동 등록)
+├── claude/skills/                <- Claude 스킬 (커스텀 manifest 경로)
 │   ├── harness-setup/SKILL.md    <- /harness-setup
 │   ├── set-harness/SKILL.md      <- /set-harness
 │   ├── init-project/SKILL.md     <- /init-project
@@ -234,6 +234,7 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 │   ├── team-spawn/SKILL.md       <- /team-spawn
 │   ├── team-status/SKILL.md      <- /team-status
 │   └── team-stop/SKILL.md        <- /team-stop
+├── codex/skills/                 <- Codex 네이티브 스킬 14개 (커스텀 manifest 경로)
 ├── lib/                          <- 코어 모듈 (CLI + 검증 엔진)
 │   ├── config.mjs                <- config 스키마 + deep-merge
 │   ├── verify.mjs                <- /omh-verify 헬퍼 (diff, 렌즈 로테이션)

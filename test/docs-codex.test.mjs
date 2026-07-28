@@ -266,9 +266,9 @@ test('memory commands point only to installed paths or MCP tools', () => {
     'docs/features.md',
     'docs/features.ko.md',
     'docs/docs.html',
-    'skills/omh-spec/SKILL.md',
-    'skills/omh-loop/SKILL.md',
-    'skills/omh-verify/SKILL.md',
+    'claude/skills/omh-spec/SKILL.md',
+    'claude/skills/omh-loop/SKILL.md',
+    'claude/skills/omh-verify/SKILL.md',
   ];
   for (const file of files) {
     const body = read(file);
@@ -324,7 +324,7 @@ test('rendered skills table is complete against both installed skill directories
       .filter((entry) => entry.isDirectory() && existsSync(join(root, dir, entry.name, 'SKILL.md')))
       .map((entry) => entry.name),
   );
-  const claude = installed('skills');
+  const claude = installed('claude/skills');
   const codex = installed('codex/skills');
   const documented = new Map(
     [...table.matchAll(/<tr data-skill="([^"]+)" data-runtimes="([^"]+)">/g)]

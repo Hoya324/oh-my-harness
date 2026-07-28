@@ -12,9 +12,10 @@ Thank you for your interest in contributing!
 ```bash
 git clone https://github.com/Hoya324/oh-my-harness.git
 cd oh-my-harness
+npm ci
 ```
 
-No `npm install` needed — this is a zero-dependency project.
+`npm ci` installs the lockfile-pinned development/runtime dependencies used by the CLI and tests.
 
 ## Running Tests
 
@@ -38,9 +39,9 @@ All tests must pass before submitting a PR.
 - `bin/` — CLI entry point
 - `lib/` — Core libraries (config, detection)
 - `hooks/` — Shared hook implementations plus the Codex bridge under `hooks/codex/`
-- `skills/` — Claude Code skill definitions (`SKILL.md`)
+- `claude/skills/` — Claude Code skill definitions (`SKILL.md`)
 - `agents/` — Model-routed agent definitions
-- `codex/` — Codex-native skills, roles, durable guidance, and runtime mapping
+- `codex/` — Codex-native workflow implementations, roles, durable guidance, and runtime mapping
 - `.codex-plugin/` — Codex plugin manifest
 - `templates/` — Configuration templates
 - `test/` — Test suite (Node.js native test runner)
@@ -48,8 +49,8 @@ All tests must pass before submitting a PR.
 ## Code Style
 
 - **ESM only** — Use `.mjs` extensions and `import`/`export`
-- **Zero dependencies** — Do not add npm packages
-- **Node.js built-ins only** — Use `fs`, `path`, `child_process`, etc.
+- Prefer Node.js built-ins; add a dependency only when it materially improves correctness and keep
+  `package-lock.json` updated.
 
 ## Commit Convention
 
@@ -71,7 +72,7 @@ Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
 
 ## Adding a Skill
 
-1. Create `skills/your-skill/SKILL.md` with YAML frontmatter
+1. Create `claude/skills/your-skill/SKILL.md` with YAML frontmatter
 2. Add a Codex-native variant under `codex/skills/` when the workflow is supported
 3. Translate runtime surfaces (`AGENTS.md`, `.agents/skills`, and Codex collaboration operations) without changing shared config/state semantics
 4. The CLI will install the correct variant for `--runtime claude|codex|both`

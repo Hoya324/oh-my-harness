@@ -13,8 +13,14 @@
   "interface": {
     "displayName": "Oh My Harness",
     "shortDescription": "Spec-driven loops, guards, and verification",
+    "longDescription": "Run spec-driven implementation loops with safety guards, independent verification, shared memory, and Claude Code or Codex collaboration workflows.",
     "developerName": "Hoya324",
     "category": "Productivity",
-    "capabilities": ["Read", "Write"]
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "Turn this goal into a machine-checkable spec",
+      "Run the current spec until every acceptance criterion passes",
+      "Review this change with independent verification rounds"
+    ]
   }
 }

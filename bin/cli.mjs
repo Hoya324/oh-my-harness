@@ -213,7 +213,10 @@ async function initClaude(root, scope) {
     ['agent-stop', 'agent-stop.md'],
   ];
   for (const [skill, cmdFile] of skillMap) {
-    const skillContent = readFileSync(join(PKG_ROOT, 'skills', skill, 'SKILL.md'), 'utf8');
+    const skillContent = readFileSync(
+      join(PKG_ROOT, 'claude', 'skills', skill, 'SKILL.md'),
+      'utf8',
+    );
     writeFileSync(join(cmdDir, cmdFile), stripFrontmatter(skillContent));
   }
   logDone('6 slash commands installed');

@@ -324,7 +324,7 @@ oh-my-harness update --runtime codex</code></pre>
         <tbody>
           <tr><td><strong>① Hooks</strong> (<code>hooks/</code>)</td><td data-i18n="docs.architecture.l1">11 shared scripts (9 guards/observers + 2 gates) and 2 Codex bridge modules</td></tr>
           <tr><td><strong>② Pure Core</strong> (<code>lib/</code>)</td><td data-i18n="docs.architecture.l2">All decision logic as pure functions (no fs / git / time) — fully unit-tested</td></tr>
-          <tr><td><strong>③ Skills</strong> (<code>skills/</code>)</td><td data-i18n="docs.architecture.l3">13 Claude Code skills and 14 Codex skills</td></tr>
+          <tr><td><strong>③ Skills</strong> (<code>claude/skills/</code> + <code>codex/skills/</code>)</td><td data-i18n="docs.architecture.l3">13 Claude Code skills and 14 Codex skills</td></tr>
           <tr><td><strong>④ Agents</strong> (<code>agents/</code>)</td><td data-i18n="docs.architecture.l4">Routed roles — Claude uses haiku/sonnet/opus; Codex uses profile preferences</td></tr>
         </tbody>
       </table>

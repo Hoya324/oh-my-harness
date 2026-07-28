@@ -6,7 +6,7 @@
   "repository": "https://github.com/Hoya324/oh-my-harness",
   "license": "MIT",
   "keywords": ["claude-code", "codex", "plugin", "harness", "hooks", "autonomous-loop", "agentic-loop", "multi-agent"],
-  "skills": "./skills/",
+  "skills": "./claude/skills/",
   "agents": [
     "./agents/quick.md",
     "./agents/standard.md",

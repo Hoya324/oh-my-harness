@@ -49,12 +49,22 @@ test('Codex plugin package declares its installable runtime surfaces', () => {
     'all package and plugin version surfaces are aligned',
   );
   assert.equal(manifest.skills, './codex/skills/');
+  assert.equal(claudeManifest.skills, './claude/skills/');
   assert.equal(manifest.hooks, './hooks/codex/hooks.json');
   assert.equal(manifest.mcpServers, './.mcp.json');
+  assert.match(manifest.interface.longDescription, /\S/);
+  assert.ok(
+    typeof manifest.interface.defaultPrompt === 'string'
+      || Array.isArray(manifest.interface.defaultPrompt),
+    'Codex manifest includes a starter prompt',
+  );
   assert.equal(marketplace.plugins[0].source, './');
   assert.equal(marketplace.plugins[0].name, 'oh-my-harness');
   assert.equal(marketplace.version, '0.5.0');
   assert.equal(marketplace.plugins[0].version, '0.5.0');
+  assert.ok(packageManifest.files.includes('claude'));
+  assert.ok(!packageManifest.files.includes('skills'));
+  assert.equal(existsSync(join(root, 'skills')), false, 'default skill root stays absent');
   const memoryMcp = mcp.mcpServers['omh-memory'];
   assert.equal(memoryMcp.command, 'bash');
   assert.equal(memoryMcp.cwd, '.');
@@ -63,7 +73,7 @@ test('Codex plugin package declares its installable runtime surfaces', () => {
   assert.match(memoryMcp.args[1], /exec bash bin\/omh-memory\.sh/);
   assert.equal(JSON.stringify(mcp).includes('${CLAUDE_PLUGIN_ROOT}'), false);
 
-  for (const path of [manifest.skills, manifest.hooks, manifest.mcpServers]) {
+  for (const path of [manifest.skills, claudeManifest.skills, manifest.hooks, manifest.mcpServers]) {
     assert.equal(existsSync(join(root, path)), true, `manifest path exists: ${path}`);
   }
 });

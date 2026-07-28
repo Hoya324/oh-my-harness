@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dual-runtime documentation.** English and Korean onboarding, feature, architecture, configuration, loop, verification, multi-agent, privacy, contribution, and web documentation now cover both runtime surfaces.
 
 ### Changed
+- **Collision-free plugin discovery.** Claude Code skills now live under `claude/skills/` while
+  Codex-native skills remain under `codex/skills/`; each manifest selects its own directory and
+  the default root `skills/` is intentionally absent. The Codex manifest also includes complete
+  interface metadata while retaining its supported custom hook path.
 - Claude Code and Codex share `.claude/.omh/` project config/state and `~/.omh/memory/graph.jsonl`; no state migration or second memory store is introduced.
 - Claude Code retains its custom status-line HUD. Codex exposes equivalent collected state through hook messages and the read-only `omh-status` skill because Codex has no equivalent custom status-line extension.
 - **Plan Gate runtime mapping.** Claude continues to gate Edit/Write/NotebookEdit/MultiEdit and clear with `ExitPlanMode`. Codex maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`; other payloads do not clear it. Its denial cap remains the non-wedging fallback.

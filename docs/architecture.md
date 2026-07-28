@@ -25,7 +25,7 @@ OMH is built in four layers. The design rule keeps decision logic in pure, unit-
 |-------|-----------|------|
 | **① Hooks** | 11 shared scripts behind 6 Codex event orchestrators; Codex adds 2 bridge modules | One orchestrator per event, sequential shared handlers, fail closed critical guards, fail-open advisory hooks |
 | **② Pure Core** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | Decision logic as **pure functions** (no fs / git / `Date.now` / child_process) → fully unit-tested |
-| **③ Skills** | 13 Claude skills (`skills/`) / 14 Codex skills (`codex/skills/`) | User-invoked workflows: setup, agents, teams, spec / loop / verify / Codex status |
+| **③ Skills** | 13 Claude skills (`claude/skills/`) / 14 Codex skills (`codex/skills/`) | User-invoked workflows: setup, agents, teams, spec / loop / verify / Codex status |
 | **④ Agents** | `quick` / `standard` / `architect` (`agents/`) | Model routing — haiku / sonnet / opus by task weight |
 
 Lifecycle events can run an ordered chain of hooks; `PreToolUse`, `PostToolUse`, and `Stop` deliberately run more than one. The `Stop` chain is where the autonomous loop lives:
@@ -197,7 +197,7 @@ The classifier is pure and unit-tested; the hook is a thin wrapper that emits th
 
 ## Plugin Mode (recommended)
 
-Claude Code loads `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, and `skills/`. The Codex marketplace manifest loads `.codex-plugin`, Codex hooks/skills, and MCP; it does not install role profiles or durable `AGENTS.md` guidance. Those registration surfaces are added only by confirmed `/harness-setup` or direct local CLI init.
+Claude Code loads `.claude-plugin`, `CLAUDE.md`, `hooks/hooks.json`, and `claude/skills/`. The Codex marketplace manifest loads `.codex-plugin`, `codex/skills/`, Codex hooks, and MCP. The default root `skills/` is intentionally absent so additive discovery cannot expose duplicate runtime variants. Marketplace installation does not install role profiles or durable `AGENTS.md` guidance; those registration surfaces are added only by confirmed `/harness-setup` or direct local CLI init.
 
 Memory MCP starts from the **plugin root** and runs `bin/omh-memory.sh`, which invokes `npx --yes --prefer-offline @modelcontextprotocol/server-memory@2026.7.4`. A first uncached launch needs npm registry/network access; release verification on macOS warms the current machine's cache. Native Windows Codex hooks have `commandWindows`, while the MCP launcher requires Bash.
 
@@ -226,7 +226,7 @@ oh-my-harness/                    <- plugin root ($CLAUDE_PLUGIN_ROOT)
 │   ├── pre-compact.mjs           <- context snapshot
 │   ├── loop-guard.mjs            <- Stop hook: loop engine + safety (thin wrapper over lib/loop.mjs)
 │   └── post-task.mjs             <- test enforcement
-├── skills/                       <- slash commands (auto-registered)
+├── claude/skills/                <- Claude skills (custom manifest path)
 │   ├── harness-setup/SKILL.md    <- /harness-setup
 │   ├── set-harness/SKILL.md      <- /set-harness
 │   ├── init-project/SKILL.md     <- /init-project
@@ -240,6 +240,7 @@ oh-my-harness/                    <- plugin root ($CLAUDE_PLUGIN_ROOT)
 │   ├── team-spawn/SKILL.md       <- /team-spawn
 │   ├── team-status/SKILL.md      <- /team-status
 │   └── team-stop/SKILL.md        <- /team-stop
+├── codex/skills/                 <- 14 Codex-native skills (custom manifest path)
 ├── lib/                          <- core modules (CLI + verify engine)
 │   ├── config.mjs                <- config schema + deep-merge
 │   ├── verify.mjs                <- /omh-verify helpers (diff, lens rotation)
