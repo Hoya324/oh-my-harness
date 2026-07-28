@@ -138,14 +138,16 @@ const translations = {
     'index.hud.label.model': 'Model',
 
     // ── Index: CTA ──
-    'index.cta.title': 'Install in Codex',
-    'index.cta.s1.title': 'Add the source',
-    'index.cta.s2.title': 'Install the plugin',
-    'index.cta.s3.title': 'Activate',
+    'index.cta.title': 'Install for your runtime',
+    'index.cta.s1.title': 'Claude Code',
+    'index.cta.s2.title': 'Codex CLI / desktop',
+    'index.cta.s3.title': 'Local project setup',
     'index.cta.s3.desc': 'Smart defaults activate automatically.',
+    'index.cta.claudeInstall': 'Install the Claude Code plugin from the OMH marketplace.',
     'index.cta.codexSource': 'Run this once to configure the marketplace source.',
     'index.cta.codexInstall': 'Choose the configured marketplace in CLI, or Plugins \u2192 Personal on desktop, then install oh-my-harness.',
     'index.cta.codexActivate': 'Start a new CLI session or desktop chat. Review installed lifecycle hooks in /hooks before trusting them.',
+    'index.cta.localInstall': 'Use the runtime you want, or both to provision Claude Code and Codex together.',
     'index.cta.readDocs': 'Read the Docs',
     'index.cta.viewGithub': 'View on GitHub',
 
@@ -653,14 +655,16 @@ const translations = {
     'index.hud.label.model': '\ubaa8\ub378',
 
     // ── Index: CTA ──
-    'index.cta.title': 'Codex\uc5d0 \uc124\uce58',
-    'index.cta.s1.title': '\uc18c\uc2a4 \ucd94\uac00',
-    'index.cta.s2.title': '\ud50c\ub7ec\uadf8\uc778 \uc124\uce58',
-    'index.cta.s3.title': '\ud65c\uc131\ud654',
+    'index.cta.title': '\ub7f0\ud0c0\uc784\uc5d0 \ub9de\uac8c \uc124\uce58',
+    'index.cta.s1.title': 'Claude Code',
+    'index.cta.s2.title': 'Codex CLI / \ub370\uc2a4\ud06c\ud1b1',
+    'index.cta.s3.title': '\ub85c\uceec \ud504\ub85c\uc81d\ud2b8 \uc124\uc815',
     'index.cta.s3.desc': '\uc2a4\ub9c8\ud2b8 \uae30\ubcf8\uac12\uc774 \uc790\ub3d9\uc73c\ub85c \ud65c\uc131\ud654\ub429\ub2c8\ub2e4.',
+    'index.cta.claudeInstall': 'OMH \ub9c8\ucf13\ud50c\ub808\uc774\uc2a4\uc5d0\uc11c Claude Code \ud50c\ub7ec\uadf8\uc778\uc744 \uc124\uce58\ud558\uc138\uc694.',
     'index.cta.codexSource': '\ub9c8\ucf13\ud50c\ub808\uc774\uc2a4 \uc18c\uc2a4\ub97c \uad6c\uc131\ud558\ub824\uba74 \ud55c \ubc88 \uc2e4\ud589\ud558\uc138\uc694.',
     'index.cta.codexInstall': 'CLI\uc758 \uad6c\uc131\ub41c \ub9c8\ucf13\ud50c\ub808\uc774\uc2a4 \ub610\ub294 \ub370\uc2a4\ud06c\ud1b1\uc758 Plugins \u2192 Personal\uc5d0\uc11c oh-my-harness\ub97c \uc124\uce58\ud558\uc138\uc694.',
     'index.cta.codexActivate': '\uc0c8 CLI \uc138\uc158 \ub610\ub294 \ub370\uc2a4\ud06c\ud1b1 \ucc44\ud305\uc744 \uc2dc\uc791\ud558\uc138\uc694. \uc2e0\ub8b0\ud558\uae30 \uc804 /hooks\uc5d0\uc11c \uc124\uce58\ub41c \uc218\uba85\uc8fc\uae30 \ud6c5\uc744 \uac80\ud1a0\ud558\uc138\uc694.',
+    'index.cta.localInstall': '\uc6d0\ud558\ub294 \ub7f0\ud0c0\uc784\uc744 \uc120\ud0dd\ud558\uac70\ub098 both\ub85c Claude Code\uc640 Codex\ub97c \ud568\uaed8 \ud504\ub85c\ube44\uc800\ub2dd\ud558\uc138\uc694.',
     'index.cta.readDocs': '\ubb38\uc11c \uc77d\uae30',
     'index.cta.viewGithub': 'GitHub\uc5d0\uc11c \ubcf4\uae30',
 

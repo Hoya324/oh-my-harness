@@ -60,7 +60,7 @@ graph LR
 
 ## 빠른 시작
 
-사용할 런타임에 맞는 플러그인을 설치하세요:
+Claude Code, Codex, 또는 둘 다에 맞는 설치 경로를 선택하세요:
 
 ```bash
 # Claude Code
@@ -81,11 +81,12 @@ npm link
 cd /path/to/your-project
 
 # 프로젝트에 로컬 CLI 설치
+oh-my-harness init --runtime claude
 oh-my-harness init --runtime codex
 oh-my-harness init --runtime both
 ```
 
-위 Codex 명령은 마켓플레이스 소스를 등록합니다. **Codex CLI**를 실행하고 `/plugins`를 입력한 뒤, 구성된 마켓플레이스에서 `oh-my-harness`를 설치하고 **새 세션**을 시작하세요. **Codex 데스크톱**에서는 **Plugins**를 열고 **Personal** 아래의 구성된 마켓플레이스에서 설치한 뒤 새 채팅을 여세요. [공식 Codex 플러그인 가이드](https://developers.openai.com/codex/plugins)도 참고하세요. 마켓플레이스 설치가 자동으로 번들하는 범위는 Codex hooks, skills, MCP 서버입니다. quick/standard/architect 역할 프로필과 지속 `AGENTS.md` 지침을 추가하려면 번들된 `/harness-setup`을 호출해 쓰기를 승인하거나 `oh-my-harness init --runtime codex`를 실행하세요(두 런타임은 `--runtime both`). 로컬 CLI 기본값은 계속 `--runtime claude`입니다.
+Claude 명령은 Claude Code 플러그인을 설치합니다. Codex 명령은 마켓플레이스 소스를 등록합니다. **Codex CLI**를 실행하고 `/plugins`를 입력한 뒤, 구성된 마켓플레이스에서 `oh-my-harness`를 설치하고 **새 세션**을 시작하세요. **Codex 데스크톱**에서는 **Plugins**를 열고 **Personal** 아래의 구성된 마켓플레이스에서 설치한 뒤 새 채팅을 여세요. [공식 Codex 플러그인 가이드](https://developers.openai.com/codex/plugins)도 참고하세요. 마켓플레이스 설치가 자동으로 번들하는 범위는 Codex hooks, skills, MCP 서버입니다. quick/standard/architect 역할 프로필과 지속 `AGENTS.md` 지침을 추가하려면 번들된 `/harness-setup`을 호출해 쓰기를 승인하거나 `oh-my-harness init --runtime codex`를 실행하세요. 두 런타임을 함께 프로비저닝하려면 `--runtime both`를 사용하세요. 로컬 CLI 기본값은 계속 `--runtime claude`입니다.
 
 ## Codex 지원
 

@@ -2,11 +2,12 @@
 
 설정은 `.claude/.omh/harness.config.json`에 있습니다.
 
-## Codex 지원
+## 런타임 지원
 
 로컬 CLI는 정확히 `--runtime claude|codex|both`를 허용합니다. 생략하면 이전 버전과 호환되는 `claude` 기본값을 유지합니다. `--scope project|user`는 런타임 등록 범위에 적용됩니다:
 
 ```bash
+oh-my-harness init --runtime claude --scope project
 oh-my-harness init --runtime codex --scope project
 oh-my-harness init --runtime both --scope project
 oh-my-harness update --runtime codex

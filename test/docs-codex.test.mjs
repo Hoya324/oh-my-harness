@@ -48,7 +48,23 @@ test('CI installs locked runtime dependencies before running tests', () => {
   );
 });
 
-test('every detailed English/Korean pair has a Codex section and its required facts', () => {
+test('installation guidance presents Claude and Codex as equal runtime choices', () => {
+  for (const file of ['README.md', 'README.ko.md', 'docs/docs.html', 'docs/index.html']) {
+    const body = read(file);
+    for (const command of [
+      'claude plugin marketplace add Hoya324/oh-my-harness',
+      'claude plugin install oh-my-harness@oh-my-harness',
+      'codex plugin marketplace add Hoya324/oh-my-harness',
+      'oh-my-harness init --runtime claude',
+      'oh-my-harness init --runtime codex',
+      'oh-my-harness init --runtime both',
+    ]) {
+      assert.ok(body.includes(command), `${file}: missing install choice ${command}`);
+    }
+  }
+});
+
+test('every detailed English/Korean pair documents runtime support and its required facts', () => {
   const requiredByPair = new Map([
     ['docs/features.md', ['Codex', 'omh-status', 'HUD']],
     ['docs/architecture.md', ['Codex', '.codex-plugin', '.claude/.omh/']],
@@ -61,7 +77,7 @@ test('every detailed English/Korean pair has a Codex section and its required fa
   for (const [english, korean] of docPairs) {
     for (const file of [english, korean]) {
       const body = read(file);
-      assert.match(body, /^## Codex\b/m, `${file}: missing a level-two Codex section`);
+      assert.match(body, /^## (?:Codex|Runtime|\ub7f0\ud0c0\uc784)/m, `${file}: missing a runtime support section`);
       for (const fact of requiredByPair.get(english)) {
         assert.ok(body.includes(fact), `${file}: missing ${fact}`);
       }
@@ -206,9 +222,9 @@ test('landing page alone gives an actionable localized install journey', () => {
   const keys = [
     'index.codex.marketplaceNote',
     'index.codex.desktopNote',
-    'index.cta.codexSource',
+    'index.cta.claudeInstall',
     'index.cta.codexInstall',
-    'index.cta.codexActivate',
+    'index.cta.localInstall',
   ];
 
   assert.ok(html.includes('href="#codex"'), 'hero Get Started must lead to actionable install section');
@@ -221,7 +237,13 @@ test('landing page alone gives an actionable localized install journey', () => {
     assert.ok(html.includes(fact) || i18n.includes(fact), `landing install journey missing ${fact}`);
   }
   assert.ok(!html.includes('<span class="stat-num">9</span>'), 'landing stale hook count');
-  assert.ok(!html.includes('claude plugin install oh-my-harness@oh-my-harness</code>\n          </div>\n        </div>\n        <div class="cta-step">'), 'final CTA must not be Claude-only');
+  for (const command of [
+    'claude plugin install oh-my-harness@oh-my-harness',
+    'codex plugin marketplace add Hoya324/oh-my-harness',
+    'oh-my-harness init --runtime claude|codex|both',
+  ]) {
+    assert.ok(html.includes(command), `landing CTA missing runtime choice ${command}`);
+  }
 });
 
 test('rendered docs localizes dual-runtime additions and rejects stale runtime copy', () => {

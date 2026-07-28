@@ -60,7 +60,7 @@ Everywhere else, OMH stays the harness you barely notice — advisory defaults g
 
 ## Quick Start
 
-Install the plugin for your runtime:
+Choose the installation path for Claude Code, Codex, or both:
 
 ```bash
 # Claude Code
@@ -81,11 +81,12 @@ npm link
 cd /path/to/your-project
 
 # Local CLI installation into a project
+oh-my-harness init --runtime claude
 oh-my-harness init --runtime codex
 oh-my-harness init --runtime both
 ```
 
-The Codex command above registers the marketplace source. In the **Codex CLI**, start Codex, enter `/plugins`, choose the configured marketplace, install `oh-my-harness`, then start a **new session**. In **Codex desktop**, open **Plugins**, select the configured marketplace under **Personal**, install `oh-my-harness`, then open a new chat. See the [official Codex plugin guide](https://developers.openai.com/codex/plugins). Marketplace installation automatically bundles the Codex hooks, skills, and MCP server only. To add quick/standard/architect role profiles and durable `AGENTS.md` guidance, invoke the bundled `/harness-setup` and approve those writes, or run `oh-my-harness init --runtime codex` (use `--runtime both` for both runtimes). The local CLI default remains `--runtime claude`.
+The Claude commands install the Claude Code plugin. The Codex command registers the marketplace source: in the **Codex CLI**, start Codex, enter `/plugins`, choose the configured marketplace, install `oh-my-harness`, then start a **new session**. In **Codex desktop**, open **Plugins**, select the configured marketplace under **Personal**, install `oh-my-harness`, then open a new chat. See the [official Codex plugin guide](https://developers.openai.com/codex/plugins). Marketplace installation automatically bundles the Codex hooks, skills, and MCP server only. To add quick/standard/architect role profiles and durable `AGENTS.md` guidance, invoke the bundled `/harness-setup` and approve those writes, or run `oh-my-harness init --runtime codex`; use `--runtime both` to provision both runtimes. The local CLI default remains `--runtime claude`.
 
 ## Codex Support
 

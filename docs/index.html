@@ -56,10 +56,14 @@
     <div class="hero-install">
       <div class="install-box">
         <span class="install-prefix">$</span>
-        <code id="install-cmd">codex plugin marketplace add Hoya324/oh-my-harness</code>
+        <code id="install-cmd">claude plugin marketplace add Hoya324/oh-my-harness</code>
         <button class="copy-btn" onclick="copyInstall()" id="copy-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
+      </div>
+      <div class="install-box">
+        <span class="install-prefix">$</span>
+        <code>codex plugin marketplace add Hoya324/oh-my-harness</code>
       </div>
     </div>
     <div class="hero-actions">
@@ -122,6 +126,7 @@
             <code>git clone https://github.com/Hoya324/oh-my-harness.git</code><br>
             <code>cd oh-my-harness &amp;&amp; npm link</code><br>
             <code>cd /path/to/your-project</code><br>
+            <code>oh-my-harness init --runtime claude</code><br>
             <code>oh-my-harness init --runtime codex</code><br>
             <code>oh-my-harness init --runtime both</code>
           </div>
@@ -445,29 +450,31 @@
   <!-- Get Started -->
   <section class="cta-section" id="get-started">
     <div class="container">
-      <h2 class="section-title" data-i18n="index.cta.title">Install in Codex</h2>
+      <h2 class="section-title" data-i18n="index.cta.title">Install for your runtime</h2>
       <div class="cta-steps">
         <div class="cta-step">
           <div class="cta-step-num">1</div>
           <div>
-            <h3 data-i18n="index.cta.s1.title">Add the source</h3>
-            <code>codex plugin marketplace add Hoya324/oh-my-harness</code>
-            <p data-i18n="index.cta.codexSource">Run this once to configure the marketplace source.</p>
+            <h3 data-i18n="index.cta.s1.title">Claude Code</h3>
+            <code>claude plugin marketplace add Hoya324/oh-my-harness</code><br>
+            <code>claude plugin install oh-my-harness@oh-my-harness</code>
+            <p data-i18n="index.cta.claudeInstall">Install the Claude Code plugin from the OMH marketplace.</p>
           </div>
         </div>
         <div class="cta-step">
           <div class="cta-step-num">2</div>
           <div>
-            <h3 data-i18n="index.cta.s2.title">Install the plugin</h3>
-            <code>/plugins</code>
-            <p data-i18n="index.cta.codexInstall">Choose the configured marketplace in CLI, or Plugins → Personal on desktop, then install oh-my-harness.</p>
+            <h3 data-i18n="index.cta.s2.title">Codex CLI / desktop</h3>
+            <code>codex plugin marketplace add Hoya324/oh-my-harness</code>
+            <p data-i18n="index.cta.codexInstall">In Codex CLI use /plugins; in desktop use Plugins → Personal. Install oh-my-harness and start a new session or chat.</p>
           </div>
         </div>
         <div class="cta-step">
           <div class="cta-step-num">3</div>
           <div>
-            <h3 data-i18n="index.cta.s3.title">Activate</h3>
-            <p data-i18n="index.cta.codexActivate">Start a new CLI session or desktop chat. Review installed lifecycle hooks in /hooks before trusting them.</p>
+            <h3 data-i18n="index.cta.s3.title">Local project setup</h3>
+            <code>oh-my-harness init --runtime claude|codex|both</code>
+            <p data-i18n="index.cta.localInstall">Use the runtime you want, or both to provision Claude Code and Codex together.</p>
           </div>
         </div>
       </div>

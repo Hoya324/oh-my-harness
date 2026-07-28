@@ -2,11 +2,12 @@
 
 Settings live in `.claude/.omh/harness.config.json`.
 
-## Codex Support
+## Runtime Support
 
 The local CLI accepts exactly `--runtime claude|codex|both`; omitting it keeps the backward-compatible `claude` default. `--scope project|user` applies to runtime registration:
 
 ```bash
+oh-my-harness init --runtime claude --scope project
 oh-my-harness init --runtime codex --scope project
 oh-my-harness init --runtime both --scope project
 oh-my-harness update --runtime codex
