@@ -39,6 +39,15 @@ test('both root READMEs document Codex onboarding and trust', () => {
   }
 });
 
+test('CI installs locked runtime dependencies before running tests', () => {
+  const workflow = read('.github/workflows/ci.yml');
+  assert.match(workflow, /- run: npm ci/);
+  assert.ok(
+    workflow.indexOf('- run: npm ci') < workflow.indexOf('- run: node --test test\/*.test\.mjs'),
+    'CI must install dependencies before invoking the test suite',
+  );
+});
+
 test('every detailed English/Korean pair has a Codex section and its required facts', () => {
   const requiredByPair = new Map([
     ['docs/features.md', ['Codex', 'omh-status', 'HUD']],
