@@ -1,9 +1,8 @@
 #!/bin/bash
 # hook-gate.sh — 2-stage pre-filter for oh-my-harness hooks.
 #
-# Stage 1 (this script): Ultra-cheap bash grep to check if the feature
-#   flag is enabled in harness.config.json.  Avoids spawning a Node.js
-#   process (~40-80ms V8 startup) when the feature is disabled.
+# Stage 1 (this script): Resolve feature flags through the same config loader
+#   used by the hooks, including defaults and user-global fallback.
 #
 # Stage 2: If any listed feature is enabled, `exec node` with stdin
 #   still intact for the real hook to consume.
@@ -17,14 +16,8 @@ HOOK="${1:-}"
 shift
 
 ROOT="${PROJECT_PATH:-.}"
-PROJECT_CONFIG="$ROOT/.claude/.omh/harness.config.json"
-USER_HOME="${HOME:-${USERPROFILE:-}}"
-USER_CONFIG="${USER_HOME:+$USER_HOME/.claude/.omh/harness.config.json}"
-
-is_valid_json() {
-  node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$1" \
-    >/dev/null 2>&1
-}
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+FEATURE_GATE="$SCRIPT_DIR/lib/feature-gate.mjs"
 
 # Global kill-switch
 if [ "${DISABLE_HARNESS:-}" = "1" ]; then
@@ -32,23 +25,10 @@ if [ "${DISABLE_HARNESS:-}" = "1" ]; then
   exit 0
 fi
 
-# Project configuration has precedence. Fall back to the user-scoped
-# installation when the project configuration is absent or invalid.
-if [ -f "$PROJECT_CONFIG" ] && is_valid_json "$PROJECT_CONFIG"; then
-  CONFIG="$PROJECT_CONFIG"
-elif [ -n "$USER_CONFIG" ] && [ -f "$USER_CONFIG" ] && is_valid_json "$USER_CONFIG"; then
-  CONFIG="$USER_CONFIG"
-else
-  echo '{"continue":true,"suppressOutput":true}'
-  exit 0
+# Pass when any requested feature is enabled after semantic config resolution.
+if node "$FEATURE_GATE" "$ROOT" "$@"; then
+  exec node "$HOOK"
 fi
-
-# Check each feature key — pass if ANY is enabled
-for FEATURE in "$@"; do
-  if grep -q "\"$FEATURE\"[[:space:]]*:[[:space:]]*true" "$CONFIG" 2>/dev/null; then
-    exec node "$HOOK"
-  fi
-done
 
 # All features disabled → silent
 echo '{"continue":true,"suppressOutput":true}'

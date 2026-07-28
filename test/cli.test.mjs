@@ -364,6 +364,36 @@ describe('cli init', () => {
     assert.match(output.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
   });
 
+  it('inherits default-on dangerousGuard from an empty project config', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    const project = join(TMP, 'empty-project-config');
+    const configPath = join(project, '.claude', '.omh', 'harness.config.json');
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, '{}\n');
+
+    const result = runInstalledClaudeDangerousHook(project);
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
+  });
+
+  it('falls back to valid user-global hook config when project config is null', () => {
+    runCli('init', '--runtime', 'claude', '--scope', 'user');
+    const project = join(TMP, 'null-project-config');
+    const configPath = join(project, '.claude', '.omh', 'harness.config.json');
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, 'null\n');
+
+    const result = runInstalledClaudeDangerousHook(project);
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /rm -rf/);
+  });
+
   it('keeps project feature flags ahead of the user-global hook config', () => {
     runCli('init', '--runtime', 'claude', '--scope', 'user');
     const project = join(TMP, 'project-precedence');
@@ -1572,6 +1602,10 @@ describe('cli update', () => {
       [
         join(TEST_HOME, '.claude', '.omh', 'hooks', 'lib', 'hook-config.mjs'),
         join(__dirname, '..', 'hooks', 'lib', 'hook-config.mjs'),
+      ],
+      [
+        join(TEST_HOME, '.claude', '.omh', 'hooks', 'lib', 'feature-gate.mjs'),
+        join(__dirname, '..', 'hooks', 'lib', 'feature-gate.mjs'),
       ],
       [
         join(TEST_HOME, '.claude', '.omh', 'hooks', 'lib', 'tier.mjs'),
