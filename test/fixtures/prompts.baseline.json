@@ -1,0 +1,6 @@
+{
+  "_note": "Floors measured on test/fixtures/prompts.jsonl with the classifier as of 0.5.0. Raise them when the classifier improves; never lower them to make a change pass.",
+  "accuracy": 0.82,
+  "tier3Recall": 0.78,
+  "tier1Precision": 0.9
+}
