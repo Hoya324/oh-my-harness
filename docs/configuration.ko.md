@@ -40,6 +40,8 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
 
 ## 기본 설정
 
+이 값은 `templates/harness.config.json.tmpl` 템플릿 그대로이며, `full` 프로필과 같습니다. `oh-my-harness init`과 `/harness-setup`은 새 설정을 만들 때 프로필을 적용합니다(기본값 `minimal`, 아래 [프로필](#프로필) 참고). 키가 빠진 설정은 hook이 읽을 때 이 기본값과 deep-merge되므로, 예전 설정에는 새 기능인 `stateSync`가 켜진 것으로 적용됩니다.
+
 ```json
 {
   "version": 1,
@@ -55,9 +57,15 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
     "scopeGuard": false,
     "usageTracking": true,
     "autoGitignore": true,
+    "skillScaffolding": true,
     "nativeTeam": true,
-    "autonomousLoop": true
+    "autonomousLoop": true,
+    "weightRouting": true,
+    "verifyGate": true,
+    "planGate": true,
+    "stateSync": true
   },
+  "handoff": { "promptThreshold": 40 },
   "testEnforcement": { "minCases": 2, "promptOnMissing": true },
   "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
   "autoPlan": { "threshold": 3 },
@@ -65,7 +73,7 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
   "commitConvention": { "style": "auto" },
   "scopeGuard": { "allowedPaths": [] },
   "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" },
-  "nativeTeam": { "maxTeammates": 4, "defaultTeamName": "omh-team" },
+  "nativeTeam": { "maxTeammates": 4, "defaultTeamName": "omh-team", "templates": { "fullstack": …, "review": …, "research": … } },
   "loop": {
     "classify": "auto",
     "defaultTier": "quick",
@@ -79,6 +87,7 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
     "maxTotalIterations": 30,
     "stopOnNoProgress": true,
     "quickCheckCommand": "",
+    "contractCommand": "",
     "verifyCommand": "",
     "verifyInHook": true,
     "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },
@@ -87,13 +96,49 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
     "maxDeepVerifiesPerTask": 3,
     "reflectionWindow": 3,
     "tiers": {
-      "quick":    { "model": "standard",  "maxIterations": 3,  "maxWallClockMinutes": 5,  "plateauWindow": 2, "crossVerify": false, "marginalGainEpsilon": 0.05 },
-      "standard": { "model": "standard",  "maxIterations": 8,  "maxWallClockMinutes": 15, "plateauWindow": 2, "crossVerify": true,  "crossVerifyEvery": 0, "marginalGainEpsilon": 0.03 },
-      "deep":     { "model": "architect", "maxIterations": 20, "maxWallClockMinutes": 45, "plateauWindow": 3, "crossVerify": true,  "crossVerifyEvery": 5, "marginalGainEpsilon": 0.02 }
+      "quick": { "model": "standard", "maxIterations": 3, "maxWallClockMinutes": 5, "plateauWindow": 2, "crossVerify": false, "crossVerifyEvery": 0, "marginalGainEpsilon": 0.05 },
+      "standard": { "model": "standard", "maxIterations": 8, "maxWallClockMinutes": 15, "plateauWindow": 2, "crossVerify": true, "crossVerifyEvery": 0, "marginalGainEpsilon": 0.03 },
+      "deep": { "model": "architect", "maxIterations": 20, "maxWallClockMinutes": 45, "plateauWindow": 3, "crossVerify": true, "crossVerifyEvery": 5, "marginalGainEpsilon": 0.02 }
     }
-  }
+  },
+  "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": [] },
+  "verifyGate": {
+    "riskThreshold": 2,
+    "maxBlocks": 2,
+    "runLadder": true,
+    "recommendCrossVerify": true,
+    "largeFiles": 8,
+    "largeLines": 400,
+    "ladderTimeoutSec": { "quickCheck": 30, "contract": 120, "verify": 180 },
+    "quickCheckCommand": "",
+    "verifyCommand": "",
+    "contractCommand": "",
+    "sensitivePaths": ["**/auth/**", "**/payment/**", "**/security/**", "*migration*", "**/*migration*", ".env*", "**/.env*", "**/secrets/**", "**/*.sql"]
+  },
+  "planGate": { "minTier": 3, "maxDenials": 3, "gatedTools": ["Edit", "Write", "NotebookEdit", "MultiEdit"] },
+  "verify": {
+    "rounds": 3,
+    "stopWhenClean": true,
+    "autoFix": false,
+    "lenses": [
+      { "model": "claude", "via": "native-subagent", "focus": "correctness" },
+      { "model": "gpt", "via": "codex", "cmd": "codex exec", "focus": "convention" },
+      { "model": "gemini", "via": "gemini", "cmd": "gemini -p --approval-mode plan", "focus": "regression" }
+    ]
+  },
+  "conventions": { "autoDetect": true, "overrides": {} }
 }
 ```
+
+## 프로필
+
+| 프로필 | 켜지는 기능 |
+|--------|-------------|
+| `minimal` (새 설정의 기본값) | `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, `stateSync` |
+| `standard` | minimal + `testEnforcement`, `weightRouting`, `planGate`, `contextSnapshot`, `skillScaffolding`, `contextOptimization` |
+| `full` | 템플릿 기본값 전체 (`scopeGuard`를 뺀 모든 기능) |
+
+`oh-my-harness init --profile <name>` 또는 `/harness-setup`에서 고릅니다. 기존 설정은 다시 바꾸지 않으며, 개별 기능은 `/set-harness features.<name> true|false`로 바꿉니다. `oh-my-harness why`가 Decision Log에 근거해 변경을 제안합니다.
 
 ## 설정 변경
 
@@ -109,10 +154,12 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
 
 ## 설정 레퍼런스
 
+아래 `features.*` 기본값은 템플릿(`full`) 값입니다. 새 설정은 선택한 프로필로 시작합니다.
+
 | 경로 | 타입 | 기본값 | 설명 |
 |------|------|--------|------|
 | `features.conventionSetup` | bool | `true` | 프로젝트 컨벤션 자동 감지 |
-| `features.testEnforcement` | bool | `true` | 변경 후 테스트 리마인드 |
+| `features.testEnforcement` | bool | `true` | 변경된 코드에 테스트가 있는지 확인하고, 같은 diff에서 테스트가 안 바뀐 코드 변경을 알림 |
 | `features.contextOptimization` | bool | `true` | 모델 라우팅 활성화 |
 | `features.autoPlanMode` | bool | `true` | 다중 작업 시 Plan 모드 제안 |
 | `features.ambiguityDetection` | bool | `true` | 모호한 요청에 명확화 강제 |
@@ -122,6 +169,9 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
 | `features.scopeGuard` | bool | `false` | 파일 수정 범위 제한 |
 | `features.usageTracking` | bool | `true` | 도구 사용량 추적 |
 | `features.autoGitignore` | bool | `true` | .gitignore 자동 업데이트 |
+| `features.skillScaffolding` | bool | `true` | init 시 프로젝트 스킬 스캐폴딩 |
+| `features.stateSync` | bool | `true` | Stop/PreCompact에서 `STATE.md` 스냅샷을 다시 생성하고 핸드오프를 제안 |
+| `handoff.promptThreshold` | number | `40` | `[omh:handoff]`를 제안하기 전 한 세션의 프롬프트 수 (0 = 압축 후에만) |
 | `testEnforcement.minCases` | number | `2` | 파일당 최소 테스트 케이스 |
 | `testEnforcement.promptOnMissing` | bool | `true` | 테스트 미존재 시 알림 |
 | `modelRouting.quick` | string | `haiku` | 탐색용 모델 |
@@ -145,17 +195,20 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
 | `verifyGate.runLadder` | bool | `true` | 결정론적 사다리 실행 여부 (끄면 소프트 리마인드만) |
 | `verifyGate.recommendCrossVerify` | bool | `true` | 민감/대규모 변경에 `/omh-verify` 권고 |
 | `verifyGate.largeFiles` / `largeLines` | number | `8` / `400` | 위험도 점수의 diff 규모 임계값 |
+| `verifyGate.quickCheckCommand` / `verifyCommand` | string | `""` | 사다리 명령; 비우면 컨벤션에서 자동 감지 |
+| `verifyGate.contractCommand` | string | `""` | quickCheck와 verify 사이의 선택 단계 (API 스펙 diff, 마이그레이션 검증, 아키텍처 규칙); 자동 감지 안 함 |
+| `verifyGate.ladderTimeoutSec` | object | `{ quickCheck: 30, contract: 120, verify: 180 }` | 단계별 타임아웃(초) |
 | `verifyGate.sensitivePaths` | string[] | auth/payment/migration/.env/… | 최고 위험도로 격상시키는 글롭 |
 | `features.planGate` | bool | `true` | Tier 3 프롬프트는 편집 전 plan모드 플랜 강제 |
 | `planGate.minTier` | number | `3` | 프롬프트 티어가 이 값 이상이면 게이트 발동 |
 | `planGate.maxDenials` | number | `3` | 프롬프트당 편집 차단 횟수 상한 (never-wedge) |
 | `planGate.gatedTools` | string[] | Edit/Write/NotebookEdit/MultiEdit | 플랜 전까지 차단할 도구 |
 
-> `features.autonomousLoop`는 기본값이 ON이지만 `/omh-loop`가 활성 루프 상태를 기록하기 전까지는 동작하지 않습니다 — 루프를 사용하지 않는 세션에는 오버헤드가 전혀 없습니다(활성 루프가 없으면 Stop 훅이 즉시 반환).
+> `features.autonomousLoop`는 `full` 프로필에서 켜지지만 `/omh-loop`가 활성 루프 상태를 기록하기 전까지는 동작하지 않습니다 — 루프를 사용하지 않는 세션에는 오버헤드가 전혀 없습니다(활성 루프가 없으면 Stop 훅이 즉시 반환).
 
-> `features.verifyGate`는 기본값 ON: 평범한 세션(활성 `/omh-loop` 없음)에서 Stop 훅이 매 턴 diff를 점수화(민감 경로·규모·무테스트 소스, 프롬프트 티어가 하한)하고 위험도가 충분하면 verify 사다리를 실행해 실제 red면 차단합니다. 활성 루프엔 비켜나며, `maxBlocks` 상한 + fail-open으로 세션을 절대 가두지 않습니다. `/set-harness features.verifyGate false`로 끌 수 있습니다.
+> `features.verifyGate`는 모든 프로필에서 켜집니다: 평범한 세션(활성 `/omh-loop` 없음)에서 Stop 훅이 매 턴 diff를 점수화(민감 경로·규모·무테스트 소스, 프롬프트 티어가 하한)하고 위험도가 충분하면 verify 사다리를 실행해 실제 red면 차단합니다. 활성 루프엔 비켜나며, `maxBlocks` 상한 + fail-open으로 세션을 절대 가두지 않습니다. `/set-harness features.verifyGate false`로 끌 수 있습니다.
 
-> `features.planGate`는 기본값 ON입니다. Claude는 Edit/Write/NotebookEdit/MultiEdit를 `ExitPlanMode`까지 차단합니다. Codex는 `apply_patch`를 edit로 매핑하고, 비어 있지 않으며 각 항목의 `step`이 비어 있지 않고 `status`가 허용 값인 `update_plan`만 해제 신호로 사용합니다. 그 밖의 payload는 해제하지 않습니다. 읽기 도구는 통과하고 `maxDenials`는 non-wedging 탈출구입니다. `/set-harness features.planGate false`로 끌 수 있습니다.
+> `features.planGate`는 `standard`와 `full` 프로필에서 켜지며, 프롬프트 앞의 `!noplan`으로 한 번 건너뛸 수 있습니다. Claude는 Edit/Write/NotebookEdit/MultiEdit를 `ExitPlanMode`까지 차단합니다. Codex는 `apply_patch`를 edit로 매핑하고, 비어 있지 않으며 각 항목의 `step`이 비어 있지 않고 `status`가 허용 값인 `update_plan`만 해제 신호로 사용합니다. 그 밖의 payload는 해제하지 않습니다. 읽기 도구는 통과하고 `maxDenials`는 non-wedging 탈출구입니다. `/set-harness features.planGate false`로 끌 수 있습니다.
 
 ---
 
@@ -179,6 +232,7 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
 | `loop.maxTotalIterations` | number | `30` | 티어 간 총 반복 상한(하드 월) |
 | `loop.stopOnNoProgress` | bool | `true` | 정체(개선 없음 + 빈/형식적 diff) 시 중단 |
 | `loop.quickCheckCommand` | string | `""` | 빠른 단계(린트/타입체크); 비우면 컨벤션에서 자동 감지 |
+| `loop.contractCommand` | string | `""` | quickCheck와 verify 사이의 선택 단계; 자동 감지 안 함 |
 | `loop.verifyCommand` | string | `""` | 전체 단계(테스트/빌드); 비우면 자동 감지 |
 | `loop.verifyInHook` | bool | `true` | 저비용 검증 단계를 Stop 훅 안에서 실행 |
 | `loop.rungTimeoutSec.quickCheck` | number | `30` | `quickCheck` 단계별 서브프로세스 타임아웃(초) |
@@ -215,7 +269,7 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
 
 ## 무게 인식 라우팅 (`tier3` 블록)
 
-`features.weightRouting`가 켜져 있으면 하네스는 모든 프롬프트의 무게를 Tier 1/2/3으로 자동 분류하고, 가드를 무게에 비례해 적용합니다. Tier 3(고위험·대규모)으로 판정되면 검증이 강제됩니다. 전체 설계는 **[검증 & 무게 인식 하네스](verify.ko.md)** 를 참고하세요.
+`features.weightRouting`가 켜져 있으면 하네스는 모든 프롬프트의 무게를 Tier 1/2/3으로 자동 분류하고, 가드를 무게에 비례해 적용합니다. Tier 3(고위험·대규모)으로 판정되면 검증이 강제됩니다. 프롬프트 앞의 `!t1` / `!t3`는 그 프롬프트의 티어를 덮어쓰고 `!noplan`은 플랜 게이트를 건너뛰며, override는 Decision Log에 기록됩니다. 전체 설계는 **[검증 & 무게 인식 하네스](verify.ko.md)** 를 참고하세요.
 
 설정은 기본값에 deep-merge되므로 변경하려는 필드만 덮어쓰면 됩니다.
 

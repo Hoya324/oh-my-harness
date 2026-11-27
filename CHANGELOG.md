@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Profiles.** `oh-my-harness init --profile minimal|standard|full`; `why` suggests enabling or disabling features from recorded decisions.
 - **Opt-in docs sync.** `oh-my-harness docs-sync --install` adds a `pre-push` hook running `/omh-docs-sync` via `claude -p`.
 - CI job that runs the suite as root inside a container.
+- `test/docs-drift.test.mjs`: configuration docs must list every template feature flag and the template's `features` block, README and architecture docs must state the real skill counts, and both configuration docs must cover every CLI command.
+- `.github/pull_request_template.md` (Korean).
 
 ### Changed
 - **Breaking:** a fresh config now uses the `minimal` profile. Pass `--profile full` for the previous defaults. Existing configs are untouched.
@@ -24,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test enforcement now notes when code changed but no test changed in the same diff.
 - `omh-loop` and `harness-setup` skills keep only when-to-use and first steps in `SKILL.md`; detail moved to `references/`. Skills are held to a 4 KB budget in CI.
 - The repo's `CLAUDE.md` harness blocks are generated (`npm run sync:claude-md`) and checked in CI; the stale 0.3.1 block is gone.
+- README, docs (en/ko), and the GitHub Pages site describe profiles instead of "all ON" defaults, the Decision Log, overrides, generated state, handoff, the contract rung, and docs sync. The default config blocks now match the template, and stale facts were corrected: skill counts, the `[omh:tier]` tag name, verify lenses, and the six commands the local CLI installs.
+- `PRIVACY.md` and `CONTRIBUTING.md` cover the Decision Log, docs sync, write-failure injection, skill budgets, and the classifier corpus.
 
 ### Fixed
 - Fail-open persistence tests no longer depend on `chmod`, so the suite passes when run as root.

@@ -194,14 +194,14 @@ oh-my-harness update --runtime codex</code></pre>
       <p data-i18n="docs.quickStart.intro">Bundled hooks, skills, and MCP are available after installation; provision Codex profiles and durable guidance explicitly. In your first session:</p>
       <ol>
         <li data-i18n-html="docs.quickStart.step1"><strong>Convention detected</strong> — OMH scans your project and outputs: <code>[omh:convention-detect] Project: node | test: vitest | lint: eslint</code></li>
-        <li data-i18n-html="docs.quickStart.step2"><strong>Guards active</strong> — Ambiguity guidance, dangerous-command denial, and test enforcement are all ON by default.</li>
+        <li data-i18n-html="docs.quickStart.step2"><strong>Guards active</strong> — A fresh config starts with the <code>minimal</code> profile: dangerous-command denial, the verify gate, convention detection, commit format, and a generated <code>STATE.md</code> snapshot. Run <code>oh-my-harness why</code> to see what fired and get suggestions for more.</li>
         <li data-i18n-html="docs.quickStart.step3"><strong>Model routing ready</strong> — Claude automatically delegates to haiku/sonnet/opus based on task complexity.</li>
       </ol>
       <p data-i18n-html="docs.quickStart.scaffold">Run <code>/init-project</code> to scaffold project-specific skills (code review, test writing, lint fixing) for your detected stack.</p>
 
       <!-- Configuration -->
       <h2 id="configuration" data-i18n="docs.config.title">Configuration</h2>
-      <p data-i18n-html="docs.config.intro">All settings live in <code>.claude/.omh/harness.config.json</code>.</p>
+      <p data-i18n-html="docs.config.intro">All settings live in <code>.claude/.omh/harness.config.json</code>. The block below is the template, equal to the <code>full</code> profile. <code>oh-my-harness init</code> and <code>/harness-setup</code> apply a profile when they create a config: <code>minimal</code> (default) turns on <code>dangerousGuard</code>, <code>verifyGate</code>, <code>conventionSetup</code>, <code>commitConvention</code>, <code>autoGitignore</code>, and <code>stateSync</code>; <code>standard</code> adds <code>testEnforcement</code>, <code>weightRouting</code>, <code>planGate</code>, <code>contextSnapshot</code>, <code>skillScaffolding</code>, and <code>contextOptimization</code>. Existing configs are never re-profiled.</p>
 
       <h3 data-i18n="docs.config.defaultConfig">Default Config</h3>
       <pre><code>{
@@ -219,8 +219,14 @@ oh-my-harness update --runtime codex</code></pre>
     "usageTracking": true,
     "autoGitignore": true,
     "skillScaffolding": true,
-    "autonomousLoop": true
+    "nativeTeam": true,
+    "autonomousLoop": true,
+    "weightRouting": true,
+    "verifyGate": true,
+    "planGate": true,
+    "stateSync": true
   },
+  "handoff": { "promptThreshold": 40 },
   "testEnforcement": { "minCases": 2, "promptOnMissing": true },
   "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
   "autoPlan": { "threshold": 3 },
@@ -228,6 +234,59 @@ oh-my-harness update --runtime codex</code></pre>
   "commitConvention": { "style": "auto" },
   "scopeGuard": { "allowedPaths": [] },
   "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" },
+  "nativeTeam": { "maxTeammates": 4, "defaultTeamName": "omh-team", "templates": { "fullstack": …, "review": …, "research": … } },
+  "loop": {
+    "classify": "auto",
+    "defaultTier": "quick",
+    "requireSpec": true,
+    "specPath": "SPEC.md",
+    "logFile": "PROGRESS.md",
+    "learningsFile": ".claude/.omh/loop-learnings.md",
+    "requireCommit": true,
+    "oneTaskPerIteration": true,
+    "maxDiffFilesPerIteration": 20,
+    "maxTotalIterations": 30,
+    "stopOnNoProgress": true,
+    "quickCheckCommand": "",
+    "contractCommand": "",
+    "verifyCommand": "",
+    "verifyInHook": true,
+    "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },
+    "crossVerify": true,
+    "crossVerifyModel": "architect",
+    "maxDeepVerifiesPerTask": 3,
+    "reflectionWindow": 3,
+    "tiers": {
+      "quick": { "model": "standard", "maxIterations": 3, "maxWallClockMinutes": 5, "plateauWindow": 2, "crossVerify": false, "crossVerifyEvery": 0, "marginalGainEpsilon": 0.05 },
+      "standard": { "model": "standard", "maxIterations": 8, "maxWallClockMinutes": 15, "plateauWindow": 2, "crossVerify": true, "crossVerifyEvery": 0, "marginalGainEpsilon": 0.03 },
+      "deep": { "model": "architect", "maxIterations": 20, "maxWallClockMinutes": 45, "plateauWindow": 3, "crossVerify": true, "crossVerifyEvery": 5, "marginalGainEpsilon": 0.02 }
+    }
+  },
+  "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": [] },
+  "verifyGate": {
+    "riskThreshold": 2,
+    "maxBlocks": 2,
+    "runLadder": true,
+    "recommendCrossVerify": true,
+    "largeFiles": 8,
+    "largeLines": 400,
+    "ladderTimeoutSec": { "quickCheck": 30, "contract": 120, "verify": 180 },
+    "quickCheckCommand": "",
+    "verifyCommand": "",
+    "contractCommand": "",
+    "sensitivePaths": ["**/auth/**", "**/payment/**", "**/security/**", "*migration*", "**/*migration*", ".env*", "**/.env*", "**/secrets/**", "**/*.sql"]
+  },
+  "planGate": { "minTier": 3, "maxDenials": 3, "gatedTools": ["Edit", "Write", "NotebookEdit", "MultiEdit"] },
+  "verify": {
+    "rounds": 3,
+    "stopWhenClean": true,
+    "autoFix": false,
+    "lenses": [
+      { "model": "claude", "via": "native-subagent", "focus": "correctness" },
+      { "model": "gpt", "via": "codex", "cmd": "codex exec", "focus": "convention" },
+      { "model": "gemini", "via": "gemini", "cmd": "gemini -p --approval-mode plan", "focus": "regression" }
+    ]
+  },
   "conventions": { "autoDetect": true, "overrides": {} }
 }</code></pre>
 
@@ -267,8 +326,8 @@ oh-my-harness update --runtime codex</code></pre>
         </tbody>
       </table>
       <p data-i18n-html="docs.loop.ladder.intro">Each iteration runs a <strong>cheap-first verify ladder</strong> that fails fast and feeds the <em>actual</em> failing output back as the next iteration's instruction:</p>
-      <pre><code>quickCheck (lint / typecheck)  →  verify (tests / build)  →  self-review  →  cross-verify</code></pre>
-      <p data-i18n="docs.loop.ladder.note">The cheapest rung runs first with its own subprocess timeout. On the first non-zero exit the loop blocks with the real failing output piped into the next instruction — it never spends a model judge on structurally broken code.</p>
+      <pre><code>quickCheck (lint / typecheck)  →  contract (optional)  →  verify (tests / build)  →  self-review  →  cross-verify</code></pre>
+      <p data-i18n="docs.loop.ladder.note">The cheapest rung runs first with its own subprocess timeout. The optional contract rung (contractCommand) checks API specs, migrations, or architecture rules and is never auto-detected. On the first non-zero exit the loop blocks with a location-first report (file:line lines, else the error lines at the end of the output) piped into the next instruction — it never spends a model judge on structurally broken code.</p>
 
       <h3 id="loop-crossverify" data-i18n="docs.loop.crossVerify.title">Cross-Verification</h3>
       <p data-i18n-html="docs.loop.crossVerify.intro">Cross-verification uses a <strong>different model than the generator</strong> (opus via model routing) to kill self-enhancement bias. It scores <strong>each SPEC acceptance criterion PASS/FAIL with evidence</strong>, verifies <strong>independently against repo state</strong> (runs the tests, greps the diff — not the agent's self-report), and runs a revert-and-rerun mutation check so vacuous tests can't satisfy the gate. The verdict is typed <code>PASS | FAIL | INCONCLUSIVE</code>; INCONCLUSIVE fails safe to stop-and-report. Results emit as <code>[omh:cross-verify]</code> with a rubric table.</p>
@@ -286,7 +345,7 @@ oh-my-harness update --runtime codex</code></pre>
       </ul>
 
       <h3 id="loop-config" data-i18n="docs.loop.config.title">Loop Config</h3>
-      <p data-i18n-html="docs.loop.config.intro">The loop is enabled by <code>features.autonomousLoop</code> (default ON, inert until <code>/omh-loop</code> writes an active state) plus a <code>loop</code> block. State lives in <code>.claude/.omh/loop-state.json</code>; the human-readable plan and log is <code>PROGRESS.md</code>.</p>
+      <p data-i18n-html="docs.loop.config.intro">The loop is enabled by <code>features.autonomousLoop</code> (on in the <code>full</code> profile, inert until <code>/omh-loop</code> writes an active state) plus a <code>loop</code> block. State lives in <code>.claude/.omh/loop-state.json</code>; the human-readable plan and log is <code>PROGRESS.md</code>.</p>
       <pre><code>"features": { "autonomousLoop": true },
 "loop": {
   "classify": "auto",              // auto | quick | standard | deep
@@ -300,6 +359,9 @@ oh-my-harness update --runtime codex</code></pre>
   "maxDiffFilesPerIteration": 20,
   "maxTotalIterations": 30,
   "stopOnNoProgress": true,
+  "quickCheckCommand": "",         // auto-detected when empty
+  "contractCommand": "",           // optional: API spec diff, migration validate, ArchUnit
+  "verifyCommand": "",             // auto-detected when empty
   "verifyInHook": true,
   "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },
   "crossVerify": true,
@@ -324,8 +386,8 @@ oh-my-harness update --runtime codex</code></pre>
         </thead>
         <tbody>
           <tr><td><strong>① Hooks</strong> (<code>hooks/</code>)</td><td data-i18n="docs.architecture.l1">11 shared scripts (9 guards/observers + 2 gates) and 2 Codex bridge modules</td></tr>
-          <tr><td><strong>② Pure Core</strong> (<code>lib/</code>)</td><td data-i18n="docs.architecture.l2">All decision logic as pure functions (no fs / git / time) — fully unit-tested</td></tr>
-          <tr><td><strong>③ Skills</strong> (<code>claude/skills/</code> + <code>codex/skills/</code>)</td><td data-i18n="docs.architecture.l3">13 Claude Code skills and 14 Codex skills</td></tr>
+          <tr><td><strong>② Core</strong> (<code>lib/</code>)</td><td data-i18n="docs.architecture.l2">Decisions are pure functions (no fs / git / time) and fully unit-tested; I/O helpers (state, decision log, session health, docs sync) are fail-open</td></tr>
+          <tr><td><strong>③ Skills</strong> (<code>claude/skills/</code> + <code>codex/skills/</code>)</td><td data-i18n="docs.architecture.l3">15 Claude Code skills and 16 Codex skills</td></tr>
           <tr><td><strong>④ Agents</strong> (<code>agents/</code>)</td><td data-i18n="docs.architecture.l4">Routed roles — Claude uses haiku/sonnet/opus; Codex uses profile preferences</td></tr>
         </tbody>
       </table>
@@ -341,17 +403,17 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><th data-i18n="docs.hooks.th.hookFile">Hook File</th><th data-i18n="docs.hooks.th.event">Event</th><th data-i18n="docs.hooks.th.whatItDoes">What it does</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>session-start.mjs</code></td><td>SessionStart</td><td data-i18n="docs.hooks.r1.desc">Convention detection, skill hints</td></tr>
-          <tr><td><code>pre-prompt.mjs</code></td><td>UserPromptSubmit</td><td data-i18n="docs.hooks.r2.desc">Ambiguity guard, auto-plan mode</td></tr>
+          <tr><td><code>session-start.mjs</code></td><td>SessionStart</td><td data-i18n="docs.hooks.r1.desc">Convention detection, STATE.md injection, skill hints</td></tr>
+          <tr><td><code>pre-prompt.mjs</code></td><td>UserPromptSubmit</td><td data-i18n="docs.hooks.r2.desc">Weight tier and !t1/!t3/!noplan overrides, ambiguity guard, auto-plan, handoff suggestion</td></tr>
           <tr><td><code>dangerous-guard.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r3.desc">Denies destructive operations or malformed hook input</td></tr>
           <tr><td><code>plan-gate.mjs</code></td><td>PreToolUse</td><td data-i18n="docs.hooks.r11.desc">Plan gate — requires a plan before edits</td></tr>
           <tr><td><code>commit-convention.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r4.desc">Reminds commit format</td></tr>
           <tr><td><code>scope-guard.mjs</code></td><td data-i18n-html="docs.hooks.scopeEvents">Codex: PreToolUse<br>Claude: PostToolUse</td><td data-i18n="docs.hooks.r5.desc">Codex denies before execution; Claude reports after execution</td></tr>
           <tr><td><code>usage-tracker.mjs</code></td><td>PostToolUse</td><td data-i18n="docs.hooks.r6.desc">Records tool usage</td></tr>
-          <tr><td><code>pre-compact.mjs</code></td><td>PreCompact</td><td data-i18n="docs.hooks.r7.desc">Saves context snapshot</td></tr>
+          <tr><td><code>pre-compact.mjs</code></td><td>PreCompact</td><td data-i18n="docs.hooks.r7.desc">Counts the compaction, regenerates the STATE.md snapshot, saves a context snapshot</td></tr>
           <tr><td><code>loop-guard.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r9.desc">Autonomous loop engine + safety enforcer</td></tr>
           <tr><td><code>verify-gate.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r10.desc">Risk-gated verify gate for plain sessions</td></tr>
-          <tr><td><code>post-task.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r8.desc">Test enforcement reminder</td></tr>
+          <tr><td><code>post-task.mjs</code></td><td>Stop</td><td data-i18n="docs.hooks.r8.desc">Regenerates the STATE.md snapshot and checks that changed code has tests</td></tr>
         </tbody>
       </table>
 
@@ -367,11 +429,17 @@ oh-my-harness update --runtime codex</code></pre>
 [omh:test-enforcement]       → Reminding to verify tests
 [omh:commit-convention]      → Showing commit format
 [omh:scope-guard]            → Codex denial / Claude report outside paths
-[omh:context-snapshot]       → Saving state before compaction</code></pre>
+[omh:context-snapshot]       → Saving state before compaction
+[omh:tier]                   → Prompt weight tier and its reasons
+[omh:override]               → A leading !t1 / !t3 / !noplan was applied
+[omh:verify-gate]            → Stop-time verification result
+[omh:plan-gate]              → Edit denied until a Tier-3 plan exists
+[omh:state]                  → STATE.md re-injected at session start
+[omh:handoff]                → Long session: suggests /omh-handoff</code></pre>
 
       <!-- Skills -->
       <h2 id="skills" data-i18n="docs.skills.title">Skills</h2>
-      <p data-i18n="docs.skills.intro">OMH provides 13 Claude Code skills and 14 Codex skills (including <code>omh-status</code>):</p>
+      <p data-i18n="docs.skills.intro">OMH provides 15 Claude Code skills and 16 Codex skills (including <code>omh-status</code>):</p>
 
       <table>
         <thead>
@@ -424,27 +492,28 @@ oh-my-harness update --runtime codex</code></pre>
 
       <!-- Features -->
       <h2 id="features" data-i18n="docs.features.title">Features Overview</h2>
-      <p data-i18n="docs.features.intro">Features group into three layers — automatic guards that fire on every session, autonomous execution you invoke explicitly, and the cross-cutting routing &amp; observability layer.</p>
+      <p data-i18n="docs.features.intro">Features group into three layers — automatic guards that fire on every session, autonomous execution you invoke explicitly, and the cross-cutting routing &amp; observability layer. The Profile column is the smallest profile that turns a feature on (minimal ⊂ standard ⊂ full).</p>
 
-      <h3 data-i18n="docs.features.groupA">A · Automatic guards &amp; routing (always on)</h3>
+      <h3 data-i18n="docs.features.groupA">A · Automatic guards &amp; routing (by profile)</h3>
       <table>
         <thead>
-          <tr><th data-i18n="docs.features.th.feature">Feature</th><th data-i18n="docs.features.th.hook">Hook</th><th data-i18n="docs.features.th.default">Default</th></tr>
+          <tr><th data-i18n="docs.features.th.feature">Feature</th><th data-i18n="docs.features.th.hook">Hook</th><th data-i18n="docs.features.th.default">Profile</th></tr>
         </thead>
         <tbody>
-          <tr><td>Convention Auto-Detect</td><td>SessionStart</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Weight Routing (Tier 1/2/3)</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Ambiguity Guard</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Auto-Plan Mode</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Dangerous Guard</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Plan Gate</td><td>PreToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Commit Convention</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Scope Guard</td><td data-i18n-html="docs.hooks.scopeEvents">Codex: PreToolUse<br>Claude: PostToolUse</td><td><span class="feature-badge badge-off">OFF</span></td></tr>
-          <tr><td>Usage Tracking</td><td>PostToolUse</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Test Enforcement</td><td>Stop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Verify Gate</td><td>Stop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Context Snapshot</td><td>PreCompact</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Living State (STATE.md)</td><td>SessionStart / PreCompact</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Convention Auto-Detect</td><td>SessionStart</td><td><span class="feature-badge badge-on">minimal</span></td></tr>
+          <tr><td>Dangerous Guard</td><td>PreToolUse</td><td><span class="feature-badge badge-on">minimal</span></td></tr>
+          <tr><td>Commit Convention</td><td>PostToolUse</td><td><span class="feature-badge badge-on">minimal</span></td></tr>
+          <tr><td>Verify Gate</td><td>Stop</td><td><span class="feature-badge badge-on">minimal</span></td></tr>
+          <tr><td>Living State (STATE.md)</td><td>Stop / PreCompact / SessionStart</td><td><span class="feature-badge badge-on">minimal</span></td></tr>
+          <tr><td>Handoff Suggestion</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">minimal</span></td></tr>
+          <tr><td>Weight Routing (Tier 1/2/3)</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">standard</span></td></tr>
+          <tr><td>Plan Gate</td><td>PreToolUse</td><td><span class="feature-badge badge-on">standard</span></td></tr>
+          <tr><td>Test Enforcement</td><td>Stop</td><td><span class="feature-badge badge-on">standard</span></td></tr>
+          <tr><td>Context Snapshot</td><td>PreCompact</td><td><span class="feature-badge badge-on">standard</span></td></tr>
+          <tr><td>Ambiguity Guard</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">full</span></td></tr>
+          <tr><td>Auto-Plan Mode</td><td>UserPromptSubmit</td><td><span class="feature-badge badge-on">full</span></td></tr>
+          <tr><td>Usage Tracking</td><td>PostToolUse</td><td><span class="feature-badge badge-on">full</span></td></tr>
+          <tr><td>Scope Guard</td><td data-i18n-html="docs.hooks.scopeEvents">Codex: PreToolUse<br>Claude: PostToolUse</td><td><span class="feature-badge badge-off">off</span></td></tr>
         </tbody>
       </table>
 
@@ -454,12 +523,14 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><th data-i18n="docs.features.th.feature">Feature</th><th data-i18n="docs.features.th.trigger">Trigger</th><th data-i18n="docs.features.th.default">Default</th></tr>
         </thead>
         <tbody>
-          <tr><td data-i18n="docs.features.autonomousLoop">Autonomous Loop</td><td>Stop / /omh-loop</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Spec Authoring</td><td>/omh-spec</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td data-i18n="docs.features.autonomousLoop">Autonomous Loop</td><td>Stop / /omh-loop</td><td><span class="feature-badge badge-on">full</span></td></tr>
+          <tr><td>Spec Authoring</td><td>/omh-spec</td><td>—</td></tr>
           <tr><td>N-Round Verify</td><td>/omh-verify</td><td>—</td></tr>
-          <tr><td data-i18n="docs.features.nativeTeam">Native Team</td><td>/team-spawn</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Handoff</td><td>/omh-handoff, oh-my-harness handoff</td><td>—</td></tr>
+          <tr><td data-i18n="docs.features.nativeTeam">Native Team</td><td>/team-spawn</td><td><span class="feature-badge badge-on">full</span></td></tr>
           <tr><td>Multi-Agent</td><td>/agent-spawn</td><td>—</td></tr>
-          <tr><td data-i18n="docs.features.longTermMemory">Long-Term Memory</td><td>omh-memory MCP</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td data-i18n="docs.features.longTermMemory">Long-Term Memory</td><td>omh-memory MCP</td><td>—</td></tr>
+          <tr><td>Docs Sync (opt-in)</td><td>oh-my-harness docs-sync --install</td><td>—</td></tr>
         </tbody>
       </table>
 
@@ -469,10 +540,12 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><th data-i18n="docs.features.th.feature">Feature</th><th data-i18n="docs.features.th.trigger">Trigger</th><th data-i18n="docs.features.th.default">Default</th></tr>
         </thead>
         <tbody>
-          <tr><td>Model Routing</td><td>CLAUDE.md</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Skill Scaffolding</td><td>/init-project</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Auto .gitignore</td><td>CLI init</td><td><span class="feature-badge badge-on">ON</span></td></tr>
-          <tr><td>Status HUD</td><td>status line</td><td><span class="feature-badge badge-on">ON</span></td></tr>
+          <tr><td>Decision Log</td><td>every hook</td><td><span class="feature-badge badge-on">always</span></td></tr>
+          <tr><td>why</td><td>oh-my-harness why</td><td>—</td></tr>
+          <tr><td>Model Routing</td><td>CLAUDE.md</td><td><span class="feature-badge badge-on">standard</span></td></tr>
+          <tr><td>Skill Scaffolding</td><td>/init-project</td><td><span class="feature-badge badge-on">standard</span></td></tr>
+          <tr><td>Auto .gitignore</td><td>CLI init</td><td><span class="feature-badge badge-on">minimal</span></td></tr>
+          <tr><td>Status HUD</td><td>status line</td><td>—</td></tr>
         </tbody>
       </table>
 
@@ -539,9 +612,9 @@ oh-my-harness update --runtime codex</code></pre>
 
       <!-- Test Enforcement -->
       <h2 id="test-enforcement" data-i18n="docs.testEnforcement.title">Test Enforcement</h2>
-      <p data-i18n="docs.testEnforcement.intro">After code changes (Edit / Write / NotebookEdit), injects a reminder at session stop:</p>
+      <p data-i18n="docs.testEnforcement.intro">At Stop, checks every changed code file in the working tree (the last tool's file when git is unavailable):</p>
       <ul>
-        <li data-i18n="docs.testEnforcement.li1">Verify test files exist for changed code</li>
+        <li data-i18n="docs.testEnforcement.li1">Changed code with no matching test is listed, and declaring the task complete is forbidden; if tests exist but no test changed in the same diff, OMH asks you to confirm they cover the new behavior</li>
         <li data-i18n-html="docs.testEnforcement.li2">Each test file has at least <strong>N</strong> cases (configurable, default: 2)</li>
         <li data-i18n-html="docs.testEnforcement.li3">Tests must cover <strong>happy path</strong>, <strong>edge case</strong>, and <strong>error case</strong> at minimum</li>
       </ul>
@@ -693,13 +766,14 @@ oh-my-harness update --runtime codex</code></pre>
 
       <!-- Settings Reference -->
       <h2 id="settings-reference" data-i18n="docs.settingsRef.title">Settings Reference</h2>
+      <p data-i18n-html="docs.settingsRef.note"><code>features.*</code> defaults are the template (<code>full</code>) values; a new config starts from its profile.</p>
       <table>
         <thead>
           <tr><th data-i18n="docs.settingsRef.th.path">Path</th><th data-i18n="docs.settingsRef.th.type">Type</th><th data-i18n="docs.settingsRef.th.default">Default</th><th data-i18n="docs.settingsRef.th.description">Description</th></tr>
         </thead>
         <tbody>
           <tr><td><code>features.conventionSetup</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r1">Auto-detect project conventions</td></tr>
-          <tr><td><code>features.testEnforcement</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r2">Remind about tests after changes</td></tr>
+          <tr><td><code>features.testEnforcement</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r2">Check changed code has tests; flag code changed with no test change</td></tr>
           <tr><td><code>features.autoPlanMode</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r3">Suggest plan mode for multi-task</td></tr>
           <tr><td><code>features.ambiguityDetection</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r4">Force clarification for vague requests</td></tr>
           <tr><td><code>features.dangerousGuard</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r5">Deny destructive operations or malformed hook input</td></tr>
@@ -719,6 +793,11 @@ oh-my-harness update --runtime codex</code></pre>
           <tr><td><code>loop.defaultTier</code></td><td>string</td><td>quick</td><td data-i18n="docs.settingsRef.r19">Starting tier (escalates on signals)</td></tr>
           <tr><td><code>loop.maxTotalIterations</code></td><td>number</td><td>30</td><td data-i18n="docs.settingsRef.r20">Cross-tier iteration cap</td></tr>
           <tr><td><code>loop.crossVerifyModel</code></td><td>string</td><td>architect</td><td data-i18n="docs.settingsRef.r21">Different model for cross-verification</td></tr>
+          <tr><td><code>features.verifyGate</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r22">Risk-gated verify gate on Stop (every profile)</td></tr>
+          <tr><td><code>features.planGate</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r23">Require a plan before edits on Tier-3 prompts</td></tr>
+          <tr><td><code>features.stateSync</code></td><td>bool</td><td>true</td><td data-i18n="docs.settingsRef.r24">Regenerate the STATE.md snapshot and suggest handoffs</td></tr>
+          <tr><td><code>handoff.promptThreshold</code></td><td>number</td><td>40</td><td data-i18n="docs.settingsRef.r25">Prompts per session before a handoff is suggested</td></tr>
+          <tr><td><code>verifyGate.contractCommand</code></td><td>string</td><td>""</td><td data-i18n="docs.settingsRef.r26">Optional contract rung (API spec, migrations, architecture rules)</td></tr>
         </tbody>
       </table>
 
@@ -730,7 +809,12 @@ oh-my-harness update --runtime claude|codex|both
 oh-my-harness status
 oh-my-harness reset --runtime claude
 oh-my-harness reset --runtime codex
-oh-my-harness reset --runtime both</code></pre>
+oh-my-harness reset --runtime both
+oh-my-harness init --profile minimal|standard|full
+oh-my-harness why [--last N] [--json]
+oh-my-harness handoff
+oh-my-harness docs-sync --install|--uninstall|--print</code></pre>
+      <p data-i18n-html="docs.cliCommands.newNote"><code>--profile</code> applies only to a new config. <code>why</code> explains recent hook decisions from <code>.claude/.omh/decisions.jsonl</code> and suggests feature changes. <code>handoff</code> writes <code>.claude/.omh/HANDOFF.md</code> for a fresh session. <code>docs-sync --install</code> adds an opt-in pre-push hook that runs <code>/omh-docs-sync</code> through <code>claude -p</code>.</p>
       <p data-i18n-html="docs.cliCommands.scopeNote">Use <code>--scope user</code> to provision user-scoped Codex configuration and memory runtime. A bare reset retains the Claude-only default.</p>
       <p data-i18n-html="docs.lifecycle.scopeSafety"><code>omh-status</code> reads project state first, then the user-global fallback. Explicit <code>--scope project</code> and <code>--scope user</code> keep Claude lifecycles isolated. A malformed managed config, settings file, or guidance block fails preflight before mutation.</p>
 

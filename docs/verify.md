@@ -34,7 +34,13 @@ Escalation to Tier 3 is driven by `tier3.*` thresholds:
 }
 ```
 
-The hook emits `[omh:weight]` so you can see which tier fired.
+The hook emits `[omh:tier]` (plus `[omh:tier-3]` for heavy work) so you can see which tier fired and why.
+
+**Overrides.** Start a prompt with `!t1` or `!t3` to force the tier for that prompt, or `!noplan` to keep the tier but skip the plan gate. The hook announces `[omh:override]`, and the Decision Log records the classifier's original answer, so `oh-my-harness why` shows how often the classifier was corrected.
+
+**Measured accuracy.** `test/fixtures/prompts.jsonl` holds 94 labelled Korean/English prompts, including keyword false positives ("change the login button color") and risky work without keywords ("rotate the checkout API keys"). CI fails when accuracy, Tier-3 recall, or Tier-1 precision drops below `test/fixtures/prompts.baseline.json`.
+
+Weight routing is on in the `standard` and `full` profiles.
 
 ---
 
@@ -75,7 +81,7 @@ This is the complement to the Autonomous Loop's cross-verification: where the lo
 
 ## Living State (`STATE.md`)
 
-A disk-anchored `STATE.md` captures the working goal, current phase, key decisions, and progress. It is re-injected at **SessionStart** and integrated at **PreCompact**, so long or compacted sessions don't lose the thread (context-rot defense). It pairs naturally with the loop's `PROGRESS.md`: `STATE.md` is the durable "where are we" anchor; `PROGRESS.md` is the per-iteration log.
+`STATE.md` has two parts. You own **Goal** and **Key Decisions**. The `OMH:AUTO` block is regenerated on every **Stop** and before **PreCompact** from git, loop, and verify-gate state, so "where are we" never depends on someone remembering to update it. It is re-injected at **SessionStart** (your lines first), so long or compacted sessions don't lose the thread (context-rot defense). When a session runs long, `[omh:handoff]` suggests `/omh-handoff`, which writes a `HANDOFF.md` to start a fresh session from. It pairs naturally with the loop's `PROGRESS.md`: `STATE.md` is the durable "where are we" anchor; `PROGRESS.md` is the per-iteration log.
 
 ---
 

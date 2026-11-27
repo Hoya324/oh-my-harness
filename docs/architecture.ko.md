@@ -23,21 +23,21 @@ OMH는 네 개의 계층으로 구성됩니다. 판단 로직은 순수하고 �
 
 | 계층 | 구성 요소 | 역할 |
 |------|-----------|------|
-| **① 훅** | Codex 이벤트 orchestrator 6개 뒤의 공유 스크립트 11개, Codex 브리지 모듈 2개 | 이벤트마다 one orchestrator, sequential 공유 handler, critical guard fail closed, advisory hook fail open |
-| **② 순수 코어** | `lib/loop.mjs` · `risk.mjs` · `plan-gate.mjs` · `tier.mjs` · `detect.mjs` · `config.mjs` · `verify.mjs` · `state.mjs` · `dictionary.mjs` | 판단 로직을 **순수 함수**(fs / git / `Date.now` / child_process 없음)로 → 완전한 단위 테스트 |
-| **③ 스킬** | Claude 스킬 13개 (`claude/skills/`) / Codex 스킬 14개 (`codex/skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 / Codex 상태 |
+| **① 훅** | Codex 이벤트 orchestrator 6개 뒤의 공유 스크립트 11개, Codex 브리지 모듈 2개 | 이벤트마다 one orchestrator, sequential 공유 handler, critical guard fail closed, advisory hook fail open. silent가 아닌 모든 출력은 Decision Log에 기록 |
+| **② 코어** | 순수 판단: `lib/loop.mjs`, `risk.mjs`, `plan-gate.mjs`, `profiles.mjs`, `failure-format.mjs`, `tier-metrics.mjs`, `hooks/lib/tier.mjs`, `dictionary.mjs`. fail-open I/O 헬퍼: `config.mjs`, `detect.mjs`, `state.mjs`, `decision-log.mjs`, `session-health.mjs`, `claude-md.mjs`, `docs-sync.mjs`, `verify.mjs`, `hooks/lib/state-io.mjs` | 판단 로직은 **순수 함수**(fs / git / `Date.now` / child_process 없음)로 두고 단위 테스트; I/O 헬퍼는 실패해도 hook 결과를 바꾸지 않음 |
+| **③ 스킬** | Claude 스킬 15개 (`claude/skills/`) / Codex 스킬 16개 (`codex/skills/`) | 사용자 호출 워크플로우: 설정, 에이전트, 팀, 스펙 / 루프 / 검증 / 핸드오프 / 문서 동기화 / Codex 상태. 각 `SKILL.md`는 4KB 이하이고 세부 내용은 `references/`에 둠 |
 | **④ 에이전트** | `quick` / `standard` / `architect` (`agents/`) | 모델 라우팅 — 작업 무게에 따라 haiku / sonnet / opus |
 
 생명주기 이벤트는 순서가 있는 여러 훅을 실행할 수 있습니다. `PreToolUse`, `PostToolUse`, `Stop`은 의도적으로 둘 이상을 실행하며, 자율 루프는 `Stop` 체인에 있습니다:
 
 | 생명주기 이벤트 | 훅 | 동작 |
 |-----------------|-----|------|
-| `SessionStart` | `session-start.mjs` | 컨벤션 감지 · `STATE.md` 주입 |
-| `UserPromptSubmit` | `pre-prompt.mjs` | 무게 티어 · 모호성 가드 · 자동 Plan |
+| `SessionStart` | `session-start.mjs` | 컨벤션 감지, `STATE.md` 주입 (사용자가 쓴 줄 먼저, 이어서 스냅샷) |
+| `UserPromptSubmit` | `pre-prompt.mjs` | 무게 티어와 `!t1`/`!t3`/`!noplan` override, 모호성 가드, 자동 Plan, 플랜 게이트 무장, 핸드오프 제안 |
 | `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** · `scope-guard` (Codex) | 파괴적 작업 또는 malformed hook 입력 차단 · 플랜 게이트 · Codex 스코프 집행 |
 | `PostToolUse` | `commit-convention` · `scope-guard` (Claude) · `usage-tracker` | 커밋 형식 · Claude 스코프 보고 · 사용량 통계 |
-| `PreCompact` | `pre-compact.mjs` | 컨텍스트 스냅샷 · `STATE.md` 갱신 |
-| `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | 자율 루프 엔진 · 위험도 기반 검증 게이트 · 테스트 강제 |
+| `PreCompact` | `pre-compact.mjs` | 압축 횟수 기록, `STATE.md` 스냅샷 재생성, 컨텍스트 스냅샷 |
+| `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | 자율 루프 엔진, 위험도 기반 검증 게이트, `STATE.md` 스냅샷과 테스트 강제 |
 
 아래 다이어그램은 이 계층들이 설정과 디스크 데이터에 어떻게 연결되는지를 보여줍니다.
 
@@ -67,8 +67,9 @@ graph TB
         HOOKS --> H5[scope-guard.mjs]
         HOOKS --> H6[usage-tracker.mjs]
         HOOKS --> H7[pre-compact.mjs]
-        HOOKS --> H9["loop-guard.mjs (Stop · 루프 엔진)"]
+        HOOKS --> H9["loop-guard.mjs (Stop, 루프 엔진)"]
         HOOKS --> H8[post-task.mjs]
+        HOOKS --> DLOG["lib/decision-log.mjs (silent 아닌 모든 출력)"]
 
         SKILLS --> S1["/harness-setup"]
         SKILLS --> S2["/omh-verify"]
@@ -77,6 +78,7 @@ graph TB
         SKILLS --> S5["/omh-spec"]
         SKILLS --> S6["/omh-loop"]
         SKILLS --> S7["/team-spawn"]
+        SKILLS --> S8["/omh-handoff"]
 
         AGENTS --> A1["harness:quick (haiku)"]
         AGENTS --> A2["harness:standard (sonnet)"]
@@ -96,6 +98,9 @@ graph TB
         STATE[STATE.md]
         LSTATE[loop-state.json]
         LEARN[loop-learnings.md]
+        DEC[decisions.jsonl]
+        HEALTH[session-health.json]
+        HAND[HANDOFF.md]
     end
 
     PROGRESS["PROGRESS.md (프로젝트 루트 · 사람용 로그)"]
@@ -105,6 +110,11 @@ graph TB
     H7 --> SNAP
     H1 --> STATE
     H7 --> STATE
+    H8 --> STATE
+    H2 --> HEALTH
+    H7 --> HEALTH
+    DLOG --> DEC
+    S8 --> HAND
     H1 --> CONFIG
     H2 --> CONFIG
     H3 --> CONFIG
@@ -175,11 +185,11 @@ flowchart TD
     style STOPLOOP fill:#f59e0b,color:#000
 ```
 
-루프는 **계층(tier)** 구조이며(`quick` / `standard` / `deep`가 반복 횟수·벽시계 시간 예산과 검증 깊이를 정하고, 계층을 가로지르는 `maxTotalIterations` 상한이 있음), **저비용 우선 검증 사다리**(quickCheck → verify → self-review → cross-verify)를 실행합니다. 이 사다리는 빠르게 실패하고 *실제* 실패 출력을 다음 반복의 지시문으로 되먹입니다. 상태는 `.claude/.omh/loop-state.json`에 저장되며(원자적 쓰기, fail-open), 프로젝트 루트의 `PROGRESS.md`가 사람이 읽는 계획 + 로그이고, `.claude/.omh/loop-learnings.md`는 빌드/테스트 호출을 캐시합니다. 전체 `loop` 설정 블록은 [docs/loop](./loop.ko.md)과 [docs/configuration](./configuration.ko.md)을 참고하세요.
+루프는 **계층(tier)** 구조이며(`quick` / `standard` / `deep`가 반복 횟수·벽시계 시간 예산과 검증 깊이를 정하고, 계층을 가로지르는 `maxTotalIterations` 상한이 있음), **저비용 우선 검증 사다리**(quickCheck → 선택적 contract → verify → self-review → cross-verify)를 실행합니다. 이 사다리는 빠르게 실패하고, 위치부터 보여주는 실패 보고(`lib/failure-format.mjs`: `file:line` 줄, 없으면 출력 끝의 에러 줄)를 다음 반복의 지시문으로 되먹입니다. 상태는 `.claude/.omh/loop-state.json`에 저장되며(원자적 쓰기, fail-open), 프로젝트 루트의 `PROGRESS.md`가 사람이 읽는 계획 + 로그이고, `.claude/.omh/loop-learnings.md`는 빌드/테스트 호출을 캐시합니다. 전체 `loop` 설정 블록은 [docs/loop](./loop.ko.md)과 [docs/configuration](./configuration.ko.md)을 참고하세요.
 
 ## 무게 라우팅 (UserPromptSubmit 훅)
 
-`features.weightRouting`이 켜지면 `pre-prompt.mjs`가 작업 시작 전에 프롬프트를 Tier 1(가벼움), Tier 2(표준), Tier 3(무겁거나 위험함)으로 분류합니다. 순수 코어 `lib/tier.mjs`는 `lib/dictionary.mjs`의 한국어/영어 패턴과 설정된 도메인 키워드를 사용합니다. Tier 3은 완료 선언 전에 `/omh-verify`를 강제합니다. 프로젝트 설정을 먼저 읽고 없으면 전역 `~/.claude/.omh` 설정으로 fallback합니다.
+`features.weightRouting`이 켜지면 `pre-prompt.mjs`가 작업 시작 전에 프롬프트를 Tier 1(가벼움), Tier 2(표준), Tier 3(무겁거나 위험함)으로 분류합니다. 순수 코어 `lib/tier.mjs`는 `lib/dictionary.mjs`의 한국어/영어 패턴과 설정된 도메인 키워드를 사용합니다. Tier 3은 완료 선언 전에 `/omh-verify`를 강제합니다. 훅은 티어를 `[omh:tier]` 태그(무거운 작업은 `[omh:tier-3]` 추가)로 내보냅니다. 프롬프트 앞의 `!t1` / `!t3`는 티어를 덮어쓰고, `!noplan`은 티어는 유지한 채 플랜 게이트를 무장하지 않습니다. 훅은 `[omh:override]`로 이를 알리고 기록합니다. 분류기 정확도는 CI에서 `test/fixtures/prompts.jsonl`(라벨 붙은 한/영 프롬프트 94개)과 `prompts.baseline.json`의 하한으로 측정합니다. 프로젝트 설정을 먼저 읽고 없으면 전역 `~/.claude/.omh` 설정으로 fallback합니다.
 
 ## 교차 모델 검증 (/omh-verify)
 
@@ -187,7 +197,13 @@ flowchart TD
 
 ## STATE.md — 살아있는 프로젝트 앵커
 
-`lib/state.mjs`는 `.claude/.omh/STATE.md`에 현재 목표, 단계, 결정, 진행률을 유지합니다. `session-start.mjs`가 SessionStart마다 이를 다시 주입하고 `pre-compact.mjs`가 PreCompact 전에 갱신하므로 새 세션과 컨텍스트 압축을 견딥니다. Claude Code와 Codex 훅과 스킬이 동일한 정규 상태를 공유합니다.
+`lib/state.mjs`가 관리하는 `.claude/.omh/STATE.md`의 주인은 둘입니다. **Goal**과 **Key Decisions**는 사람(또는 요청받은 모델)이 관리합니다. `<!-- OMH:AUTO:START -->` … `<!-- OMH:AUTO:END -->` 블록은 hook이 관리하며, `post-task.mjs`(Stop)와 `pre-compact.mjs`(PreCompact)가 `syncAutoState()`로 기계적 출처만 써서 다시 생성합니다(브랜치, 최근 커밋 5개, 커밋 안 된 파일, `loop-state.json`, `verify-gate-state.json`). `session-start.mjs`는 사람이 쓴 줄을 먼저, 이어서 스냅샷을 넣고 1000자로 제한합니다. `.claude/.omh`가 이미 있을 때만 씁니다(`features.stateSync`, 기본 on). Claude Code와 Codex 훅과 스킬이 같은 파일을 공유합니다.
+
+`lib/session-health.mjs`는 세션별 프롬프트 수와 압축 횟수를 `session-health.json`에 셉니다. 압축이 있었거나 `handoff.promptThreshold`를 넘으면 `pre-prompt.mjs`가 세션당 한 번, 카운터가 저장된 경우에만 `[omh:handoff]`를 내보냅니다. `oh-my-harness handoff`와 `/omh-handoff`는 같은 스냅샷으로 `HANDOFF.md`를 만듭니다.
+
+## Decision Log
+
+`lib/decision-log.mjs`는 silent가 아닌 hook 출력마다 `.claude/.omh/decisions.jsonl`에 JSON 한 줄을 추가합니다. `hooks/lib/output.mjs`의 출력 헬퍼가 호출하므로 hook마다 코드를 넣지 않아도 모두 기록됩니다. `pre-prompt.mjs`는 `setDecisionMeta()`로 티어, 사유, override, 세션 id를 붙입니다. 프롬프트 원문은 저장하지 않습니다. 약 500줄로 잘리고, `OMH_DECISION_LOG=0`이면 꺼지며, 쓰기에 실패해도 hook 출력은 바뀌지 않습니다. `oh-my-harness why`가 이 파일을 읽고, `lib/profiles.mjs`가 기능 제안으로 바꿉니다.
 
 ## 플러그인 모드 (권장)
 
@@ -203,42 +219,55 @@ oh-my-harness/                    <- 플러그인 루트 ($CLAUDE_PLUGIN_ROOT)
 ├── .codex-plugin/plugin.json     <- Codex 플러그인 매니페스트
 ├── CLAUDE.md                     <- 시스템 프롬프트 (자동 주입)
 ├── codex/                        <- Codex 네이티브 스킬, 역할, 지침
-├── lib/                          <- 순수 코어 라이브러리
-│   └── loop.mjs                  <- 루프 결정 로직 (단위 테스트)
 ├── hooks/
 │   ├── hooks.json                <- 훅 등록 ($CLAUDE_PLUGIN_ROOT 사용)
-│   ├── lib/output.mjs            <- 공유 출력 헬퍼 (hookStopContinue 포함)
+│   ├── lib/output.mjs            <- 공유 출력 헬퍼 (hookStopContinue 포함), 판정 기록
+│   ├── lib/state-io.mjs          <- 원자적 JSON 상태 writer (OMH_TEST_FAIL_WRITE 주입)
 │   ├── lib/dictionary.mjs        <- 한/영 패턴 + 무게 표현
-│   ├── lib/tier.mjs              <- 작업 무게 분류기 (Tier 1/2/3)
+│   ├── lib/tier.mjs              <- 작업 무게 분류기 (Tier 1/2/3) + 프롬프트 override
 │   ├── lib/hook-config.mjs       <- config 로더 (프로젝트 → ~/.claude 전역 fallback)
 │   ├── session-start.mjs         <- 컨벤션 감지 + STATE.md 주입
-│   ├── pre-prompt.mjs            <- 모호성 + 자동 Plan + 무게 라우팅
+│   ├── pre-prompt.mjs            <- 모호성 + 자동 Plan + 무게 라우팅 + 핸드오프 제안
 │   ├── dangerous-guard.mjs       <- 파괴적/malformed 요청 차단
+│   ├── plan-gate.mjs             <- PreToolUse: 편집 전 Tier 3 플랜 강제
 │   ├── commit-convention.mjs     <- 커밋 형식 안내
 │   ├── scope-guard.mjs           <- Codex 실행 전 집행 / Claude 실행 후 보고
 │   ├── usage-tracker.mjs         <- 도구 사용량 기록
-│   ├── pre-compact.mjs           <- 컨텍스트 스냅샷
+│   ├── pre-compact.mjs           <- 컨텍스트 스냅샷 + STATE.md 스냅샷
 │   ├── loop-guard.mjs            <- Stop 훅: 루프 엔진 + 안전장치 (lib/loop.mjs의 얇은 래퍼)
-│   └── post-task.mjs             <- 테스트 강제
-├── claude/skills/                <- Claude 스킬 (커스텀 manifest 경로)
-│   ├── harness-setup/SKILL.md    <- /harness-setup
+│   ├── verify-gate.mjs           <- Stop 훅: 평범한 세션의 위험도 기반 검증 사다리
+│   └── post-task.mjs             <- 테스트 강제 + STATE.md 스냅샷
+├── claude/skills/                <- Claude 스킬 15개 (커스텀 manifest 경로)
+│   ├── harness-setup/            <- /harness-setup (SKILL.md + references/)
 │   ├── set-harness/SKILL.md      <- /set-harness
 │   ├── init-project/SKILL.md     <- /init-project
 │   ├── omh-spec/SKILL.md         <- /omh-spec (SPEC.md 작성)
-│   ├── omh-loop/SKILL.md         <- /omh-loop (루프 실행/중단)
+│   ├── omh-loop/                 <- /omh-loop (SKILL.md + references/iteration, cross-verify, memory)
+│   ├── omh-verify/SKILL.md       <- /omh-verify (N-라운드 독립 검증)
+│   ├── omh-handoff/SKILL.md      <- /omh-handoff (새 세션용 HANDOFF.md)
+│   ├── omh-docs-sync/SKILL.md    <- /omh-docs-sync (opt-in pre-push hook에서 사용)
 │   ├── agent-spawn/SKILL.md      <- /agent-spawn
 │   ├── agent-status/SKILL.md     <- /agent-status
 │   ├── agent-apply/SKILL.md      <- /agent-apply
 │   ├── agent-stop/SKILL.md       <- /agent-stop
-│   ├── omh-verify/SKILL.md       <- /omh-verify (N-라운드 독립 검증)
 │   ├── team-spawn/SKILL.md       <- /team-spawn
 │   ├── team-status/SKILL.md      <- /team-status
 │   └── team-stop/SKILL.md        <- /team-stop
-├── codex/skills/                 <- Codex 네이티브 스킬 14개 (커스텀 manifest 경로)
-├── lib/                          <- 코어 모듈 (CLI + 검증 엔진)
+├── codex/skills/                 <- Codex 네이티브 스킬 16개 (커스텀 manifest 경로)
+├── lib/                          <- 코어 모듈
+│   ├── loop.mjs                  <- 루프 결정 로직 + 검증 사다리 (순수)
+│   ├── risk.mjs                  <- 검증 게이트 위험도 판단 (순수)
+│   ├── plan-gate.mjs             <- 플랜 게이트 판단 (순수)
+│   ├── profiles.mjs              <- minimal/standard/full + 제안 (순수)
+│   ├── failure-format.mjs        <- 위치 우선 실패 보고 (순수)
+│   ├── tier-metrics.mjs          <- 분류기 코퍼스 지표 (순수)
 │   ├── config.mjs                <- config 스키마 + deep-merge
+│   ├── state.mjs                 <- STATE.md AUTO 블록 + HANDOFF.md
+│   ├── decision-log.mjs          <- decisions.jsonl 읽기/쓰기/요약
+│   ├── session-health.mjs        <- 핸드오프 제안용 프롬프트/압축 카운터
+│   ├── claude-md.mjs             <- 생성되는 CLAUDE.md 하네스 블록
+│   ├── docs-sync.mjs             <- opt-in pre-push hook 설치/제거
 │   ├── verify.mjs                <- /omh-verify 헬퍼 (diff, 렌즈 로테이션)
-│   ├── state.mjs                 <- STATE.md 읽기/쓰기/렌더
 │   └── adapters/
 │       ├── codex.mjs             <- GPT 검증자 (codex exec -s read-only)
 │       └── gemini.mjs            <- Gemini 검증자 (gemini -p --approval-mode plan)
@@ -257,26 +286,23 @@ your-project/
 └── .claude/
     ├── settings.local.json       <- 훅 등록
     ├── CLAUDE.md                 <- 행동 규칙 추가
-    ├── commands/                 <- 슬래시 명령어
+    ├── commands/                 <- CLI가 설치하는 슬래시 명령어 6개 (나머지 스킬은 플러그인에 포함)
     │   ├── set-harness.md
     │   ├── init-project.md
-    │   ├── omh-spec.md
-    │   ├── omh-loop.md
     │   ├── agent-spawn.md
     │   ├── agent-status.md
     │   ├── agent-apply.md
-    │   ├── agent-stop.md
-    │   ├── omh-verify.md
-    │   ├── team-spawn.md
-    │   ├── team-status.md
-    │   └── team-stop.md
+    │   └── agent-stop.md
     ├── PROGRESS.md               <- 루프 계획 + 사람용 로그 (프로젝트 루트)
     └── .omh/                     <- 프로젝트 데이터 (gitignored)
         ├── harness.config.json
         ├── conventions.json
         ├── usage.json
         ├── context-snapshot.md
-        ├── STATE.md              <- 살아있는 앵커 (SessionStart 재주입, PreCompact)
+        ├── STATE.md              <- Goal/Decisions + 자동 생성 OMH:AUTO 스냅샷
+        ├── decisions.jsonl       <- Decision Log (`oh-my-harness why`가 읽음)
+        ├── session-health.json   <- 프롬프트/압축 카운터 (핸드오프 제안)
+        ├── HANDOFF.md            <- `oh-my-harness handoff` / `/omh-handoff`가 작성
         ├── loop-state.json       <- 루프 엔진 상태 (원자적 쓰기, fail-open)
         ├── loop-learnings.md     <- 캐시된 빌드/테스트 호출
         └── STOP                  <- 킬 스위치 (존재할 때)

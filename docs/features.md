@@ -39,6 +39,8 @@ OMH replaces Claude Code's default status line with a real-time dashboard:
 
 After runtime registration, OMH hooks into the Claude Code or Codex lifecycle and activates automatically. Codex profiles and durable guidance still require `/harness-setup` or CLI init.
 
+Which of these run depends on your profile. A fresh config uses `minimal` (dangerous guard, verify gate, convention detection, commit convention, auto `.gitignore`, generated state); `standard` and `full` add more. See [Profiles](#profiles), and run `oh-my-harness why` to see what actually fired.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  You type a prompt                                              │
@@ -103,7 +105,15 @@ Every OMH action is prefixed with a tag so you always know which feature fired:
 [omh:loop]               → Autonomous loop forced continuation / stop decision
 [omh:cross-verify]       → Cross-verification verdict (PASS / FAIL / INCONCLUSIVE)
 [omh:spec]               → Spec authoring / acceptance-criteria check
+[omh:tier]               → Prompt weight tier and the reasons for it
+[omh:override]           → A leading !t1 / !t3 / !noplan was applied
+[omh:verify-gate]        → Stop-time verification result (block on red)
+[omh:plan-gate]          → Edit denied until a Tier-3 plan is presented
+[omh:state]              → STATE.md re-injected at session start
+[omh:handoff]            → Long session: suggests /omh-handoff and a fresh session
 ```
+
+Every tag above, except model routing, is also appended to `.claude/.omh/decisions.jsonl`; see [Decision Log](#decision-log).
 
 Example session output:
 ```
@@ -127,13 +137,13 @@ Example session output:
 The features below group into three layers — the same grouping used in the [README](../README.md#features-overview):
 
 **A. Automatic guards & routing** — fire on every session, no prompting:
-[Convention Auto-Detect](#1-convention-auto-detect) · [Test Enforcement](#2-test-enforcement) · [Auto-Plan Mode](#4-auto-plan-mode) · [Ambiguity Guard](#5-ambiguity-guard) · [Dangerous Guard](#6-dangerous-guard) · [Context Snapshot](#7-context-snapshot) · [Commit Convention](#8-commit-convention) · [Scope Guard](#9-scope-guard) · [Usage Tracking](#10-usage-tracking) · [Weight Routing](#15-weight-routing-tier-123) · [Living State](#17-living-state-statemd) · [Verify Gate](#verify-gate) · [Plan Gate](#plan-gate)
+[Convention Auto-Detect](#1-convention-auto-detect) · [Test Enforcement](#2-test-enforcement) · [Auto-Plan Mode](#4-auto-plan-mode) · [Ambiguity Guard](#5-ambiguity-guard) · [Dangerous Guard](#6-dangerous-guard) · [Context Snapshot](#7-context-snapshot) · [Commit Convention](#8-commit-convention) · [Scope Guard](#9-scope-guard) · [Usage Tracking](#10-usage-tracking) · [Weight Routing](#15-weight-routing-tier-123) · [Living State](#17-living-state-statemd) · [Verify Gate](#verify-gate) · [Plan Gate](#plan-gate) · [Handoff](#handoff)
 
 **B. Autonomous execution** — explicit workflows you invoke:
-[Native Team](#12-native-team) · [Autonomous Loop](#13-autonomous-loop) · [Spec Authoring](#14-spec-authoring) · [N-Round Verify](#16-n-round-independent-verify-omh-verify)
+[Native Team](#12-native-team) · [Autonomous Loop](#13-autonomous-loop) · [Spec Authoring](#14-spec-authoring) · [N-Round Verify](#16-n-round-independent-verify-omh-verify) · [Docs Sync](#docs-sync-opt-in)
 
 **C. Routing, scaffolding & observability** — cross-cutting:
-[Status Line (HUD)](#status-line-hud) · [Model Routing](#3-model-routing) · [Skill Scaffolding](#11-skill-scaffolding)
+[Status Line (HUD)](#status-line-hud) · [Model Routing](#3-model-routing) · [Skill Scaffolding](#11-skill-scaffolding) · [Decision Log](#decision-log) · [Profiles](#profiles)
 
 ---
 
@@ -156,11 +166,14 @@ Scans project root on session start and injects detected conventions as context.
 
 ### 2. Test Enforcement
 
-After code changes (Edit / Write / NotebookEdit), injects a reminder at session stop:
+At Stop, checks every changed code file in the working tree (`git diff`, staged, and untracked; the last tool's file when git is unavailable):
 
-- Verify test files exist for changed code
-- Each test file has at least **N** cases (configurable, default: 2)
-- Suggest adding tests if missing
+- Changed code with no matching test → `[omh:anti-rationalization]` lists the files and forbids declaring the task complete
+- Tests exist, but **no test changed in the same diff** → a note to confirm the existing tests cover the new behavior, or to add tests
+- Tests exist and a test changed → a reminder to run them
+- Each test file should have at least **N** cases (configurable, default: 2)
+
+Test files are recognized by `.test.` / `.spec.` names, `test/` / `tests/` / `__tests__/` directories, and JVM names such as `FooTest.kt` under the mirrored `src/test/...` path.
 
 > Tests must cover **happy path**, **edge case**, and **error case** at minimum.
 
@@ -397,9 +410,11 @@ The headline feature of 0.3.0. Define a goal once in a `SPEC.md`, then OMH *loop
 **Cheap-first verify ladder** — strictly ordered rungs that fail fast and run the cheapest check first. On the first failure it blocks with the *actual* failing output piped back as the next iteration's instruction, so the model never burns an expensive judge on structurally broken code. Each rung has its own subprocess timeout.
 
 ```
-quickCheck (lint / typecheck)  →  verify (tests / build)  →  self-review  →  cross-verify
-   30s, deterministic              180s, deterministic        same model      different model
+quickCheck (lint / typecheck)  →  contract (optional)  →  verify (tests / build)  →  self-review  →  cross-verify
+   30s, deterministic              120s, deterministic     180s, deterministic        same model      different model
 ```
+
+`contractCommand` checks knowledge that lives outside the code under change: an API spec diff (for example `openapi-diff`), a migration check (`flyway validate`), or architecture rules (ArchUnit). It is never auto-detected. A red rung is reported location-first: lines that point at `file:line` (gradle, kotlinc, tsc, eslint, pytest, go), otherwise the error lines from the end of the output, where build tools print the real failure. Kotlin/Java Gradle projects that use ktlint or detekt get `./gradlew ktlintCheck` or `./gradlew detekt` as the automatic quickCheck.
 
 **Cross-verification** — a *different* model than the generator (opus, via model routing) acts as an LLM-as-judge that scores **each** SPEC acceptance criterion `PASS` / `FAIL` with evidence. It verifies **independently against repo state** — running the tests and grepping the diff, not re-reading the agent's "I did X" self-report — and runs a revert-and-rerun mutation check (revert the change; new tests must FAIL on the reverted code) so the agent can't satisfy its own gate with vacuous tests. The verdict is typed `PASS | FAIL | INCONCLUSIVE`, and **INCONCLUSIVE fails safe to stop-and-report**.
 
@@ -441,12 +456,15 @@ quickCheck (lint / typecheck)  →  verify (tests / build)  →  self-review  �
     "maxTotalIterations": 30,
     "crossVerify": true,
     "crossVerifyModel": "architect",
+    "quickCheckCommand": "",
+    "contractCommand": "",
+    "verifyCommand": "",
     "rungTimeoutSec": { "quickCheck": 30, "verify": 180 }
   }
 }
 ```
 
-> ON by default, but **inert** until `/omh-loop` writes an active state — zero overhead for non-loop sessions. See [the Autonomous Loop guide](loop.md) for the full config block and design rationale.
+> On in the `full` profile, but **inert** until `/omh-loop` writes an active state — zero overhead for non-loop sessions. See [the Autonomous Loop guide](loop.md) for the full config block and design rationale.
 
 ### 14. Spec Authoring
 
@@ -467,7 +485,7 @@ If a request is vague, `/omh-spec` inserts `[NEEDS CLARIFICATION]` markers and *
 
 ### 15. Weight Routing (Tier 1/2/3)
 
-**Hook:** `UserPromptSubmit` · **Default:** ON (`features.weightRouting`)
+**Hook:** `UserPromptSubmit` · **Profile:** standard (`features.weightRouting`)
 
 Classifies each prompt into a weight tier and routes guardrails proportionally, so small tasks stay light while heavy tasks get full treatment.
 
@@ -475,6 +493,8 @@ Classifies each prompt into a weight tier and routes guardrails proportionally, 
 - **Tier 1 (light):** convention reminder only.
 - **Tier 2 (standard):** convention checklist + tests + self-review.
 - **Tier 3 (heavy):** injects a mandatory reminder to run `/omh-verify` before declaring complete.
+- **Overrides:** start a prompt with `!t1` or `!t3` to force the tier, or `!noplan` to keep the tier but skip the plan gate, for that prompt only. The model is told these tokens are harness directives. Each use is recorded with the classifier's original answer (`override:t1 (classifier said 3)`), so the override rate in `oh-my-harness why` measures classifier error.
+- **Measured, not guessed:** `test/fixtures/prompts.jsonl` holds 94 labelled Korean/English prompts, including keyword false positives and risky prompts without keywords. CI fails if accuracy, Tier-3 recall, or Tier-1 precision drops below the floors in `prompts.baseline.json`.
 
 **Configuration:**
 ```json
@@ -514,13 +534,15 @@ Runs N independent verify+fix rounds over the current `git diff`, rotating model
 
 ### 17. Living State (STATE.md)
 
-**Hook:** `SessionStart` (inject) / `PreCompact` (integrate) · **Default:** ON
+**Hook:** `Stop` and `PreCompact` (regenerate) / `SessionStart` (inject) · **Profile:** minimal (`features.stateSync`)
 
-A disk-anchored `STATE.md` under `.claude/.omh/` holds goal, current phase, key decisions, and progress. It is re-injected at session start and referenced in the pre-compaction snapshot, so working context survives session boundaries and compaction — directly mitigating context rot.
+`.claude/.omh/STATE.md` has two owners. You (or the model, on request) own **Goal** and **Key Decisions**. Hooks own the block between `<!-- OMH:AUTO:START -->` and `<!-- OMH:AUTO:END -->`, regenerated on every Stop and before compaction from machine sources only: current branch, the last 5 commits, uncommitted files (up to 8 named), loop state, and whether the verify gate passed the current diff. A progress log nobody has to remember to update cannot drift.
+
+At session start the human lines come first, then the snapshot, capped at 1000 characters. State is only written where `.claude/.omh` already exists, and every step is fail-open.
 
 ### 18. Long-Term Memory
 
-**MCP:** `omh-memory` (knowledge graph) · **Default:** ON
+**MCP:** `omh-memory` (knowledge graph) · **Availability:** whenever the MCP server is connected (not a feature flag)
 
 A cross-session, **cross-runtime** knowledge graph, backed by pinned `@modelcontextprotocol/server-memory@2026.7.4` and stored at `~/.omh/memory/graph.jsonl` — **one store shared by Claude Code and Codex**. The plugin MCP changes to the plugin root and launches `bin/omh-memory.sh`; local Codex init installs the launcher/library under the selected scope and manages `[mcp_servers.omh-memory]`.
 
@@ -535,7 +557,7 @@ A cross-session, **cross-runtime** knowledge graph, backed by pinned `@modelcont
 
 ### Verify Gate
 
-**Hook:** `Stop` (`verify-gate.mjs`) · **Default:** ON
+**Hook:** `Stop` (`verify-gate.mjs`) · **Profile:** minimal (`features.verifyGate`)
 
 The autonomous loop only hard-enforces verification *inside* `/omh-loop`. The Verify Gate brings the same harness-owned enforcement to **plain sessions**. On every Stop it scores the turn's risk from the **actual working-tree diff** — not the model's self-assessment:
 
@@ -546,8 +568,8 @@ The autonomous loop only hard-enforces verification *inside* `/omh-loop`. The Ve
 | Source changed without a matching test | run the ladder |
 | Prompt tier (1/2/3) | acts as a **floor** — `level = max(diffRisk, tierFloor)` |
 
-When the risk warrants it, the hook **runs the verify ladder itself** (cheap quickCheck for moderate risk; full ladder for sensitive/large) and:
-- **red** → forces continuation with the real failing output (top-level `{"decision":"block"}` + exit 0);
+When the risk warrants it, the hook **runs the verify ladder itself** (cheap quickCheck for moderate risk; full ladder, including `contractCommand` when set, for sensitive/large) and:
+- **red** → forces continuation with a location-first failure report (top-level `{"decision":"block"}` + exit 0);
 - **green / low-risk** → allows the stop. Sensitive/large changes also get a `/omh-verify` cross-model recommendation.
 
 **It can never wedge a session.** A per-diff `maxBlocks` cap guarantees it eventually allows the stop (even against a pre-existing red baseline), plus a `stop_hook_active` re-entry guard, already-verified skip, defer-to-active-loop, empty-ladder/git-missing pass-through, off switches (`features.verifyGate`, `DISABLE_HARNESS`, `STOP`), and fail-open on any error. Decision logic is the pure, unit-tested `lib/risk.mjs`.
@@ -556,7 +578,7 @@ When the risk warrants it, the hook **runs the verify ladder itself** (cheap qui
 
 ### Plan Gate
 
-**Hook:** `PreToolUse` (`plan-gate.mjs`) · **Default:** ON
+**Hook:** `PreToolUse` (`plan-gate.mjs`) · **Profile:** standard (`features.planGate`)
 
 Where the Verify Gate enforces verification *after* a turn, the Plan Gate enforces planning *before* one. On a **Tier-3 prompt** (the existing prompt-weight classifier — architecture, security, migration, 5+ tasks, or configured domain keywords), `pre-prompt.mjs` arms a per-prompt marker and injects a directive to plan. The PreToolUse hook then **denies** mutating tools until the model plans:
 
@@ -570,8 +592,46 @@ So a heavy prompt forces the model to call `EnterPlanMode` and write an implemen
 
 That table is the Claude contract. On Codex, the bridge maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`. Other payloads do not clear the shared gate. The denial cap remains the final non-wedging escape hatch.
 
-**It can never wedge a session.** A per-prompt `maxDenials` cap (default 3) eventually allows the edit with a warning; read-only tools are never gated; the marker is per-prompt (a Tier-1/2 prompt disarms it); and the off switches are `features.planGate` / `DISABLE_HARNESS`. The Claude wrapper fails open on a corrupt marker; the Codex critical preflight fails closed for an armed corrupt marker and a mapped gated tool. Decision logic is the pure, unit-tested `lib/plan-gate.mjs`.
+**It can never wedge a session.** A per-prompt `maxDenials` cap (default 3) eventually allows the edit with a warning; read-only tools are never gated; the marker is per-prompt (a Tier-1/2 prompt or a leading `!noplan` disarms it); and the off switches are `features.planGate` / `DISABLE_HARNESS`. The Claude wrapper fails open on a corrupt marker; the Codex critical preflight fails closed for an armed corrupt marker and a mapped gated tool. Decision logic is the pure, unit-tested `lib/plan-gate.mjs`.
 
 > **Limitation (v1):** Claude gates Edit/Write/NotebookEdit/MultiEdit and Codex also maps `apply_patch`; a `Bash` file-write (`echo > file`) can bypass it. Gating all Bash would block investigation commands, so it is out of scope for v1.
 
 > Emits `[omh:plan-gate]`. See the `planGate` block in [Configuration](configuration.md).
+
+### Decision Log
+
+**Written by:** every hook · **Profile:** always on (`OMH_DECISION_LOG=0` disables it)
+
+Each non-silent hook output is appended to `.claude/.omh/decisions.jsonl` as one JSON line: time, hook, event, decision (`context`, `warn`, `block`, `deny`), the `[omh:*]` tags it emitted, and, for prompts, the tier, its reasons, any override, and the session id. Prompt text and file contents are never stored. The file is bounded to about 500 lines, written only where `.claude/.omh` already exists, and logging can never change a hook's output.
+
+```bash
+oh-my-harness why              # last 10 decisions, per-hook counts, override rate, Stop p50/p95
+oh-my-harness why --last 30
+oh-my-harness why --json       # entries + summary + suggestions
+```
+
+`why` also suggests feature changes from the log: enable `planGate` and `testEnforcement` after 3+ verify-gate blocks in a week, disable a nudge that has not fired in 14 days, and review `tier3.domainKeywords` when more than 30% of 20+ routed prompts were overridden. Safety guards are never suggested for removal.
+
+### Handoff
+
+**Skill:** `/omh-handoff` · **CLI:** `oh-my-harness handoff` · **Suggestion hook:** `UserPromptSubmit` (`features.stateSync`)
+
+One session should hold one context. After a compaction, or once a session passes `handoff.promptThreshold` prompts (default 40), `[omh:handoff]` suggests a handoff, once per session. `oh-my-harness handoff` refreshes the `STATE.md` snapshot and writes `.claude/.omh/HANDOFF.md` with **Tried**, **Worked**, **Failed (and why)**, and **Next steps** sections plus your Goal, Decisions, and the generated snapshot. The skill fills only those four sections; start the next session with the file.
+
+### Profiles
+
+`oh-my-harness init --profile minimal|standard|full` (and the same choice in `/harness-setup`) decides which features a **new** config turns on. Existing configs are never re-profiled.
+
+| Profile | Features on |
+|---------|-------------|
+| `minimal` (default) | `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, `stateSync` |
+| `standard` | minimal + `testEnforcement`, `weightRouting`, `planGate`, `contextSnapshot`, `skillScaffolding`, `contextOptimization` |
+| `full` | every template default (all features except `scopeGuard`) |
+
+Start small; turn more on when `oh-my-harness why` shows a need, with `/set-harness features.<name> true`.
+
+### Docs Sync (opt-in)
+
+**CLI:** `oh-my-harness docs-sync --install | --uninstall | --print` · **Skill:** `/omh-docs-sync`
+
+Installs a `pre-push` git hook. On push it passes the branch's changed code files to `claude -p "/omh-docs-sync ..."` with only Read, Grep, Glob, and Edit allowed. The skill updates only the docs those changes made wrong (and their Korean twins). If any doc changed, the push stops so the doc change is reviewed and committed with the code. A missing `claude` CLI, a failed run, or `OMH_DOCS_SYNC=0` never blocks a push. A pre-push hook you wrote yourself is never replaced without `--force`, and never removed.

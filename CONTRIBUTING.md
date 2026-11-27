@@ -29,15 +29,23 @@ node --test test/codex-hooks.test.mjs test/codex-plugin.test.mjs
 node --test test/runtime.test.mjs test/cli.test.mjs
 
 # Dual-runtime documentation and site dictionaries
-node --test test/docs-codex.test.mjs test/i18n-parity.test.mjs
+node --test test/docs-codex.test.mjs test/i18n-parity.test.mjs test/docs-drift.test.mjs
+
+# Context budget, classifier corpus, generated CLAUDE.md
+node --test test/context-budget.test.mjs test/tier-corpus.test.mjs test/claude-md-sync.test.mjs
 ```
+
+- Simulate a state-write failure with `OMH_TEST_FAIL_WRITE=<name>` (or `*`), never with `chmod`: root ignores permission bits, and CI also runs the suite as root.
+- After changing `lib/claude-md.mjs`, run `npm run sync:claude-md` so the repo's own `CLAUDE.md` files match the generator.
+- Keep each `SKILL.md` under 4 KB; move detail into the skill's `references/` folder.
+- When you change the tier classifier, add the prompts that motivated it to `test/fixtures/prompts.jsonl`. Raise the floors in `prompts.baseline.json` when accuracy improves; never lower them to make a change pass.
 
 All tests must pass before submitting a PR.
 
 ## Project Structure
 
 - `bin/` — CLI entry point
-- `lib/` — Core libraries (config, detection)
+- `lib/` — Core libraries (pure decisions such as loop, risk, profiles; fail-open I/O helpers such as state, decision log, config)
 - `hooks/` — Shared hook implementations plus the Codex bridge under `hooks/codex/`
 - `claude/skills/` — Claude Code skill definitions (`SKILL.md`)
 - `agents/` — Model-routed agent definitions
@@ -89,4 +97,4 @@ Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
 1. Create a feature branch from `main`
 2. Write tests for new functionality
 3. Ensure all tests pass
-4. Submit a PR with a clear description
+4. Submit a PR filled in from `.github/pull_request_template.md`

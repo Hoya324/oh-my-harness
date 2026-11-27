@@ -34,7 +34,13 @@ Tier 3 승격은 `tier3.*` 임계값으로 결정됩니다:
 }
 ```
 
-훅은 `[omh:weight]` 태그로 어떤 티어가 발동했는지 보여줍니다.
+훅은 `[omh:tier]` 태그(무거운 작업은 `[omh:tier-3]` 추가)로 어떤 티어가 왜 발동했는지 보여줍니다.
+
+**Override.** 프롬프트를 `!t1`이나 `!t3`로 시작하면 그 프롬프트의 티어를 강제하고, `!noplan`이면 티어는 유지한 채 플랜 게이트를 건너뜁니다. 훅은 `[omh:override]`로 알리고 Decision Log에 분류기의 원래 판정을 남기므로, `oh-my-harness why`로 분류기가 얼마나 자주 고쳐졌는지 볼 수 있습니다.
+
+**측정된 정확도.** `test/fixtures/prompts.jsonl`에는 키워드 오탐("로그인 버튼 색상 바꿔줘")과 키워드 없이 위험한 작업("PG 연동 키 교체해줘")을 포함한 한/영 프롬프트 94개가 라벨과 함께 있습니다. 정확도, Tier 3 recall, Tier 1 precision이 `test/fixtures/prompts.baseline.json` 아래로 떨어지면 CI가 실패합니다.
+
+무게 라우팅은 `standard`와 `full` 프로필에서 켜집니다.
 
 ---
 
@@ -75,7 +81,7 @@ Tier 3 승격은 `tier3.*` 임계값으로 결정됩니다:
 
 ## Living State (`STATE.md`)
 
-디스크에 고정되는 `STATE.md`가 현재 목표·단계·주요 결정·진행 상황을 담습니다. **SessionStart**에 재주입되고 **PreCompact**에 통합되어, 길거나 압축된 세션에서도 맥락을 잃지 않습니다(context rot 방어). 루프의 `PROGRESS.md`와 짝을 이룹니다 — `STATE.md`는 "지금 어디에 있나"의 영속 앵커, `PROGRESS.md`는 iteration별 로그입니다.
+`STATE.md`는 두 부분으로 나뉩니다. **Goal**과 **Key Decisions**는 사용자가 관리합니다. `OMH:AUTO` 블록은 매 **Stop**과 **PreCompact** 직전에 git, 루프, 검증 게이트 상태로 다시 생성되므로, "지금 어디에 있나"가 누군가의 갱신에 의존하지 않습니다. **SessionStart**에 재주입되어(사용자가 쓴 줄 먼저) 길거나 압축된 세션에서도 맥락을 잃지 않습니다(context rot 방어). 세션이 길어지면 `[omh:handoff]`가 `/omh-handoff`를 제안하고, 이 스킬이 새 세션의 출발점이 될 `HANDOFF.md`를 만듭니다. 루프의 `PROGRESS.md`와 짝을 이룹니다 — `STATE.md`는 "지금 어디에 있나"의 영속 앵커, `PROGRESS.md`는 iteration별 로그입니다.
 
 ---
 
