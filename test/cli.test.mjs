@@ -11,6 +11,7 @@ import {
 } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { applyProfile } from '../lib/profiles.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TMP = join(__dirname, '__tmp_cli');
@@ -226,7 +227,7 @@ describe('cli init', () => {
   });
 
   it('registers agents in settings.local.json', () => {
-    runCli('init');
+    runCli('init', '--profile', 'full');
     const settings = JSON.parse(readFileSync(join(TMP, '.claude', 'settings.local.json'), 'utf8'));
     assert.ok(settings.agents);
     assert.equal(settings.agents['harness:quick'].model, 'haiku');
@@ -235,7 +236,7 @@ describe('cli init', () => {
   });
 
   it('adds HARNESS block to CLAUDE.md with enabled sections only', () => {
-    runCli('init');
+    runCli('init', '--profile', 'full');
     const md = readFileSync(join(TMP, '.claude', 'CLAUDE.md'), 'utf8');
     assert.ok(md.includes('<!-- HARNESS:START -->'));
     assert.ok(md.includes('<!-- HARNESS:END -->'));
@@ -1606,9 +1607,11 @@ describe('cli update', () => {
 
     runCli('update', '--runtime', 'both', '--scope', 'project');
 
-    assert.equal(
-      readFileSync(configPath, 'utf8'),
-      readFileSync(join(__dirname, '..', 'templates', 'harness.config.json.tmpl'), 'utf8'),
+    const template = JSON.parse(readFileSync(join(__dirname, '..', 'templates', 'harness.config.json.tmpl'), 'utf8'));
+    assert.deepEqual(
+      JSON.parse(readFileSync(configPath, 'utf8')),
+      applyProfile(template, 'minimal'),
+      'a repaired config is a fresh minimal-profile config',
     );
     const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
     assert.ok(settings.hooks?.SessionStart);

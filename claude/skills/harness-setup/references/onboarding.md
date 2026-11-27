@@ -16,8 +16,9 @@ Ask the user the following questions using AskUserQuestion (ask all at once):
 
 **Question 3 — Feature Profile**
 > "어떤 기능 프로필을 사용할까요?"
-- Full (Recommended): 모든 기능 활성화 (scopeGuard 제외)
-- Minimal: testEnforcement + dangerousGuard + commitConvention만 활성화
+- Minimal (Recommended): 안전 가드, 검증 게이트, 컨벤션만 켜고 시작. 필요해지면 `oh-my-harness why`가 기능을 제안
+- Standard: Minimal + 테스트 강제, 무게 라우팅, plan gate
+- Full: 모든 기능 활성화 (scopeGuard 제외)
 - Custom: 기능을 하나씩 선택
 
 **Question 4 — Commit Convention**
@@ -59,8 +60,9 @@ Based on the user's answers:
 - **Auto-detect** selected → Run convention detection (scan project root for package.json, pyproject.toml, go.mod, Cargo.toml, build.gradle, pom.xml) and save to `.claude/.omh/conventions.json`
 - **Manual** selected → Ask for language, test framework, linter, formatter, build tool
 
+- **Minimal profile** → Set all features to `false` except: `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, `stateSync`
+- **Standard profile** → minimal plus `testEnforcement`, `weightRouting`, `planGate`, `contextSnapshot`, `skillScaffolding`, `contextOptimization`
 - **Full profile** → Use all default features as-is
-- **Minimal profile** → Set all features to `false` except: `testEnforcement`, `dangerousGuard`, `commitConvention`, `autoGitignore`
 - **Custom profile** → Ask the user which features to enable using AskUserQuestion with multiSelect
 
 - **Commit convention** → Set `commitConvention.style` to the chosen value (`auto`, `conventional`, `gitmoji`)
