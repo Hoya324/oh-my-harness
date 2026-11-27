@@ -70,3 +70,29 @@ export function classifyTier(prompt, config = {}) {
 
   return { tier, reasons, taskCount };
 }
+
+/**
+ * User overrides typed at the very start of a prompt, e.g. `!t1 fix the typo`
+ * or `!t3 !noplan migrate the payments table`. They let the user correct a
+ * misclassification on the spot instead of fighting the gate, and every use is
+ * recorded in the Decision Log so the override rate measures classifier error.
+ *
+ * @param {string} prompt
+ * @returns {{ tier: 1|2|3|null, noPlan: boolean, tokens: string[], rest: string }}
+ */
+export function parseOverrides(prompt) {
+  let rest = String(prompt || '');
+  let tier = null;
+  let noPlan = false;
+  const tokens = [];
+  const re = /^\s*!(t[123]|noplan)(?=\s|$)/i;
+  let m;
+  while ((m = rest.match(re))) {
+    const token = m[1].toLowerCase();
+    tokens.push(`!${token}`);
+    if (token === 'noplan') noPlan = true;
+    else tier = Number(token.slice(1));
+    rest = rest.slice(m[0].length);
+  }
+  return { tier, noPlan, tokens, rest: rest.trimStart() };
+}
