@@ -28,33 +28,8 @@ defaults. Preserve all user keys, including unknown future keys.
 
 Create `.claude/.omh/` and derive the config from the bundled
 `../../../templates/harness.config.json.tmpl`, resolved relative to this installed skill.
-Preserve every template key and exact spelling. In
-particular, preserve:
-
-- all `features` toggles, including `skillScaffolding`, `nativeTeam`, `autonomousLoop`,
-  `weightRouting`, `verifyGate`, and `planGate`;
-- `testEnforcement`, `modelRouting`, `autoPlan`, `ambiguityDetection`, `commitConvention`,
-  `scopeGuard`, `tier3`, `verifyGate`, `planGate`, and `conventions`;
-- `multiAgent.maxAgents`, `useWorktree`, `tmuxSession`, and add
-  `multiAgent.runtime: "codex" | "claude"`;
-- `nativeTeam.maxTeammates`, `defaultTeamName`, and `templates`;
-- the full `loop` block, including its state paths, verify ladder, budgets, tier definitions,
-  reflection, and cross-verification limits;
-- `verify.rounds`, `verify.stopWhenClean`, `verify.autoFix`, and `verify.lenses`.
-
-Apply choices:
-
-- Full: keep template feature defaults.
-- Minimal: disable every feature except `testEnforcement`, `dangerousGuard`,
-  `commitConvention`, and `autoGitignore`.
-- Custom: ask which exact feature keys to enable.
-- Auto-detect: scan project manifests and save `.claude/.omh/conventions.json`.
-- Manual: ask for language, test framework, linter, formatter, and build tool.
-- Weight routing disabled: set `features.weightRouting` false.
-- Weight routing enabled: keep `verify.rounds` at the chosen positive integer and
-  `verify.autoFix` at the explicit choice.
-- Verifier lenses: include only selected, available runtimes. Mark a same-model Codex lens as
-  non-independent later; never imply that a configured lens guarantees separation.
+Preserve every template key and exact spelling, and apply the onboarding answers, exactly as listed
+in `references/config.md`.
 
 For project scope, write `.claude/.omh/harness.config.json`. For global scope, write
 `~/.claude/.omh/harness.config.json`; global scope must not create or change the project config.

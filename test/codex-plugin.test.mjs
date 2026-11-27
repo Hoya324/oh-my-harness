@@ -18,6 +18,18 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (path) => JSON.parse(readFileSync(join(root, path), 'utf8'));
+// A skill's contract is its SKILL.md plus the references/ files it loads on demand.
+const readSkillContract = (runtime, name) => {
+  const dir = join(root, runtime, 'skills', name);
+  const refs = join(dir, 'references');
+  const parts = [readFileSync(join(dir, 'SKILL.md'), 'utf8')];
+  if (existsSync(refs)) {
+    for (const file of readdirSync(refs).filter((f) => f.endsWith('.md')).sort()) {
+      parts.push(readFileSync(join(refs, file), 'utf8'));
+    }
+  }
+  return parts.join('\n');
+};
 const expectedCodexSkills = [
   'agent-apply', 'agent-spawn', 'agent-status', 'agent-stop',
   'harness-setup', 'init-project', 'omh-loop', 'omh-spec',
@@ -168,8 +180,9 @@ test('every bundled Codex skill has valid required frontmatter', () => {
   for (const directory of skillDirectories) {
     const skill = readFileSync(join(directory, 'SKILL.md'), 'utf8');
     assert.match(skill, /^---\nname: [^\n]+\ndescription: [^\n]+\n---\n/m, `${directory} frontmatter`);
+    const contract = readSkillContract('codex', directory.split('/').at(-1));
     for (const forbidden of forbiddenClaudeToolNames) {
-      assert.ok(!skill.includes(forbidden), `${directory}: ${forbidden}`);
+      assert.ok(!contract.includes(forbidden), `${directory}: ${forbidden}`);
     }
   }
 });
@@ -203,7 +216,7 @@ test('Codex runtime mapping documents real operations and shared state', () => {
 });
 
 test('Codex multi-agent skills preserve confirmation, isolation, and state gates', () => {
-  const readSkill = (name) => readFileSync(join(root, `codex/skills/${name}/SKILL.md`), 'utf8');
+  const readSkill = (name) => readSkillContract('codex', name);
   const agentSpawn = readSkill('agent-spawn');
   const agentApply = readSkill('agent-apply');
   const agentStop = readSkill('agent-stop');
@@ -255,7 +268,7 @@ test('Codex multi-agent skills preserve confirmation, isolation, and state gates
 });
 
 test('Codex loop and verification skills preserve objective safety contracts', () => {
-  const readSkill = (name) => readFileSync(join(root, `codex/skills/${name}/SKILL.md`), 'utf8');
+  const readSkill = (name) => readSkillContract('codex', name);
   const spec = readSkill('omh-spec');
   const loop = readSkill('omh-loop');
   const verify = readSkill('omh-verify');
@@ -304,7 +317,7 @@ test('Codex loop and verification skills preserve objective safety contracts', (
 });
 
 test('Codex loop startup uses current time and reconciles existing loop state', () => {
-  const loop = readFileSync(join(root, 'codex/skills/omh-loop/SKILL.md'), 'utf8');
+  const loop = readSkillContract('codex', 'omh-loop');
 
   assert.ok(!loop.includes('"startedAt": 0'), 'startedAt is never the Unix epoch');
   assert.match(loop, /startedAt.*Date\.now\(\).*current epoch milliseconds/is);
@@ -323,7 +336,7 @@ test('Codex loop startup uses current time and reconciles existing loop state', 
 
 test('Codex workflows resolve project and global config like hooks', () => {
   for (const name of ['harness-setup', 'omh-loop', 'omh-verify']) {
-    const skill = readFileSync(join(root, `codex/skills/${name}/SKILL.md`), 'utf8');
+    const skill = readSkillContract('codex', name);
     assert.ok(skill.includes('.claude/.omh/harness.config.json'), `${name}: project config`);
     assert.ok(skill.includes('~/.claude/.omh/harness.config.json'), `${name}: global fallback`);
     assert.match(skill, /project.*wins/is, `${name}: project precedence`);
@@ -331,7 +344,7 @@ test('Codex workflows resolve project and global config like hooks', () => {
     assert.match(skill, /preserve.*user.*keys/is, `${name}: preserve user keys`);
   }
 
-  const setup = readFileSync(join(root, 'codex/skills/harness-setup/SKILL.md'), 'utf8');
+  const setup = readSkillContract('codex', 'harness-setup');
   assert.match(setup, /global scope.*write.*~\/\.claude\/\.omh\/harness\.config\.json/is);
   assert.match(setup, /global scope.*must not.*project config/is);
 });
@@ -394,7 +407,7 @@ test('team spawn protects every unresolved team state before replacement', () =>
 });
 
 test('harness setup resolves the bundled defaults from the installed skill location', () => {
-  const setup = readFileSync(join(root, 'codex/skills/harness-setup/SKILL.md'), 'utf8');
+  const setup = readSkillContract('codex', 'harness-setup');
   assert.ok(
     setup.includes('../../../templates/harness.config.json.tmpl'),
     'harness-setup uses a skill-relative path to the repository template',
@@ -402,7 +415,7 @@ test('harness setup resolves the bundled defaults from the installed skill locat
 });
 
 test('Claude harness setup fallback resolves the bundled duck after skill isolation', () => {
-  const setup = readFileSync(join(root, 'claude/skills/harness-setup/SKILL.md'), 'utf8');
+  const setup = readSkillContract('claude', 'harness-setup');
   assert.ok(
     setup.includes('/../../../lib/duck.sh'),
     'Claude harness-setup fallback points from claude/skills/harness-setup to root lib',
@@ -415,7 +428,7 @@ test('Claude harness setup fallback resolves the bundled duck after skill isolat
 });
 
 test('harness setup explicitly provisions role and guidance surfaces unsupported by the manifest', () => {
-  const setup = readFileSync(join(root, 'codex/skills/harness-setup/SKILL.md'), 'utf8');
+  const setup = readSkillContract('codex', 'harness-setup');
 
   assert.match(setup, /manifest.*does not.*role|role.*not.*manifest/is);
   assert.ok(setup.includes('../../agents/quick.toml'));
