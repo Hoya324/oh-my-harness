@@ -248,13 +248,22 @@ Codex 역할 기본값은 변경 가능한 설정이며 워크플로우 불변 �
 ## CLI 명령어
 
 ```bash
-oh-my-harness init [--runtime claude|codex|both] [--scope project|user]
+oh-my-harness init [--runtime claude|codex|both] [--scope project|user] [--profile minimal|standard|full]
 oh-my-harness update [--runtime claude|codex|both]
 oh-my-harness status [--runtime claude|codex|both]
 oh-my-harness reset [--runtime claude|codex|both]
+oh-my-harness why [--last N] [--json]
+oh-my-harness handoff
+oh-my-harness docs-sync --install|--uninstall|--print
 ```
 
 런타임 기본값은 `claude`입니다. `update`는 관리되는 런타임 파일을 갱신하고 `reset`은 선택한 관리 등록만 제거하며, 사용자 소유 내용과 다른 등록이 계속 사용하는 상태를 보존합니다.
+
+- `--profile`은 설정 파일을 새로 만들 때만 적용됩니다. `minimal`(기본값)은 `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, `stateSync`만 켭니다. `standard`는 여기에 테스트 강제, 무게 라우팅, plan gate를 더하고, `full`은 템플릿 기본값을 그대로 씁니다. 기존 설정은 다시 바꾸지 않습니다.
+- `why`는 `.claude/.omh/decisions.jsonl`에 남은 hook 판정(hook, 결정, `[omh:*]` 태그, tier 사유. 프롬프트 원문은 저장하지 않음)을 보여주고, 기록이 쌓이면 기능 변경을 제안합니다.
+- `handoff`는 `STATE.md`의 자동 생성 영역을 갱신하고 새 세션용 `.claude/.omh/HANDOFF.md`를 만듭니다.
+- `docs-sync --install`은 opt-in `pre-push` hook을 설치합니다. push 시 `claude -p`로 `/omh-docs-sync`를 실행하고 문서가 바뀌면 push를 멈춥니다. 한 번 건너뛰려면 `OMH_DOCS_SYNC=0`.
+- 프롬프트를 `!t1`, `!t3`, `!noplan`으로 시작하면 해당 프롬프트의 tier를 덮어쓰거나 plan gate를 건너뜁니다.
 
 ## 슬래시 명령어 (스킬)
 
@@ -272,6 +281,8 @@ oh-my-harness reset [--runtime claude|codex|both]
 | `/team-stop` | 팀 종료 및 정리 |
 | `/omh-spec [목표]` | 기계 검증 가능한 `SPEC.md` 작성 (EARS 인수 기준) |
 | `/omh-loop [목표\|SPEC.md]` | 스펙 기반 자율 루프 실행 |
+| `/omh-handoff` | 핸드오프 파일을 만들고 새 세션에서 이어서 작업 |
+| `/omh-docs-sync` | 변경된 파일과 관련된 문서만 갱신 |
 | `/omh-loop stop` | 실행 중인 루프 중단 (킬 스위치) |
 | `/omh-verify [N]` | 독립 다중 모델 검증+수정 N라운드 실행 |
 | `omh-status` | 티어, 루프, 검증, 사용량, 메모리를 읽기 전용으로 요약하는 Codex 전용 스킬 |

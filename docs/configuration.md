@@ -272,13 +272,22 @@ The `verify.*` block configures `/omh-verify`: N independent multi-model verify+
 ## CLI Commands
 
 ```bash
-oh-my-harness init [--runtime claude|codex|both] [--scope project|user]
+oh-my-harness init [--runtime claude|codex|both] [--scope project|user] [--profile minimal|standard|full]
 oh-my-harness update [--runtime claude|codex|both]
 oh-my-harness status [--runtime claude|codex|both]
 oh-my-harness reset [--runtime claude|codex|both]
+oh-my-harness why [--last N] [--json]
+oh-my-harness handoff
+oh-my-harness docs-sync --install|--uninstall|--print
 ```
 
 The runtime default is `claude`. `update` refreshes managed runtime files and `reset` removes only the selected managed registration, preserving user-owned content and state still used by another registration.
+
+- `--profile` applies only when a config is created. `minimal` (default) turns on `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, and `stateSync`; `standard` adds testing, weight routing, and the plan gate; `full` keeps every template default. An existing config is never re-profiled.
+- `why` explains recent hook decisions from `.claude/.omh/decisions.jsonl` (hook, decision, `[omh:*]` tags, tier reasons; never prompt text) and suggests feature changes once the log shows a need.
+- `handoff` refreshes the generated block in `STATE.md` and writes `.claude/.omh/HANDOFF.md` for a fresh session.
+- `docs-sync --install` adds an opt-in `pre-push` hook that runs `/omh-docs-sync` through `claude -p` and stops the push if docs changed. Skip once with `OMH_DOCS_SYNC=0`.
+- Start a prompt with `!t1`, `!t3`, or `!noplan` to override the tier or skip the plan gate for that prompt.
 
 ## Slash Commands (Skills)
 
@@ -296,6 +305,8 @@ The runtime default is `claude`. `update` refreshes managed runtime files and `r
 | `/team-stop` | Shutdown team and cleanup |
 | `/omh-spec [goal]` | Author a machine-checkable `SPEC.md` (EARS acceptance criteria) |
 | `/omh-loop [goal\|SPEC.md]` | Run the spec-driven autonomous loop |
+| `/omh-handoff` | Write a handoff file and continue in a fresh session |
+| `/omh-docs-sync` | Update only the docs affected by changed files |
 | `/omh-loop stop` | Abort the running loop (kill switch) |
 | `/omh-verify [N]` | Run N rounds of independent multi-model verify+fix (Claude/GPT-codex/Gemini lenses) |
 | `omh-status` | Codex-only read-only summary of tier, loop, verification, usage, and memory |
