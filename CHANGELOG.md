@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-27
+
 ### Added
 - **Decision Log.** Every hook decision (context, warn, block, deny) is appended to `.claude/.omh/decisions.jsonl` with its `[omh:*]` tags and, for prompts, the tier and its reasons. Prompt text is never stored; logging is fail-open and only runs where `.claude/.omh` already exists. `oh-my-harness why [--last N] [--json]` explains recent decisions, override rate, and Stop-hook latency.
 - **Prompt overrides.** A leading `!t1`, `!t3`, or `!noplan` overrides the tier classifier or skips the plan gate for that prompt; each use is recorded.
