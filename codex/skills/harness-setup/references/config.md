@@ -18,9 +18,9 @@ particular, preserve:
 
 Apply choices:
 
+- Minimal (recommended): disable every feature except `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, `stateSync`.
+- Standard: minimal plus `testEnforcement`, `weightRouting`, `planGate`, `contextSnapshot`, `skillScaffolding`, `contextOptimization`.
 - Full: keep template feature defaults.
-- Minimal: disable every feature except `testEnforcement`, `dangerousGuard`,
-  `commitConvention`, and `autoGitignore`.
 - Custom: ask which exact feature keys to enable.
 - Auto-detect: scan project manifests and save `.claude/.omh/conventions.json`.
 - Manual: ask for language, test framework, linter, formatter, and build tool.

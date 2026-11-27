@@ -19,6 +19,7 @@ import { scaffoldProjectSkills } from '../lib/scaffold-skills.mjs';
 import { buildClaudeMdContent } from '../lib/claude-md.mjs';
 import { readDecisions, summarizeDecisions, formatDecision } from '../lib/decision-log.mjs';
 import { writeHandoff, syncAutoState } from '../lib/state.mjs';
+import { applyProfile, suggestProfileChanges, PROFILE_NAMES, DEFAULT_PROFILE } from '../lib/profiles.mjs';
 import { parseRuntime, parseScope, runtimeIncludes } from '../lib/runtime.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -47,6 +48,24 @@ const TOML_START = '# OH-MY-HARNESS:START';
 const TOML_END = '# OH-MY-HARNESS:END';
 
 const [,, command, ...args] = process.argv;
+
+/** `--profile minimal|standard|full` (fresh configs only). */
+function requestedProfile() {
+  const i = args.indexOf('--profile');
+  if (i < 0) return DEFAULT_PROFILE;
+  const name = args[i + 1];
+  if (!PROFILE_NAMES.includes(name)) {
+    console.error(`  Unknown profile "${name}". Use one of: ${PROFILE_NAMES.join(', ')}`);
+    process.exit(1);
+  }
+  return name;
+}
+
+/** Template config with the requested profile applied, as JSON text. */
+function freshConfigText() {
+  const template = JSON.parse(readFileSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), 'utf8'));
+  return JSON.stringify(applyProfile(template, requestedProfile()), null, 2) + '\n';
+}
 
 // --- ANSI ---
 const RESET = '\x1b[0m';
@@ -192,11 +211,11 @@ async function initClaude(root, scope) {
 
   const configDest = join(omh, 'harness.config.json');
   if (!existsSync(configDest)) {
-    writeFileAtomic(
-      configDest,
-      readFileSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), 'utf8'),
-    );
-    logDone('Created harness.config.json');
+    writeFileAtomic(configDest, freshConfigText());
+    logDone(`Created harness.config.json ${DIM}(profile: ${requestedProfile()})${RESET}`);
+    if (requestedProfile() === 'minimal') {
+      logInfo('Started small. `oh-my-harness why` suggests features once your sessions show a need.');
+    }
   } else {
     logDone('Config preserved (existing)');
   }
@@ -402,10 +421,7 @@ function ensureSharedConfig(root, scope) {
   const omh = omhDir(codexStateRoot(root, scope));
   const configDest = join(omh, 'harness.config.json');
   if (!existsSync(configDest)) {
-    writeFileAtomic(
-      configDest,
-      readFileSync(join(PKG_ROOT, 'templates', 'harness.config.json.tmpl'), 'utf8'),
-    );
+    writeFileAtomic(configDest, freshConfigText());
     return 'created';
   }
   return 'preserved';
@@ -1617,7 +1633,7 @@ function showHelp() {
   ${BOLD}oh-my-harness${RESET} ${DIM}v${getVersion()}${RESET} — Lightweight Claude Code and Codex harness
 
   ${BOLD}Usage${RESET}
-    oh-my-harness init ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
+    oh-my-harness init ${DIM}[--runtime claude|codex|both] [--scope project|user] [--profile minimal|standard|full]${RESET}
     oh-my-harness update ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
     oh-my-harness status ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
     oh-my-harness usage ${DIM}[--verbose]${RESET}               Show tool statistics
@@ -1636,6 +1652,7 @@ function showHelp() {
     --scope project   ${DIM}Install runtime files in this project (default)${RESET}
     --scope user      ${DIM}Install runtime registrations in the user home${RESET}
     --global          ${DIM}Shorthand for --scope user${RESET}
+    --profile name    ${DIM}Features for a new config: minimal (default), standard, full${RESET}
     --version, -v     ${DIM}Show version number${RESET}
     --help, -h        ${DIM}Show this help message${RESET}
 `);
@@ -1701,7 +1718,12 @@ function why(root) {
   }
   const recent = entries.slice(-last);
   const summary = summarizeDecisions(entries);
-  if (asJson) { console.log(JSON.stringify({ entries: recent, summary }, null, 2)); return; }
+  if (asJson) {
+    let config = {};
+    try { config = JSON.parse(readFileSync(join(omhDir(root), 'harness.config.json'), 'utf8')); } catch {}
+    console.log(JSON.stringify({ entries: recent, summary, suggestions: suggestProfileChanges(entries, config) }, null, 2));
+    return;
+  }
   log(`\n  ${BOLD}oh-my-harness${RESET} ${DIM}why — last ${recent.length} of ${entries.length} decisions${RESET}\n`);
   for (const e of recent) log(`  ${formatDecision(e)}`);
   log(`\n  ${BOLD}By hook${RESET}`);
@@ -1714,6 +1736,16 @@ function why(root) {
   }
   if (summary.stopMs.p50 != null) {
     log(`  Stop hook time   : p50 ${summary.stopMs.p50}ms, p95 ${summary.stopMs.p95}ms`);
+  }
+  let config = {};
+  try { config = JSON.parse(readFileSync(join(omhDir(root), 'harness.config.json'), 'utf8')); } catch {}
+  const suggestions = suggestProfileChanges(entries, config);
+  if (suggestions.length) {
+    log(`\n  ${BOLD}Suggestions${RESET} ${DIM}(from recorded decisions)${RESET}`);
+    for (const sg of suggestions) {
+      const cmd = sg.feature ? `  ${DIM}/set-harness features.${sg.feature} ${sg.action === 'enable'}${RESET}` : '';
+      log(`    ${sg.action.toUpperCase()} ${sg.feature || ''}: ${sg.reason}${cmd}`);
+    }
   }
   log('');
 }

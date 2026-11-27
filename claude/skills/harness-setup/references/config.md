@@ -50,6 +50,7 @@ Write the config to `.claude/.omh/harness.config.json` with the user's choices m
 
 > `weightRouting` 선택에 따라 `features.weightRouting`를 토글하고, Question 5 / 모델 감지 결과로 `verify.rounds`, `verify.autoFix`, `verify.lenses`를 구성한다. Tier3의 `domainKeywords`에 프로젝트 핵심 도메인(예: 결제·매출 관련 용어)을 넣으면 해당 작업이 자동으로 Tier 3로 분류된다.
 
-- For **Minimal profile**, set all features to `false` except: `testEnforcement`, `dangerousGuard`, `commitConvention`, `autoGitignore`
+- For **Minimal profile**, set all features to `false` except: `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, `stateSync`
+- For **Standard profile**, enable minimal plus `testEnforcement`, `weightRouting`, `planGate`, `contextSnapshot`, `skillScaffolding`, `contextOptimization`
 - For **Custom profile**, toggle individual features based on user selection
 - Never rename feature keys — hooks depend on these exact names
