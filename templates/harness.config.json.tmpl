@@ -92,6 +92,7 @@
     "maxTotalIterations": 30,
     "stopOnNoProgress": true,
     "quickCheckCommand": "",
+    "contractCommand": "",
     "verifyCommand": "",
     "verifyInHook": true,
     "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },
@@ -117,9 +118,10 @@
     "recommendCrossVerify": true,
     "largeFiles": 8,
     "largeLines": 400,
-    "ladderTimeoutSec": { "quickCheck": 30, "verify": 180 },
+    "ladderTimeoutSec": { "quickCheck": 30, "contract": 120, "verify": 180 },
     "quickCheckCommand": "",
     "verifyCommand": "",
+    "contractCommand": "",
     "sensitivePaths": ["**/auth/**", "**/payment/**", "**/security/**", "*migration*", "**/*migration*", ".env*", "**/.env*", "**/secrets/**", "**/*.sql"]
   },
   "planGate": {

@@ -20,6 +20,7 @@ import { writeJsonAtomic } from './lib/state-io.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
 import { evaluateGate, RISK } from '../lib/risk.mjs';
 import { buildLadder } from '../lib/loop.mjs';
+import { formatFailureOutput, failureSignature } from '../lib/failure-format.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const omhDir = join(projectRoot, '.claude', '.omh');
@@ -68,9 +69,11 @@ function runRung(rung) {
     execSync(rung.command, { cwd: projectRoot, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: (rung.timeoutSec || 30) * 1000 });
     return { rung: rung.rung, status: 'pass' };
   } catch (e) {
-    const output = (e && (e.stdout || e.stderr) ? `${e.stdout || ''}${e.stderr || ''}` : String((e && e.message) || e)).slice(0, 800);
+    const raw = e && (e.stdout || e.stderr) ? `${e.stdout || ''}${e.stderr || ''}` : String((e && e.message) || e);
+    // Location-first (file:line) report so the model sees WHERE it failed.
+    const output = formatFailureOutput(raw);
     const timedOut = e && e.killed;
-    return { rung: rung.rung, status: timedOut ? 'error' : 'fail', retryable: !timedOut, signature: output.slice(0, 120), output };
+    return { rung: rung.rung, status: timedOut ? 'error' : 'fail', retryable: !timedOut, signature: failureSignature(raw), output };
   }
 }
 
@@ -83,7 +86,8 @@ function runLadder(gateCfg, conventions, level) {
   const ladder = buildLadder(conventions, {
     quickCheckCommand: gateCfg.quickCheckCommand || '',
     verifyCommand: gateCfg.verifyCommand || '',
-    rungTimeoutSec: gateCfg.ladderTimeoutSec || { quickCheck: 30, verify: 180 },
+    contractCommand: gateCfg.contractCommand || '',
+    rungTimeoutSec: gateCfg.ladderTimeoutSec || { quickCheck: 30, contract: 120, verify: 180 },
   });
   if (!ladder.length) return null;
   const rungs = level >= RISK.LADDER_PLUS ? ladder : ladder.filter((r) => r.rung === 'quickCheck');

@@ -6,7 +6,7 @@ Read by `omh-loop` before each iteration. One iteration = one unit of work.
    `loop.learningsFile`, and available `omh-memory` facts.
 2. Select exactly one incomplete unit. Search the repository before implementing; do not use
    placeholders.
-3. Run the cheapest verify ladder: `quickCheckCommand`, then `verifyCommand`. Stop at the first
+3. Run the cheapest verify ladder: `quickCheckCommand`, then `contractCommand` when set, then `verifyCommand`. Stop at the first
    failure. Distinguish retryable test failure from non-retryable infrastructure error.
 4. When configured, run a truly independent cross-verifier. Use `spawn_agent` only after the
    confirmation disclosed above, or use another configured read-only external runtime. Never use

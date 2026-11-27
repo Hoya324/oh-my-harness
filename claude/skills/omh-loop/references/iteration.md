@@ -4,7 +4,7 @@ Read by `/omh-loop` step 7. One iteration = one unit of work = one commit.
 
 1. Pull exactly **one** unit of work from the spec / PROGRESS.md. Never batch multiple tasks. If a single iteration's diff exceeds `loop.maxDiffFilesPerIteration`, split it.
 2. **ripgrep before implementing** (don't assume something isn't there). **NO PLACEHOLDERS** — full implementations only.
-3. Run the **verify ladder, cheapest first**: `quickCheckCommand` (lint/typecheck) → `verifyCommand` (tests/build). On the first failure, stop the ladder and fix that.
+3. Run the **verify ladder, cheapest first**: `quickCheckCommand` (lint/typecheck) → `contractCommand` if set (API spec diff, migration validate, architecture rules) → `verifyCommand` (tests/build). On the first failure, stop the ladder and fix that.
 4. If the work passes the ladder and the tier requires it, run cross-verify (`cross-verify.md`).
 5. Write the outcome to PROGRESS.md: append findings, **mark + prune** completed items, and on failure write a **Reflexion** note ("attempt N failed because X; root cause Y; next I will Z"). Also persist it to long-term memory (`memory.md`).
 6. Record the outcome into `loop-state.json` under `pending` so the hook can evaluate:

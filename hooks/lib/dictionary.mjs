@@ -53,6 +53,8 @@ const dictionary = {
         `최소 ${minCases}개 테스트 케이스(happy, edge, error) 추가를 제안하세요. 테스트 없이 완료 선언 금지.`,
       antiRatVerified: (count) =>
         `[omh:test-enforcement] ✓ ${count}개 파일 테스트 확인됨. 실행으로 통과 여부 확인하세요.`,
+      antiRatUnchanged: (count) =>
+        `[omh:test-enforcement] ${count}개 파일에 기존 테스트는 있지만 이번 diff에서 바뀐 테스트가 없습니다. 기존 테스트가 새 동작을 검증하는지 확인하고, 아니면 테스트를 추가하세요.`,
       tierNotice: (tier, reasons) =>
         `[omh:tier] Tier ${tier} — ${reasons.join(', ') || '기본'}`,
       tier3Reminder:
@@ -94,6 +96,8 @@ const dictionary = {
         `Suggest adding at least ${minCases} test cases (happy, edge, error). Do NOT declare task complete without tests.`,
       antiRatVerified: (count) =>
         `[omh:test-enforcement] ✓ ${count} file(s) have tests. Run tests to verify they pass.`,
+      antiRatUnchanged: (count) =>
+        `[omh:test-enforcement] ${count} file(s) have existing tests, but no test changed in this diff. Confirm the existing tests cover the new behavior, or add tests.`,
       tierNotice: (tier, reasons) =>
         `[omh:tier] Tier ${tier} — ${reasons.join(', ') || 'default'}`,
       tier3Reminder:
