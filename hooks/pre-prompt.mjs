@@ -5,6 +5,7 @@ import { hookOutput, hookSilent } from './lib/output.mjs';
 import { getDictionary } from './lib/dictionary.mjs';
 import { classifyTier, countTasks, parseOverrides } from './lib/tier.mjs';
 import { setDecisionMeta } from '../lib/decision-log.mjs';
+import { notePrompt, handoffMessage } from '../lib/session-health.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
@@ -106,6 +107,17 @@ try {
         result.push(`[omh:plan-gate] Tier-${classification.tier} work detected — before editing any file you MUST call EnterPlanMode and write an implementation plan (Context · Approach · Files to change · Verification). Editing is blocked until the plan is presented and approved.`);
       }
     } catch { /* fail-open: gate just isn't armed */ }
+  }
+
+  // One session, one context: suggest a handoff once the session has been
+  // compacted or has run long. Counting is fail-open.
+  if (config.features?.stateSync !== false) {
+    try {
+      const health = notePrompt(projectRoot, input.session_id || input.sessionId || null, {
+        promptThreshold: config.handoff?.promptThreshold,
+      });
+      if (health.suggest) result.push(handoffMessage(health.reason));
+    } catch { /* fail-open */ }
   }
 
   if (result.length > 0) {

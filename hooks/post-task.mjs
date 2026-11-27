@@ -16,6 +16,7 @@ import { execSync } from 'child_process';
 import { hookOutput, hookSilent } from './lib/output.mjs';
 import { getLang } from './lib/dictionary.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
+import { syncAutoState } from '../lib/state.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
@@ -117,6 +118,8 @@ try {
 
   let config;
   config = loadConfig(projectRoot); if (!config) { console.log(hookSilent()); process.exit(0); }
+  // Regenerate STATE.md's AUTO block from git/loop/verify state (fail-open).
+  if (config.features?.stateSync !== false) syncAutoState(projectRoot);
   if (!config.features?.testEnforcement) { console.log(hookSilent()); process.exit(0); }
 
   const input = readStdin();
