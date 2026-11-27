@@ -1,10 +1,13 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
-import { chmodSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
+
+// Simulate a state-persistence failure without relying on chmod (root ignores it).
+const FAIL_WRITES = { OMH_TEST_FAIL_WRITE: '*' };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Sandbox lives outside the repo tree so loop-guard's git probes (computeDiff)
@@ -66,15 +69,10 @@ describe('loop-guard hook', () => {
   it('fails open on repeated continuation attempts when loop state cannot be persisted', () => {
     writeConfig({ features: { autonomousLoop: true }, loop: {} });
     writeState(activeState());
-    chmodSync(OMH, 0o555);
-    try {
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const parsed = parse(runHook({ session_id: 's1', stop_hook_active: false }));
-        assert.notEqual(parsed?.decision, 'block');
-        assert.match(parsed?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
-      }
-    } finally {
-      chmodSync(OMH, 0o755);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const parsed = parse(runHook({ session_id: 's1', stop_hook_active: false }, FAIL_WRITES));
+      assert.notEqual(parsed?.decision, 'block');
+      assert.match(parsed?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
     }
   });
 

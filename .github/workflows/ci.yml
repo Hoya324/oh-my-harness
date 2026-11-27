@@ -19,3 +19,14 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
       - run: node --test test/*.test.mjs
+
+  # Tests run as root inside containers (Docker, devcontainers, cloud sandboxes),
+  # where filesystem permission tricks are ignored. Keep that environment green.
+  test-as-root:
+    runs-on: ubuntu-latest
+    container: node:22
+    steps:
+      - uses: actions/checkout@v4
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - run: npm ci
+      - run: node --test test/*.test.mjs

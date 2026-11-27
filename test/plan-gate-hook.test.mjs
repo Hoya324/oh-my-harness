@@ -1,10 +1,13 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
-import { chmodSync, mkdirSync, writeFileSync, rmSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
+
+// Simulate a state-persistence failure without relying on chmod (root ignores it).
+const FAIL_WRITES = { OMH_TEST_FAIL_WRITE: '*' };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TMP = join(tmpdir(), `omh_plan_gate_test_${process.pid}`);
@@ -37,15 +40,10 @@ describe('plan-gate hook', () => {
   it('fails open on repeated denials when the denial count cannot be persisted', () => {
     writeConfig(cfg);
     writeMarker({ required: true, satisfied: false, denials: 0, tier: 3 });
-    chmodSync(OMH, 0o555);
-    try {
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const p = parse(runHook({ tool_name: 'Edit', tool_input: { file_path: 'a.ts' }, session_id: 's1' }));
-        assert.notEqual(p?.hookSpecificOutput?.permissionDecision, 'deny');
-        assert.match(p?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
-      }
-    } finally {
-      chmodSync(OMH, 0o755);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const p = parse(runHook({ tool_name: 'Edit', tool_input: { file_path: 'a.ts' }, session_id: 's1' }, FAIL_WRITES));
+      assert.notEqual(p?.hookSpecificOutput?.permissionDecision, 'deny');
+      assert.match(p?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
     }
   });
   it('allows a Read even when armed', () => {

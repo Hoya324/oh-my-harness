@@ -12,10 +12,11 @@
  * results) and emits the result. It is fail-open and CANNOT wedge a session:
  * a per-diff maxBlocks cap guarantees it eventually allows the stop.
  */
-import { readFileSync, writeFileSync, existsSync, renameSync, unlinkSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { execSync, execFileSync } from 'child_process';
 import { hookStopContinue, hookOutput, hookSilent, hookDebug } from './lib/output.mjs';
+import { writeJsonAtomic } from './lib/state-io.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
 import { evaluateGate, RISK } from '../lib/risk.mjs';
 import { buildLadder } from '../lib/loop.mjs';
@@ -35,15 +36,7 @@ function readStdin() {
 }
 
 function writeStateAtomic(state) {
-  mkdirSync(omhDir, { recursive: true });
-  const tmp = `${gateStatePath}.${process.pid}.tmp`;
-  try {
-    writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
-    renameSync(tmp, gateStatePath);
-  } catch (error) {
-    try { unlinkSync(tmp); } catch {}
-    throw error;
-  }
+  writeJsonAtomic(gateStatePath, state, 'verify-gate');
 }
 
 function git(args) {

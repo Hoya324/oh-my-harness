@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { spawnSync } from 'child_process';
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { translateHookOutput } from './adapter.mjs';
 import { loadConfig } from '../lib/hook-config.mjs';
+import { writeJsonAtomic } from '../lib/state-io.mjs';
 import { evaluatePlanGate, isGatedTool } from '../../lib/plan-gate.mjs';
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -87,15 +88,7 @@ function failClosed(eventName, hookName, detail) {
 function writePlanMarker(projectRoot, state) {
   const omhDir = join(projectRoot, '.claude', '.omh');
   const markerPath = join(omhDir, 'plan-gate.json');
-  mkdirSync(omhDir, { recursive: true });
-  const temporary = `${markerPath}.${process.pid}.codex.tmp`;
-  try {
-    writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`);
-    renameSync(temporary, markerPath);
-  } catch (error) {
-    try { unlinkSync(temporary); } catch {}
-    throw error;
-  }
+  writeJsonAtomic(markerPath, state, 'plan-gate', { suffix: '.codex' });
 }
 
 function planPersistenceFailOpen() {

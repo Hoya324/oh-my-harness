@@ -1,12 +1,15 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { translateHookOutput } from '../hooks/codex/adapter.mjs';
 import { EVENT_PIPELINES, runHookPipeline } from '../hooks/codex/run.mjs';
+
+// Simulate a state-persistence failure without relying on chmod (root ignores it).
+const FAIL_WRITES = { OMH_TEST_FAIL_WRITE: '*' };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
@@ -25,7 +28,7 @@ function writePlanMarker(marker = { required: true, satisfied: false, denials: 0
   writeFileSync(join(configDir, 'plan-gate.json'), JSON.stringify(marker));
 }
 
-function runCodexHook(event, input) {
+function runCodexHook(event, input, env = {}) {
   const raw = execFileSync('node', [CODEX_BRIDGE, event], {
     input: JSON.stringify(input),
     encoding: 'utf8',
@@ -34,6 +37,7 @@ function runCodexHook(event, input) {
       PROJECT_PATH: tempProject,
       HOME: join(tempProject, '__home'),
       USERPROFILE: join(tempProject, '__home'),
+      ...env,
     },
   }).trim();
   return raw ? JSON.parse(raw) : null;
@@ -363,45 +367,33 @@ describe('Codex hook bridge', () => {
   it('fails open when Codex preflight cannot persist an update_plan clear signal', () => {
     writePlanMarker();
     rmSync(join(tempProject, '.claude', '.omh', 'harness.config.json'));
-    const omhDir = join(tempProject, '.claude', '.omh');
-    chmodSync(omhDir, 0o555);
-    try {
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const output = runCodexHook('PreToolUse', {
-          tool_name: 'update_plan',
-          tool_input: {
-            plan: [
-              { step: 'Inspect', status: 'completed' },
-              { step: 'Implement', status: 'in_progress' },
-            ],
-          },
-        });
-        assert.notEqual(output?.hookSpecificOutput?.permissionDecision, 'deny');
-        assert.match(output?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
-      }
-    } finally {
-      chmodSync(omhDir, 0o755);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const output = runCodexHook('PreToolUse', {
+        tool_name: 'update_plan',
+        tool_input: {
+          plan: [
+            { step: 'Inspect', status: 'completed' },
+            { step: 'Implement', status: 'in_progress' },
+          ],
+        },
+      }, FAIL_WRITES);
+      assert.notEqual(output?.hookSpecificOutput?.permissionDecision, 'deny');
+      assert.match(output?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
     }
   });
 
   it('does not repeatedly deny when Codex preflight cannot persist a denial count', () => {
     writePlanMarker();
     rmSync(join(tempProject, '.claude', '.omh', 'harness.config.json'));
-    const omhDir = join(tempProject, '.claude', '.omh');
-    chmodSync(omhDir, 0o555);
-    try {
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const output = runCodexHook('PreToolUse', {
-          tool_name: 'apply_patch',
-          tool_input: {
-            command: '*** Begin Patch\n*** Add File: src/new.js\n+true\n*** End Patch',
-          },
-        });
-        assert.notEqual(output?.hookSpecificOutput?.permissionDecision, 'deny');
-        assert.match(output?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
-      }
-    } finally {
-      chmodSync(omhDir, 0o755);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const output = runCodexHook('PreToolUse', {
+        tool_name: 'apply_patch',
+        tool_input: {
+          command: '*** Begin Patch\n*** Add File: src/new.js\n+true\n*** End Patch',
+        },
+      }, FAIL_WRITES);
+      assert.notEqual(output?.hookSpecificOutput?.permissionDecision, 'deny');
+      assert.match(output?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
     }
   });
 });

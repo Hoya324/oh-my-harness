@@ -1,11 +1,14 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
-import { chmodSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
 import { diffSignature } from '../lib/risk.mjs';
+
+// Simulate a state-persistence failure without relying on chmod (root ignores it).
+const FAIL_WRITES = { OMH_TEST_FAIL_WRITE: '*' };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Sandbox is a real git repo OUTSIDE the repo tree so the hook's working-tree
@@ -82,15 +85,10 @@ describe('verify-gate hook', () => {
   it('fails open on repeated denials when the denial count cannot be persisted', () => {
     writeConfig(gateConfig({ quickCheckCommand: 'node -e "process.exit(1)"' }));
     writeFile('src/feature.ts', 'export const x = 1');
-    chmodSync(OMH, 0o555);
-    try {
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const parsed = parse(runHook({ session_id: 's1', stop_hook_active: false }));
-        assert.notEqual(parsed?.decision, 'block');
-        assert.match(parsed?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
-      }
-    } finally {
-      chmodSync(OMH, 0o755);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const parsed = parse(runHook({ session_id: 's1', stop_hook_active: false }, FAIL_WRITES));
+      assert.notEqual(parsed?.decision, 'block');
+      assert.match(parsed?.hookSpecificOutput?.additionalContext || '', /persistence failed.*allowing/i);
     }
   });
 
