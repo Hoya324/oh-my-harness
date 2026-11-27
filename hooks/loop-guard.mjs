@@ -20,6 +20,7 @@ import { hookStopContinue, hookOutput, hookSilent, hookDebug } from './lib/outpu
 import { writeJsonAtomic } from './lib/state-io.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
 import { evaluateLoop, resolveTier, buildLadder } from '../lib/loop.mjs';
+import { formatFailureOutput, failureSignature } from '../lib/failure-format.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const omhDir = join(projectRoot, '.claude', '.omh');
@@ -65,9 +66,11 @@ function runQuickCheck(loopCfg, conventions) {
     execSync(rung.command, { cwd: projectRoot, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: (rung.timeoutSec || 30) * 1000 });
     return { rung: 'quickCheck', status: 'pass' };
   } catch (e) {
-    const output = (e && (e.stdout || e.stderr) ? `${e.stdout || ''}${e.stderr || ''}` : String(e && e.message || e)).slice(0, 800);
+    const raw = e && (e.stdout || e.stderr) ? `${e.stdout || ''}${e.stderr || ''}` : String((e && e.message) || e);
+    // Location-first (file:line) report so the model sees WHERE it failed.
+    const output = formatFailureOutput(raw);
     const timedOut = e && e.killed;
-    return { rung: 'quickCheck', status: timedOut ? 'error' : 'fail', retryable: !timedOut, signature: output.slice(0, 120), output };
+    return { rung: 'quickCheck', status: timedOut ? 'error' : 'fail', retryable: !timedOut, signature: failureSignature(raw), output };
   }
 }
 

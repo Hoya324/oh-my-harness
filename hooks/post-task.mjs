@@ -35,6 +35,29 @@ function readStdin() {
   try { return JSON.parse(readFileSync(0, 'utf8')); } catch { return {}; }
 }
 
+/** All changed paths in the working tree (null when git is unavailable). */
+function getChangedPaths() {
+  try {
+    const run = (cmd) =>
+      execSync(cmd, { cwd: projectRoot, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] })
+        .split('\n').filter(Boolean);
+    return [...new Set([
+      ...run('git diff --name-only'),
+      ...run('git diff --cached --name-only'),
+      ...run('git ls-files --others --exclude-standard'),
+    ])];
+  } catch {
+    return null;
+  }
+}
+
+/** How many changed files in this diff are tests (null when git is unavailable). */
+function countChangedTestFiles() {
+  const paths = getChangedPaths();
+  if (paths === null) return null;
+  return paths.filter((f) => isTestFile(basename(f)) || TEST_DIR.test(`/${f}`)).length;
+}
+
 /** Return list of changed code files (excluding test files themselves). */
 function getChangedCodeFiles() {
   try {
@@ -151,7 +174,11 @@ try {
   }
 
   if (verified.length > 0) {
-    lines.push(dict.messages.antiRatVerified(verified.length));
+    // A test file merely existing is weak evidence: if code changed but no
+    // test changed in the same diff, say so — the old tests may not cover it.
+    const changedTests = countChangedTestFiles();
+    if (changedTests === 0) lines.push(dict.messages.antiRatUnchanged(verified.length));
+    else lines.push(dict.messages.antiRatVerified(verified.length));
   }
 
   if (lines.length > 0) {
