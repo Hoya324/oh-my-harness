@@ -19,7 +19,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.5.0 \u00b7 Claude Code + Codex',
+    'index.hero.badge': 'v0.6.0 \u00b7 Claude Code + Codex',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Native for Claude Code and Codex</span>',
     'index.hero.subtitle': 'Native for Claude Code and Codex',
     'index.hero.desc': 'A spec-driven autonomous loop with real walls \u2014 plus safety guards, intelligent model routing, and multi-agent orchestration through native Claude Code and Codex hooks. Define a goal once; the harness implements, self-verifies, and cross-verifies until the spec is met.',
@@ -547,7 +547,7 @@ const translations = {
     'footer.github': 'GitHub',
 
     // ── Index: Hero ──
-    'index.hero.badge': 'v0.5.0 \u00b7 Claude Code + Codex',
+    'index.hero.badge': 'v0.6.0 \u00b7 Claude Code + Codex',
     'index.hero.title': 'Oh My<br><span class="gradient-text">Harness</span><span class="title-sub" data-i18n="index.hero.subtitle">Claude Code\uc640 Codex \ub124\uc774\ud2f0\ube0c \uc9c0\uc6d0</span>',
     'index.hero.subtitle': 'Claude Code\uc640 Codex \ub124\uc774\ud2f0\ube0c \uc9c0\uc6d0',
     'index.hero.desc': 'Claude Code\uc640 Codex \ub124\uc774\ud2f0\ube0c \ud6c5\uc744 \ud1b5\ud574 \uc9c4\uc9dc \ubcbd\uc744 \uac16\ucd98 \uc2a4\ud399 \uae30\ubc18 \uc790\uc728 \ub8e8\ud504, \uc548\uc804 \uac00\ub4dc, \uc9c0\ub2a5\ud615 \ubaa8\ub378 \ub77c\uc6b0\ud305, \uba40\ud2f0 \uc5d0\uc774\uc804\ud2b8 \uc624\ucf00\uc2a4\ud2b8\ub808\uc774\uc158\uc744 \uc81c\uacf5\ud569\ub2c8\ub2e4.',

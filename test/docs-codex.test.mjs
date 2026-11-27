@@ -114,12 +114,13 @@ test('the documentation site exposes localized Codex install, parity, trust, and
   assert.ok(!html.includes('codex plugin install '));
 });
 
-test('the rendered docs page is a current dual-runtime 0.5.0 guide', () => {
+test('the rendered docs page is a current dual-runtime guide for the package version', () => {
   const html = read('docs/docs.html');
   const i18n = read('docs/i18n.js');
 
+  const { version } = JSON.parse(read('package.json'));
   for (const fact of [
-    'v0.5.0',
+    `v${version}`,
     'Codex CLI',
     'Codex desktop',
     '/plugins',

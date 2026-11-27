@@ -57,7 +57,7 @@ test('Codex plugin package declares its installable runtime surfaces', () => {
       marketplace.plugins[0].version,
       manifest.version,
     ],
-    ['0.5.0', '0.5.0', '0.5.0', '0.5.0', '0.5.0'],
+    Array(5).fill(packageManifest.version),
     'all package and plugin version surfaces are aligned',
   );
   assert.equal(manifest.skills, './codex/skills/');
@@ -72,8 +72,8 @@ test('Codex plugin package declares its installable runtime surfaces', () => {
   );
   assert.equal(marketplace.plugins[0].source, './');
   assert.equal(marketplace.plugins[0].name, 'oh-my-harness');
-  assert.equal(marketplace.version, '0.5.0');
-  assert.equal(marketplace.plugins[0].version, '0.5.0');
+  assert.equal(marketplace.version, packageManifest.version);
+  assert.equal(marketplace.plugins[0].version, packageManifest.version);
   assert.ok(packageManifest.files.includes('claude'));
   assert.ok(!packageManifest.files.includes('skills'));
   assert.equal(existsSync(join(root, 'skills')), false, 'default skill root stays absent');
