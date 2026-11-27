@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { hookCompact, hookSilent } from './lib/output.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
+import { syncAutoState } from '../lib/state.mjs';
+import { noteCompaction } from '../lib/session-health.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
 const configPath = join(projectRoot, '.claude', '.omh', 'harness.config.json');
@@ -18,9 +20,13 @@ try {
 
   let config;
   config = loadConfig(projectRoot); if (!config) { console.log(hookSilent()); process.exit(0); }
-  if (!config.features?.contextSnapshot) { console.log(hookSilent()); process.exit(0); }
-
   const input = readStdin();
+  // Count compactions (feeds the handoff suggestion) and refresh STATE.md's
+  // generated block before context is lost. Both are fail-open.
+  noteCompaction(projectRoot, input.session_id || input.sessionId || null);
+  if (config.features?.stateSync !== false) syncAutoState(projectRoot);
+
+  if (!config.features?.contextSnapshot) { console.log(hookSilent()); process.exit(0); }
 
   const lines = [
     `# Context Snapshot`,

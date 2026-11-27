@@ -18,6 +18,7 @@ import { parse as parseToml } from 'smol-toml';
 import { scaffoldProjectSkills } from '../lib/scaffold-skills.mjs';
 import { buildClaudeMdContent } from '../lib/claude-md.mjs';
 import { readDecisions, summarizeDecisions, formatDecision } from '../lib/decision-log.mjs';
+import { writeHandoff, syncAutoState } from '../lib/state.mjs';
 import { parseRuntime, parseScope, runtimeIncludes } from '../lib/runtime.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -149,6 +150,8 @@ function installClaudeHookRuntime(root, scope) {
   cpSync(join(PKG_ROOT, 'lib', 'config.mjs'), join(runtimeLibDir, 'config.mjs'));
   cpSync(join(PKG_ROOT, 'lib', 'state.mjs'), join(runtimeLibDir, 'state.mjs'));
   cpSync(join(PKG_ROOT, 'lib', 'decision-log.mjs'), join(runtimeLibDir, 'decision-log.mjs'));
+  cpSync(join(PKG_ROOT, 'lib', 'session-health.mjs'), join(runtimeLibDir, 'session-health.mjs'));
+  cpSync(join(PKG_ROOT, 'hooks', 'lib', 'state-io.mjs'), join(hookLibDir, 'state-io.mjs'));
   const allHooks = [
     'session-start.mjs', 'pre-prompt.mjs', 'post-task.mjs',
     'dangerous-guard.mjs', 'pre-compact.mjs', 'commit-convention.mjs',
@@ -1619,6 +1622,7 @@ function showHelp() {
     oh-my-harness status ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
     oh-my-harness usage ${DIM}[--verbose]${RESET}               Show tool statistics
     oh-my-harness why ${DIM}[--last N] [--json]${RESET}         Explain recent hook decisions
+    oh-my-harness handoff                        Write .claude/.omh/HANDOFF.md for a fresh session
     oh-my-harness reset ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
 
   ${BOLD}Skill Scaffolding${RESET}
@@ -1714,6 +1718,18 @@ function why(root) {
   log('');
 }
 
+// --- HANDOFF ---
+function handoff(root) {
+  if (!existsSync(omhDir(root))) {
+    console.error(`  ${WARN} No .claude/.omh in this project. Run oh-my-harness init first.`);
+    process.exit(1);
+  }
+  syncAutoState(root);
+  const path = writeHandoff(root);
+  log(`  ${CHECK} Handoff skeleton written: ${path}`);
+  log(`  ${DIM}Fill in Tried / Worked / Failed / Next steps, then start a new session with it.${RESET}`);
+}
+
 // --- ENTRY ---
 const root = projectRoot();
 let runtime;
@@ -1750,6 +1766,9 @@ switch (command) {
     break;
   case 'why':
     why(root);
+    break;
+  case 'handoff':
+    handoff(root);
     break;
   case 'reset':
     reset(root, runtime);

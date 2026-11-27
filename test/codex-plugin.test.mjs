@@ -32,8 +32,8 @@ const readSkillContract = (runtime, name) => {
 };
 const expectedCodexSkills = [
   'agent-apply', 'agent-spawn', 'agent-status', 'agent-stop',
-  'harness-setup', 'init-project', 'omh-loop', 'omh-spec',
-  'omh-status', 'omh-verify', 'set-harness',
+  'harness-setup', 'init-project', 'omh-handoff', 'omh-loop',
+  'omh-spec', 'omh-status', 'omh-verify', 'set-harness',
   'team-spawn', 'team-status', 'team-stop',
 ];
 const forbiddenClaudeToolNames = [

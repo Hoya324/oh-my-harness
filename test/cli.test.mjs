@@ -1665,6 +1665,14 @@ describe('cli update', () => {
         join(TEST_HOME, '.claude', '.omh', 'lib', 'decision-log.mjs'),
         join(__dirname, '..', 'lib', 'decision-log.mjs'),
       ],
+      [
+        join(TEST_HOME, '.claude', '.omh', 'lib', 'session-health.mjs'),
+        join(__dirname, '..', 'lib', 'session-health.mjs'),
+      ],
+      [
+        join(TEST_HOME, '.claude', '.omh', 'hooks', 'lib', 'state-io.mjs'),
+        join(__dirname, '..', 'hooks', 'lib', 'state-io.mjs'),
+      ],
     ];
     for (const [installed] of dependencyPairs) rmSync(installed);
 
