@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Decision Log.** Every hook decision (context, warn, block, deny) is appended to `.claude/.omh/decisions.jsonl` with its `[omh:*]` tags and, for prompts, the tier and its reasons. Prompt text is never stored; logging is fail-open and only runs where `.claude/.omh` already exists. `oh-my-harness why [--last N] [--json]` explains recent decisions, override rate, and Stop-hook latency.
+- **Prompt overrides.** A leading `!t1`, `!t3`, or `!noplan` overrides the tier classifier or skips the plan gate for that prompt; each use is recorded.
+- **Classifier corpus.** `test/fixtures/prompts.jsonl` (94 labelled ko/en prompts) with accuracy, Tier-3 recall, and Tier-1 precision floors in CI.
+- **Generated state.** Stop and PreCompact regenerate an `OMH:AUTO` block in `STATE.md` from git, loop, and verify-gate state; human-owned Goal and Decisions are preserved. `features.stateSync` (default on).
+- **Handoff.** `/omh-handoff` and `oh-my-harness handoff` write `.claude/.omh/HANDOFF.md`; after a compaction or `handoff.promptThreshold` prompts (default 40), `[omh:handoff]` suggests continuing in a fresh session, once per session.
+- **Contract rung.** `verifyGate.contractCommand` / `loop.contractCommand` run between quickCheck and verify for API-spec, migration, or architecture checks. Kotlin/Java Gradle projects with ktlint or detekt get a lint quickCheck.
+- **Profiles.** `oh-my-harness init --profile minimal|standard|full`; `why` suggests enabling or disabling features from recorded decisions.
+- **Opt-in docs sync.** `oh-my-harness docs-sync --install` adds a `pre-push` hook running `/omh-docs-sync` via `claude -p`.
+- CI job that runs the suite as root inside a container.
+
+### Changed
+- **Breaking:** a fresh config now uses the `minimal` profile. Pass `--profile full` for the previous defaults. Existing configs are untouched.
+- Ladder failures are reported location-first (`file:line` lines, else error lines from the tail) instead of the first 800 characters of output.
+- Test enforcement now notes when code changed but no test changed in the same diff.
+- `omh-loop` and `harness-setup` skills keep only when-to-use and first steps in `SKILL.md`; detail moved to `references/`. Skills are held to a 4 KB budget in CI.
+- The repo's `CLAUDE.md` harness blocks are generated (`npm run sync:claude-md`) and checked in CI; the stale 0.3.1 block is gone.
+
+### Fixed
+- Fail-open persistence tests no longer depend on `chmod`, so the suite passes when run as root.
+
 ## [0.5.0] - 2026-07-28
 
 ### Added
