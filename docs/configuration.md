@@ -40,6 +40,8 @@ This lets you set a global default once (User scope) that applies to every proje
 
 ## Default Config
 
+These values are the `templates/harness.config.json.tmpl` template, which equals the `full` profile. `oh-my-harness init` and `/harness-setup` apply a profile when they create a config (default `minimal`; see [Profiles](#profiles)). Hooks deep-merge any missing key with these defaults, so an older config picks up the new `stateSync` feature as on.
+
 ```json
 {
   "version": 1,
@@ -55,10 +57,15 @@ This lets you set a global default once (User scope) that applies to every proje
     "scopeGuard": false,
     "usageTracking": true,
     "autoGitignore": true,
+    "skillScaffolding": true,
     "nativeTeam": true,
     "autonomousLoop": true,
-    "weightRouting": true
+    "weightRouting": true,
+    "verifyGate": true,
+    "planGate": true,
+    "stateSync": true
   },
+  "handoff": { "promptThreshold": 40 },
   "testEnforcement": { "minCases": 2, "promptOnMissing": true },
   "modelRouting": { "quick": "haiku", "standard": "sonnet", "complex": "opus" },
   "autoPlan": { "threshold": 3 },
@@ -66,7 +73,7 @@ This lets you set a global default once (User scope) that applies to every proje
   "commitConvention": { "style": "auto" },
   "scopeGuard": { "allowedPaths": [] },
   "multiAgent": { "maxAgents": 4, "useWorktree": true, "tmuxSession": "omh-agents" },
-  "nativeTeam": { "maxTeammates": 4, "defaultTeamName": "omh-team" },
+  "nativeTeam": { "maxTeammates": 4, "defaultTeamName": "omh-team", "templates": { "fullstack": …, "review": …, "research": … } },
   "loop": {
     "classify": "auto",
     "defaultTier": "quick",
@@ -80,6 +87,7 @@ This lets you set a global default once (User scope) that applies to every proje
     "maxTotalIterations": 30,
     "stopOnNoProgress": true,
     "quickCheckCommand": "",
+    "contractCommand": "",
     "verifyCommand": "",
     "verifyInHook": true,
     "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },
@@ -88,24 +96,49 @@ This lets you set a global default once (User scope) that applies to every proje
     "maxDeepVerifiesPerTask": 3,
     "reflectionWindow": 3,
     "tiers": {
-      "quick":    { "model": "standard",  "maxIterations": 3,  "maxWallClockMinutes": 5,  "plateauWindow": 2, "crossVerify": false, "marginalGainEpsilon": 0.05 },
-      "standard": { "model": "standard",  "maxIterations": 8,  "maxWallClockMinutes": 15, "plateauWindow": 2, "crossVerify": true,  "crossVerifyEvery": 0, "marginalGainEpsilon": 0.03 },
-      "deep":     { "model": "architect", "maxIterations": 20, "maxWallClockMinutes": 45, "plateauWindow": 3, "crossVerify": true,  "crossVerifyEvery": 5, "marginalGainEpsilon": 0.02 }
+      "quick": { "model": "standard", "maxIterations": 3, "maxWallClockMinutes": 5, "plateauWindow": 2, "crossVerify": false, "crossVerifyEvery": 0, "marginalGainEpsilon": 0.05 },
+      "standard": { "model": "standard", "maxIterations": 8, "maxWallClockMinutes": 15, "plateauWindow": 2, "crossVerify": true, "crossVerifyEvery": 0, "marginalGainEpsilon": 0.03 },
+      "deep": { "model": "architect", "maxIterations": 20, "maxWallClockMinutes": 45, "plateauWindow": 3, "crossVerify": true, "crossVerifyEvery": 5, "marginalGainEpsilon": 0.02 }
     }
   },
   "tier3": { "taskThreshold": 5, "fileThreshold": 5, "domainKeywords": [] },
+  "verifyGate": {
+    "riskThreshold": 2,
+    "maxBlocks": 2,
+    "runLadder": true,
+    "recommendCrossVerify": true,
+    "largeFiles": 8,
+    "largeLines": 400,
+    "ladderTimeoutSec": { "quickCheck": 30, "contract": 120, "verify": 180 },
+    "quickCheckCommand": "",
+    "verifyCommand": "",
+    "contractCommand": "",
+    "sensitivePaths": ["**/auth/**", "**/payment/**", "**/security/**", "*migration*", "**/*migration*", ".env*", "**/.env*", "**/secrets/**", "**/*.sql"]
+  },
+  "planGate": { "minTier": 3, "maxDenials": 3, "gatedTools": ["Edit", "Write", "NotebookEdit", "MultiEdit"] },
   "verify": {
     "rounds": 3,
     "stopWhenClean": true,
     "autoFix": false,
     "lenses": [
-      { "model": "claude", "focus": "logic" },
-      { "model": "gpt",    "focus": "edge-cases" },
-      { "model": "gemini", "focus": "security" }
+      { "model": "claude", "via": "native-subagent", "focus": "correctness" },
+      { "model": "gpt", "via": "codex", "cmd": "codex exec", "focus": "convention" },
+      { "model": "gemini", "via": "gemini", "cmd": "gemini -p --approval-mode plan", "focus": "regression" }
     ]
-  }
+  },
+  "conventions": { "autoDetect": true, "overrides": {} }
 }
 ```
+
+## Profiles
+
+| Profile | Features on |
+|---------|-------------|
+| `minimal` (default for new configs) | `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, `stateSync` |
+| `standard` | minimal + `testEnforcement`, `weightRouting`, `planGate`, `contextSnapshot`, `skillScaffolding`, `contextOptimization` |
+| `full` | every template default (all features except `scopeGuard`) |
+
+Choose with `oh-my-harness init --profile <name>` or in `/harness-setup`. An existing config is never re-profiled; change single features with `/set-harness features.<name> true|false`. `oh-my-harness why` suggests changes from the Decision Log.
 
 ## Modify Settings
 
@@ -123,10 +156,12 @@ This lets you set a global default once (User scope) that applies to every proje
 
 ## Settings Reference
 
+`features.*` defaults below are the template (`full`) values; a new config starts from its profile.
+
 | Path | Type | Default | Description |
 |------|------|---------|-------------|
 | `features.conventionSetup` | bool | `true` | Auto-detect project conventions |
-| `features.testEnforcement` | bool | `true` | Remind about tests after changes |
+| `features.testEnforcement` | bool | `true` | Check that changed code has tests, and flag code changed without any test change in the same diff |
 | `features.contextOptimization` | bool | `true` | Enable model routing |
 | `features.autoPlanMode` | bool | `true` | Suggest plan mode for multi-task |
 | `features.ambiguityDetection` | bool | `true` | Force clarification for vague requests |
@@ -136,6 +171,9 @@ This lets you set a global default once (User scope) that applies to every proje
 | `features.scopeGuard` | bool | `false` | Restrict file modification scope |
 | `features.usageTracking` | bool | `true` | Track tool usage |
 | `features.autoGitignore` | bool | `true` | Auto-update .gitignore |
+| `features.skillScaffolding` | bool | `true` | Scaffold project skills on init |
+| `features.stateSync` | bool | `true` | Regenerate the `STATE.md` snapshot on Stop/PreCompact and suggest handoffs |
+| `handoff.promptThreshold` | number | `40` | Prompts in one session before `[omh:handoff]` is suggested (0 = only after a compaction) |
 | `testEnforcement.minCases` | number | `2` | Minimum test cases per file |
 | `testEnforcement.promptOnMissing` | bool | `true` | Alert when tests missing |
 | `modelRouting.quick` | string | `haiku` | Model for exploration |
@@ -166,19 +204,22 @@ This lets you set a global default once (User scope) that applies to every proje
 | `verifyGate.runLadder` | bool | `true` | Run the deterministic ladder (vs. soft reminders only) |
 | `verifyGate.recommendCrossVerify` | bool | `true` | Recommend `/omh-verify` for sensitive/large changes |
 | `verifyGate.largeFiles` / `largeLines` | number | `8` / `400` | Diff-size thresholds for the risk score |
+| `verifyGate.quickCheckCommand` / `verifyCommand` | string | `""` | Ladder commands; auto-detected from conventions when empty |
+| `verifyGate.contractCommand` | string | `""` | Optional rung between quickCheck and verify (API spec diff, migration validate, architecture rules); never auto-detected |
+| `verifyGate.ladderTimeoutSec` | object | `{ quickCheck: 30, contract: 120, verify: 180 }` | Per-rung timeouts (seconds) |
 | `verifyGate.sensitivePaths` | string[] | auth/payment/migration/.env/… | Globs that escalate a change to the top risk level |
 | `features.planGate` | bool | `true` | Force a plan-mode plan before edits on Tier-3 prompts |
 | `planGate.minTier` | number | `3` | Prompt tier ≥ this arms the gate |
 | `planGate.maxDenials` | number | `3` | Hard cap of edit-denials per prompt (never-wedge) |
 | `planGate.gatedTools` | string[] | Edit/Write/NotebookEdit/MultiEdit | Tools blocked until a plan exists |
 
-> `features.autonomousLoop` defaults ON but stays inert until `/omh-loop` writes an active loop state — there is zero overhead for non-loop sessions (the Stop hook returns immediately when no loop is active).
+> `features.autonomousLoop` is on in the `full` profile but stays inert until `/omh-loop` writes an active loop state — there is zero overhead for non-loop sessions (the Stop hook returns immediately when no loop is active).
 
-> `features.verifyGate` defaults ON: in a plain session (no active `/omh-loop`), the Stop hook scores each turn's diff (sensitive paths, size, source-without-test) floored by the prompt tier, and runs the verify ladder when the risk warrants it — blocking on real red. It defers to an active loop and can never wedge a session (`maxBlocks` cap + fail-open). Disable with `/set-harness features.verifyGate false`.
+> `features.verifyGate` is on in every profile: in a plain session (no active `/omh-loop`), the Stop hook scores each turn's diff (sensitive paths, size, source-without-test) floored by the prompt tier, and runs the verify ladder when the risk warrants it — blocking on real red. It defers to an active loop and can never wedge a session (`maxBlocks` cap + fail-open). Disable with `/set-harness features.verifyGate false`.
 
-> `features.planGate` defaults ON. Claude blocks Edit/Write/NotebookEdit/MultiEdit until `ExitPlanMode`. Codex maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`; other payloads do not clear it. Read-only tools pass, and `maxDenials` is the non-wedging escape hatch. Disable with `/set-harness features.planGate false`.
+> `features.planGate` is on in the `standard` and `full` profiles; a leading `!noplan` skips it for one prompt. Claude blocks Edit/Write/NotebookEdit/MultiEdit until `ExitPlanMode`. Codex maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`; other payloads do not clear it. Read-only tools pass, and `maxDenials` is the non-wedging escape hatch. Disable with `/set-harness features.planGate false`.
 
-> `features.weightRouting` defaults ON: every prompt is auto-classified into Tier 1/2/3 by weight, and Tier 3 (heavy/risky work) forces verification. The `tier3.*` thresholds control when a task is forced to Tier 3, and the `verify.*` block configures the `/omh-verify` independent multi-model verify+fix rounds.
+> `features.weightRouting` is on in the `standard` and `full` profiles: every prompt is auto-classified into Tier 1/2/3 by weight, and Tier 3 (heavy/risky work) forces verification. The `tier3.*` thresholds control when a task is forced to Tier 3, and the `verify.*` block configures the `/omh-verify` independent multi-model verify+fix rounds.
 
 ---
 
@@ -202,6 +243,7 @@ Settings are deep-merged into defaults, so you only need to override the fields 
 | `loop.maxTotalIterations` | number | `30` | Cross-tier iteration cap (hard wall) |
 | `loop.stopOnNoProgress` | bool | `true` | Stop on plateau (no improvement + empty/cosmetic diff) |
 | `loop.quickCheckCommand` | string | `""` | Fast rung (lint/typecheck); auto-detected from conventions when empty |
+| `loop.contractCommand` | string | `""` | Optional rung between quickCheck and verify; never auto-detected |
 | `loop.verifyCommand` | string | `""` | Full rung (tests/build); auto-detected when empty |
 | `loop.verifyInHook` | bool | `true` | Run the cheap verify rungs inside the Stop hook |
 | `loop.rungTimeoutSec.quickCheck` | number | `30` | Per-rung subprocess timeout for `quickCheck` (seconds) |
@@ -238,7 +280,7 @@ Each tier sets its own iteration and wall-clock budgets and verification depth. 
 
 ## Weight Routing (`tier3` block)
 
-The weight-aware harness classifies every prompt by weight into **Tier 1** (light), **Tier 2** (medium), and **Tier 3** (heavy/risky). Tier 3 forces verification before completion. The `tier3.*` thresholds decide when a task is escalated. See **[Weight Routing](verify.md)** for the full design.
+The weight-aware harness classifies every prompt by weight into **Tier 1** (light), **Tier 2** (medium), and **Tier 3** (heavy/risky). Tier 3 forces verification before completion. The `tier3.*` thresholds decide when a task is escalated. A leading `!t1` / `!t3` overrides the tier for one prompt and `!noplan` skips the plan gate; overrides are recorded in the Decision Log. See **[Weight Routing](verify.md)** for the full design.
 
 Settings are deep-merged into defaults, so you only need to override the fields you care about.
 

@@ -39,6 +39,8 @@ OMH는 Claude Code의 기본 상태 표시줄을 실시간 대시보드로 대�
 
 런타임 등록 후 OMH는 Claude Code 또는 Codex 생명주기에 훅으로 연결되어 자동으로 동작합니다. Codex 프로필과 지속 지침은 `/harness-setup` 또는 CLI init이 필요합니다.
 
+아래 중 무엇이 동작하는지는 프로필에 따라 다릅니다. 새 설정은 `minimal`(위험 명령 가드, 검증 게이트, 컨벤션 감지, 커밋 컨벤션, 자동 `.gitignore`, 자동 생성 상태)로 시작하고, `standard`와 `full`이 기능을 더합니다. [프로필](#프로필)을 참고하고, 실제로 무엇이 발동했는지는 `oh-my-harness why`로 확인하세요.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  프롬프트 입력                                                    │
@@ -103,7 +105,15 @@ Claude가 서브에이전트에 작업을 위임할 때, OMH가 자동으로 적
 [omh:loop]               → 자율 루프의 강제 계속 / 중단 결정
 [omh:cross-verify]       → 교차 검증 판정 (PASS / FAIL / INCONCLUSIVE)
 [omh:spec]               → 스펙 작성 / 수용 기준 검사
+[omh:tier]               → 프롬프트 무게 티어와 그 사유
+[omh:override]           → 프롬프트 앞의 !t1 / !t3 / !noplan 적용
+[omh:verify-gate]        → Stop 시점 검증 결과 (red면 차단)
+[omh:plan-gate]          → Tier 3 플랜을 제시할 때까지 편집 차단
+[omh:state]              → 세션 시작 시 STATE.md 재주입
+[omh:handoff]            → 긴 세션: /omh-handoff와 새 세션 제안
 ```
+
+모델 라우팅을 제외한 위 태그는 모두 `.claude/.omh/decisions.jsonl`에도 기록됩니다. [Decision Log](#decision-log)를 참고하세요.
 
 세션 출력 예시:
 ```
@@ -127,13 +137,13 @@ Claude가 서브에이전트에 작업을 위임할 때, OMH가 자동으로 적
 아래 기능들은 세 계층으로 묶입니다 — [README](../README.ko.md#기능-목록)와 동일한 그룹입니다:
 
 **A. 자동 가드 & 라우팅** — 모든 세션에서 묻지 않고 동작:
-[컨벤션 자동 감지](#1-컨벤션-자동-감지) · [테스트 강제](#2-테스트-강제) · [자동 Plan 모드](#4-자동-plan-모드) · [모호성 가드](#5-모호성-가드) · [위험 명령 가드](#6-위험-명령-가드) · [컨텍스트 스냅샷](#7-컨텍스트-스냅샷) · [커밋 컨벤션](#8-커밋-컨벤션) · [스코프 가드](#9-스코프-가드) · [사용량 추적](#10-사용량-추적) · [무게 라우팅](#15-무게-라우팅-tier-123) · [Living State](#17-living-state-statemd) · [검증 게이트](#검증-게이트) · [플랜 게이트](#플랜-게이트)
+[컨벤션 자동 감지](#1-컨벤션-자동-감지) · [테스트 강제](#2-테스트-강제) · [자동 Plan 모드](#4-자동-plan-모드) · [모호성 가드](#5-모호성-가드) · [위험 명령 가드](#6-위험-명령-가드) · [컨텍스트 스냅샷](#7-컨텍스트-스냅샷) · [커밋 컨벤션](#8-커밋-컨벤션) · [스코프 가드](#9-스코프-가드) · [사용량 추적](#10-사용량-추적) · [무게 라우팅](#15-무게-라우팅-tier-123) · [Living State](#17-living-state-statemd) · [검증 게이트](#검증-게이트) · [플랜 게이트](#플랜-게이트) · [핸드오프](#핸드오프)
 
 **B. 자율 실행** — 직접 호출하는 워크플로우:
-[네이티브 팀](#12-네이티브-팀) · [자율 루프](#13-자율-루프-autonomous-loop) · [스펙 작성](#14-스펙-작성-spec-authoring) · [N-라운드 검증](#16-n-라운드-독립-검증-omh-verify)
+[네이티브 팀](#12-네이티브-팀) · [자율 루프](#13-자율-루프-autonomous-loop) · [스펙 작성](#14-스펙-작성-spec-authoring) · [N-라운드 검증](#16-n-라운드-독립-검증-omh-verify) · [문서 동기화](#문서-동기화-opt-in)
 
 **C. 라우팅·스캐폴딩·관측** — 가로지르는 기능:
-[상태 표시줄 (HUD)](#상태-표시줄-hud) · [모델 라우팅](#3-모델-라우팅) · [스킬 스캐폴딩](#11-스킬-스캐폴딩)
+[상태 표시줄 (HUD)](#상태-표시줄-hud) · [모델 라우팅](#3-모델-라우팅) · [스킬 스캐폴딩](#11-스킬-스캐폴딩) · [Decision Log](#decision-log) · [프로필](#프로필)
 
 ---
 
@@ -156,11 +166,14 @@ Claude가 서브에이전트에 작업을 위임할 때, OMH가 자동으로 적
 
 ### 2. 테스트 강제
 
-코드 변경(Edit / Write / NotebookEdit) 후 세션 종료 시 리마인더를 주입합니다:
+Stop 시점에 working tree에서 바뀐 코드 파일(`git diff`, staged, untracked. git이 없으면 마지막 도구의 파일)을 모두 검사합니다:
 
-- 변경된 코드에 대한 테스트 파일 존재 확인
-- 각 테스트 파일에 최소 **N**개의 테스트 케이스 확인 (설정 가능, 기본값: 2)
-- 테스트가 없으면 추가 제안
+- 테스트가 없는 변경 코드 → `[omh:anti-rationalization]`이 파일 목록을 보여주고 완료 선언을 금지
+- 테스트는 있지만 **같은 diff에서 바뀐 테스트가 하나도 없음** → 기존 테스트가 새 동작을 검증하는지 확인하거나 테스트를 추가하라고 안내
+- 테스트가 있고 테스트도 바뀜 → 실행해서 통과를 확인하라고 리마인드
+- 각 테스트 파일에 최소 **N**개의 테스트 케이스 (설정 가능, 기본값: 2)
+
+테스트 파일은 `.test.` / `.spec.` 이름, `test/` / `tests/` / `__tests__/` 디렉터리, 그리고 미러된 `src/test/...` 경로의 `FooTest.kt` 같은 JVM 이름으로 인식합니다.
 
 > 테스트는 최소한 **정상 경로**, **엣지 케이스**, **에러 케이스**를 커버해야 합니다.
 
@@ -399,9 +412,11 @@ Claude는 이 공유 에이전트 유형을 haiku/sonnet/opus에 매핑합니다
 **저렴한 것 우선 검증 사다리** — 가장 저렴한 검사를 먼저 돌리고 빠르게 실패하는, 엄격하게 순서가 정해진 단계들입니다. 첫 실패 시 *실제* 실패 출력을 다음 반복의 지시로 되먹임하여, 구조적으로 깨진 코드에 비싼 판정 모델을 낭비하지 않습니다. 각 단계는 자체 서브프로세스 타임아웃을 가집니다.
 
 ```
-quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-review  →  cross-verify
-   30초, 결정론적                  180초, 결정론적            동일 모델       다른 모델
+quickCheck (lint / typecheck)  →  contract (선택)  →  verify (테스트 / 빌드)  →  self-review  →  cross-verify
+   30초, 결정론적                  120초, 결정론적      180초, 결정론적            동일 모델       다른 모델
 ```
+
+`contractCommand`는 변경 중인 코드 밖에 있는 지식을 검사합니다. API 스펙 diff(예: `openapi-diff`), 마이그레이션 검사(`flyway validate`), 아키텍처 규칙(ArchUnit) 등이며 자동 감지하지 않습니다. 실패한 단계는 위치부터 보고합니다. `file:line`을 가리키는 줄(gradle, kotlinc, tsc, eslint, pytest, go)을 먼저 보여주고, 없으면 빌드 도구가 실제 실패를 출력하는 출력 끝의 에러 줄을 보여줍니다. ktlint나 detekt를 쓰는 Kotlin/Java Gradle 프로젝트는 `./gradlew ktlintCheck` 또는 `./gradlew detekt`가 자동 quickCheck가 됩니다.
 
 **교차 검증(Cross-verification)** — 생성기와 *다른* 모델(opus, 모델 라우팅 경유)이 LLM-as-judge 역할로 **각** SPEC 수용 기준을 근거와 함께 `PASS` / `FAIL`로 채점합니다. 에이전트의 "내가 X 했다"는 자기 보고를 다시 읽는 것이 아니라, 테스트를 실행하고 diff를 grep하여 **저장소 상태에 대해 독립적으로** 검증합니다. 또한 revert-and-rerun 변형 검사(변경을 되돌리면 새 테스트가 되돌린 코드에서 FAIL해야 함)를 실행하여, 에이전트가 빈껍데기 테스트로 자기 게이트를 통과하지 못하게 합니다. 판정은 `PASS | FAIL | INCONCLUSIVE` 타입이며, **INCONCLUSIVE는 안전하게 중단-및-보고로 폴백**합니다.
 
@@ -443,12 +458,15 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
     "maxTotalIterations": 30,
     "crossVerify": true,
     "crossVerifyModel": "architect",
+    "quickCheckCommand": "",
+    "contractCommand": "",
+    "verifyCommand": "",
     "rungTimeoutSec": { "quickCheck": 30, "verify": 180 }
   }
 }
 ```
 
-> 기본적으로 ON이지만 `/omh-loop`이 활성 상태를 기록하기 전까지는 **비활성**입니다 — 루프가 아닌 세션에는 오버헤드가 없습니다. 전체 설정 블록과 설계 근거는 [자율 루프 가이드](loop.ko.md)를 참고하세요.
+> `full` 프로필에서 켜지지만 `/omh-loop`이 활성 상태를 기록하기 전까지는 **비활성**입니다 — 루프가 아닌 세션에는 오버헤드가 없습니다. 전체 설정 블록과 설계 근거는 [자율 루프 가이드](loop.ko.md)를 참고하세요.
 
 ### 14. 스펙 작성 (Spec Authoring)
 
@@ -469,7 +487,7 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 ### 15. 무게 라우팅 (Tier 1/2/3)
 
-**훅:** `UserPromptSubmit` · **기본값:** ON (`features.weightRouting`)
+**훅:** `UserPromptSubmit` · **프로필:** standard (`features.weightRouting`)
 
 각 프롬프트를 무게 Tier로 분류해 가드 강도를 비례 적용합니다. 작은 작업은 가볍게, 무거운 작업은 빠짐없이.
 
@@ -477,6 +495,8 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 - **Tier 1(가벼움):** 컨벤션 리마인더만.
 - **Tier 2(보통):** 컨벤션 체크리스트 + 테스트 + 셀프리뷰.
 - **Tier 3(무거움):** 완료 선언 전 `/omh-verify` 실행을 강제 주입.
+- **Override:** 프롬프트를 `!t1`이나 `!t3`로 시작하면 그 프롬프트의 티어를 강제하고, `!noplan`이면 티어는 유지한 채 플랜 게이트만 건너뜁니다. 모델에게는 이 토큰이 하네스 지시라고 알려줍니다. 사용할 때마다 분류기의 원래 판정과 함께 기록되므로(`override:t1 (classifier said 3)`), `oh-my-harness why`의 override 비율이 곧 분류기 오답률 지표가 됩니다.
+- **추측이 아니라 측정:** `test/fixtures/prompts.jsonl`에 키워드 오탐과 키워드 없이 위험한 작업을 포함한 한/영 프롬프트 94개가 라벨과 함께 있습니다. 정확도, Tier 3 recall, Tier 1 precision이 `prompts.baseline.json`의 하한 아래로 떨어지면 CI가 실패합니다.
 
 **설정:**
 ```json
@@ -500,13 +520,15 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 ### 17. Living State (STATE.md)
 
-**훅:** `SessionStart`(주입) / `PreCompact`(통합) · **기본값:** ON
+**훅:** `Stop`과 `PreCompact`(재생성) / `SessionStart`(주입) · **프로필:** minimal (`features.stateSync`)
 
-`.claude/.omh/STATE.md`에 목표·현재 phase·핵심 결정·진행을 보관합니다. 세션 시작 시 재주입되고 압축 전 스냅샷에서 참조되어, 세션 경계와 compaction을 넘어 작업 컨텍스트가 유지됩니다 — context rot 직접 방어.
+`.claude/.omh/STATE.md`의 주인은 둘입니다. **Goal**과 **Key Decisions**는 사용자(또는 요청받은 모델)가 관리합니다. `<!-- OMH:AUTO:START -->`와 `<!-- OMH:AUTO:END -->` 사이 블록은 hook이 관리하며, 매 Stop과 압축 직전에 기계적 출처만으로 다시 생성합니다: 현재 브랜치, 최근 커밋 5개, 커밋 안 된 파일(최대 8개 이름), 루프 상태, 검증 게이트가 현재 diff를 통과시켰는지. 아무도 갱신을 기억할 필요가 없는 진행 기록은 어긋나지 않습니다.
+
+세션 시작 시 사용자가 쓴 줄이 먼저, 이어서 스냅샷이 들어가며 1000자로 제한됩니다. `.claude/.omh`가 이미 있는 곳에서만 쓰고, 모든 단계는 fail-open입니다.
 
 ### 18. 장기 메모리 (Long-Term Memory)
 
-**MCP:** `omh-memory` (지식그래프) · **기본값:** ON
+**MCP:** `omh-memory` (지식그래프) · **사용 조건:** MCP 서버가 연결되어 있으면 항상 (feature 플래그 아님)
 
 세션·런타임을 넘나드는 지식그래프. 고정 버전 `@modelcontextprotocol/server-memory@2026.7.4` 기반, 스토어는 `~/.omh/memory/graph.jsonl` — **Claude Code와 Codex가 공유하는 하나의 스토어**. 플러그인 MCP는 plugin root로 이동해 `bin/omh-memory.sh`를 실행하고 로컬 Codex init은 선택 scope 아래 launcher/library를 설치해 `[mcp_servers.omh-memory]`를 관리합니다.
 
@@ -521,7 +543,7 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 ### 검증 게이트
 
-**훅:** `Stop` (`verify-gate.mjs`) · **기본값:** ON
+**훅:** `Stop` (`verify-gate.mjs`) · **프로필:** minimal (`features.verifyGate`)
 
 자율 루프는 `/omh-loop` *안에서만* 검증을 강제합니다. 검증 게이트는 동일한 하네스 소유 강제를 **평범한 세션**으로 가져옵니다. 매 Stop마다 모델의 자기판단이 아니라 **실제 working-tree diff**로 위험도를 점수화합니다:
 
@@ -532,8 +554,8 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 | 소스가 바뀌었는데 매칭 테스트 없음 | 사다리 실행 |
 | 프롬프트 티어(1/2/3) | **하한**으로 작용 — `level = max(diffRisk, tierFloor)` |
 
-위험도가 충분하면 훅이 **verify 사다리를 직접 실행**(중간 위험은 cheap quickCheck, 민감/대규모는 전체 사다리)하고:
-- **red** → 실제 실패 출력과 함께 계속을 강제 (최상위 `{"decision":"block"}` + exit 0);
+위험도가 충분하면 훅이 **verify 사다리를 직접 실행**(중간 위험은 cheap quickCheck, 민감/대규모는 설정된 경우 `contractCommand`까지 포함한 전체 사다리)하고:
+- **red** → 위치부터 보여주는 실패 보고와 함께 계속을 강제 (최상위 `{"decision":"block"}` + exit 0);
 - **green / 저위험** → stop 허용. 민감/대규모 변경엔 `/omh-verify` 교차모델 권고도 붙습니다.
 
 **세션을 절대 가두지 않습니다.** 변경당 `maxBlocks` 상한이 (기존에 red인 베이스라인에 대해서도) 결국 stop을 허용하도록 보장하고, `stop_hook_active` 재진입 가드·already-verified 스킵·활성 루프 비켜남·빈 사다리/git 부재 통과·off 스위치(`features.verifyGate`, `DISABLE_HARNESS`, `STOP`)·모든 오류에 fail-open이 더해집니다. 판단 로직은 순수·단위테스트된 `lib/risk.mjs`입니다.
@@ -542,7 +564,7 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 ### 플랜 게이트
 
-**훅:** `PreToolUse` (`plan-gate.mjs`) · **기본값:** ON
+**훅:** `PreToolUse` (`plan-gate.mjs`) · **프로필:** standard (`features.planGate`)
 
 검증 게이트가 턴 *이후* 검증을 강제한다면, 플랜 게이트는 턴 *이전* 계획을 강제합니다. **Tier 3 프롬프트**(기존 프롬프트 무게 분류기 — 아키텍처·보안·마이그레이션·5+ 작업·도메인 키워드)면 `pre-prompt.mjs`가 프롬프트 단위 마커를 켜고 계획 지시를 주입합니다. 그러면 PreToolUse 훅이 계획 전까지 편집 도구를 **차단**합니다:
 
@@ -556,8 +578,46 @@ quickCheck (lint / typecheck)  →  verify (테스트 / 빌드)  →  self-revie
 
 이 표는 Claude 계약입니다. Codex bridge는 `apply_patch`를 edit로 매핑하고, 비어 있지 않으며 각 항목의 `step`이 비어 있지 않고 `status`가 허용 값인 `update_plan`만 공유 게이트를 해제합니다. 그 밖의 payload는 해제하지 않으며 denial 상한은 최종 non-wedging 탈출구로 남습니다.
 
-**세션을 절대 가두지 않습니다.** 프롬프트당 `maxDenials` 상한(기본 3)이 결국 경고와 함께 편집을 허용하고, 읽기 도구는 절대 안 막으며, 마커는 프롬프트 단위(Tier 1/2 프롬프트가 해제)입니다. off 스위치는 `features.planGate` / `DISABLE_HARNESS`입니다. Claude wrapper는 손상된 marker에서 fail open이지만, Codex critical preflight는 armed marker가 손상되고 mapped gated tool이면 fail closed입니다. 판단 로직은 순수·단위테스트된 `lib/plan-gate.mjs`입니다.
+**세션을 절대 가두지 않습니다.** 프롬프트당 `maxDenials` 상한(기본 3)이 결국 경고와 함께 편집을 허용하고, 읽기 도구는 절대 안 막으며, 마커는 프롬프트 단위(Tier 1/2 프롬프트나 앞에 붙인 `!noplan`이 해제)입니다. off 스위치는 `features.planGate` / `DISABLE_HARNESS`입니다. Claude wrapper는 손상된 marker에서 fail open이지만, Codex critical preflight는 armed marker가 손상되고 mapped gated tool이면 fail closed입니다. 판단 로직은 순수·단위테스트된 `lib/plan-gate.mjs`입니다.
 
 > **한계(v1):** Claude는 Edit/Write/NotebookEdit/MultiEdit를 막고 Codex는 `apply_patch`도 매핑합니다. `Bash` 파일 쓰기(`echo > file`)는 우회 가능하며 Bash 전체 gating은 조사 명령까지 막으므로 v1 제외입니다.
 
 > `[omh:plan-gate]`를 방출합니다. [설정](configuration.ko.md)의 `planGate` 블록을 참고하세요.
+
+### Decision Log
+
+**기록 주체:** 모든 hook · **프로필:** 항상 켜짐 (`OMH_DECISION_LOG=0`이면 끔)
+
+silent가 아닌 hook 출력은 모두 `.claude/.omh/decisions.jsonl`에 JSON 한 줄로 추가됩니다: 시각, hook, 이벤트, 결정(`context`, `warn`, `block`, `deny`), 내보낸 `[omh:*]` 태그, 그리고 프롬프트의 경우 티어, 사유, override, 세션 id. 프롬프트 원문과 파일 내용은 저장하지 않습니다. 약 500줄로 제한되고, `.claude/.omh`가 이미 있는 곳에서만 쓰며, 기록 때문에 hook 출력이 바뀌는 일은 없습니다.
+
+```bash
+oh-my-harness why              # 최근 판정 10개, hook별 횟수, override 비율, Stop p50/p95
+oh-my-harness why --last 30
+oh-my-harness why --json       # entries + summary + suggestions
+```
+
+`why`는 기록에 근거해 기능 변경도 제안합니다: 일주일에 검증 게이트 block이 3회 이상이면 `planGate`와 `testEnforcement` 켜기, 14일간 발동하지 않은 안내 기능은 끄기, 라우팅된 프롬프트 20개 이상 중 30% 넘게 override되면 `tier3.domainKeywords` 재검토. 안전 가드는 끄기를 제안하지 않습니다.
+
+### 핸드오프
+
+**스킬:** `/omh-handoff` · **CLI:** `oh-my-harness handoff` · **제안 hook:** `UserPromptSubmit` (`features.stateSync`)
+
+한 세션에는 하나의 컨텍스트만 두는 게 좋습니다. 압축이 일어났거나 한 세션의 프롬프트가 `handoff.promptThreshold`(기본 40)를 넘으면 `[omh:handoff]`가 세션당 한 번 핸드오프를 제안합니다. `oh-my-harness handoff`는 `STATE.md` 스냅샷을 갱신하고 **Tried**, **Worked**, **Failed (and why)**, **Next steps** 섹션과 Goal, Decisions, 자동 생성 스냅샷을 담은 `.claude/.omh/HANDOFF.md`를 만듭니다. 스킬은 이 네 섹션만 채우고, 다음 세션은 이 파일로 시작하면 됩니다.
+
+### 프로필
+
+`oh-my-harness init --profile minimal|standard|full`(그리고 `/harness-setup`의 같은 선택지)은 **새** 설정에서 켤 기능을 정합니다. 기존 설정은 다시 바꾸지 않습니다.
+
+| 프로필 | 켜지는 기능 |
+|--------|-------------|
+| `minimal` (기본값) | `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, `stateSync` |
+| `standard` | minimal + `testEnforcement`, `weightRouting`, `planGate`, `contextSnapshot`, `skillScaffolding`, `contextOptimization` |
+| `full` | 템플릿 기본값 전체 (`scopeGuard`를 뺀 모든 기능) |
+
+작게 시작하고, `oh-my-harness why`가 필요를 보여줄 때 `/set-harness features.<name> true`로 더 켜세요.
+
+### 문서 동기화 (opt-in)
+
+**CLI:** `oh-my-harness docs-sync --install | --uninstall | --print` · **스킬:** `/omh-docs-sync`
+
+`pre-push` git hook을 설치합니다. push할 때 브랜치에서 바뀐 코드 파일을 `claude -p "/omh-docs-sync ..."`에 넘기며, Read, Grep, Glob, Edit만 허용합니다. 스킬은 그 변경 때문에 틀려진 문서(와 한글 쌍)만 고칩니다. 문서가 하나라도 바뀌면 push를 멈춰 문서 변경을 검토하고 코드와 함께 커밋하게 합니다. `claude` CLI가 없거나 실행이 실패하거나 `OMH_DOCS_SYNC=0`이면 push를 막지 않습니다. 직접 만든 pre-push hook은 `--force` 없이 덮어쓰지 않고, 제거하지도 않습니다.

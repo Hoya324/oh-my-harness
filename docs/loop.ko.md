@@ -96,7 +96,9 @@ graph TD
 
 ```mermaid
 graph LR
-    QC["quickCheck<br/>(lint / typecheck)"] -->|pass| V["verify<br/>(tests / build)"]
+    QC["quickCheck<br/>(lint / typecheck)"] -->|pass| CT["contract (선택)<br/>(API 스펙, 마이그레이션)"]
+    CT -->|pass| V["verify<br/>(tests / build)"]
+    CT -->|fail| FB
     V -->|pass| SR["self-review<br/>(동일 모델)"]
     SR -->|pass| CV["cross-verify<br/>(다른 모델)"]
     QC -->|fail| FB["실패 출력을<br/>다음 반복 지시로 피드백"]
@@ -107,7 +109,9 @@ graph LR
 ```
 
 - **첫 번째** 0이 아닌 종료 코드에서 멈추고, **실제 실패 출력**을 `reason`에 담아 다음 반복의 지시로 흘려보냅니다. 구조적으로 깨진 코드에 모델 심판을 낭비하지 않습니다.
-- 각 단계는 자체 서브프로세스 타임아웃을 가집니다 (`rungTimeoutSec` — quickCheck 30s, verify 180s).
+- 실패 출력은 **위치부터** 보고합니다(`lib/failure-format.mjs`). `file:line`을 가리키는 줄(gradle, kotlinc, tsc, eslint, pytest, go)을 먼저 보여주고, 없으면 빌드 도구가 실제 실패를 마지막에 출력하므로 출력 끝의 에러 줄을 씁니다.
+- `contractCommand`(선택)는 quickCheck와 verify 사이에서 API 스펙 diff, 마이그레이션 검증, 아키텍처 규칙 같은 코드 밖 지식을 검사합니다. 자동 감지하지 않습니다. ktlint나 detekt를 쓰는 Kotlin/Java Gradle 프로젝트는 `./gradlew ktlintCheck` 또는 `./gradlew detekt`가 자동 quickCheck가 됩니다.
+- 각 단계는 자체 서브프로세스 타임아웃을 가집니다 (`rungTimeoutSec` — quickCheck 30s, contract 120s, verify 180s).
 - 결과는 `{rung, status: pass|fail|error|skipped, retryable, signature}` 로 기록됩니다. `error`/인프라 상태는 `retryable:false` → 중단 후 사용자에게 질문 (예: "테스트 러너를 못 찾음"과 진짜 실패를 구분).
 
 ---
@@ -186,7 +190,7 @@ WHEN <트리거> THE SYSTEM SHALL <응답>
 
 ## 설정
 
-`features.autonomousLoop`(기본 `true`)와 `loop` 블록으로 제어합니다.
+`features.autonomousLoop`(`full` 프로필에서 켜짐. 새 `minimal` 설정에서는 `/set-harness features.autonomousLoop true` 필요)와 `loop` 블록으로 제어합니다.
 
 ```jsonc
 "features": { "autonomousLoop": true },
@@ -203,6 +207,7 @@ WHEN <트리거> THE SYSTEM SHALL <응답>
   "maxTotalIterations": 30,
   "stopOnNoProgress": true,
   "quickCheckCommand": "",          // 빠른 단계 (lint/typecheck), 컨벤션에서 자동 감지
+  "contractCommand": "",            // 선택 단계: API 스펙 diff, 마이그레이션 검증, 아키텍처 규칙
   "verifyCommand": "",              // 전체 단계 (tests/build), 자동 감지
   "verifyInHook": true,
   "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },

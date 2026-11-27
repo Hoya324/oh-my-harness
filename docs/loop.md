@@ -148,15 +148,20 @@ Before any expensive model judge runs, the loop climbs a strictly ordered ladder
 | Rung | What runs | Cost | On failure |
 |------|-----------|------|-----------|
 | 1. `quickCheck` | lint / typecheck | seconds | Block with the real lint/type error; skip higher rungs |
-| 2. `verify` | unit tests / build | tens of seconds | Block with the real test/build output; skip higher rungs |
-| 3. self-review | same model reviews its own diff | one model turn | Block with the review findings |
-| 4. cross-verify | a **different** model judges against the spec | most expensive | See below |
+| 2. `contract` (optional) | `contractCommand`: API spec diff, migration validate, architecture rules | seconds | Block with the broken contract; skip higher rungs |
+| 3. `verify` | unit tests / build | tens of seconds | Block with the real test/build output; skip higher rungs |
+| 4. self-review | same model reviews its own diff | one model turn | Block with the review findings |
+| 5. cross-verify | a **different** model judges against the spec | most expensive | See below |
 
-Each rung runs in its own subprocess with a **per-rung timeout** (`rungTimeoutSec`, default `quickCheck: 30`, `verify: 180`). Rung results are logged as `{rung, status: pass|fail|error|skipped}`. An `error`/infra state (e.g. "no test runner found") is **not retryable** → the loop stops and asks, distinguishing a real failure from a broken environment.
+The failing output is reported **location-first** (`lib/failure-format.mjs`): lines that point at `file:line` (gradle, kotlinc, tsc, eslint, pytest, go) come first; when there are none, the error lines from the end of the output are used, because build tools print the real failure last. `contractCommand` is never auto-detected. Kotlin/Java Gradle projects with ktlint or detekt get `./gradlew ktlintCheck` or `./gradlew detekt` as the automatic quickCheck.
+
+Each rung runs in its own subprocess with a **per-rung timeout** (`rungTimeoutSec`, default `quickCheck: 30`, `contract: 120`, `verify: 180`). Rung results are logged as `{rung, status: pass|fail|error|skipped}`. An `error`/infra state (e.g. "no test runner found") is **not retryable** → the loop stops and asks, distinguishing a real failure from a broken environment.
 
 ```mermaid
 graph LR
-    Q["quickCheck<br/>lint / typecheck"] -->|pass| V["verify<br/>tests / build"]
+    Q["quickCheck<br/>lint / typecheck"] -->|pass| C["contract (optional)<br/>API spec, migrations"]
+    C -->|pass| V["verify<br/>tests / build"]
+    C -->|fail| FB
     V -->|pass| S["self-review<br/>same model"]
     S -->|pass| X["cross-verify<br/>different model"]
     Q -->|fail| FB["feed REAL failing<br/>output back as<br/>next instruction"]
@@ -235,7 +240,7 @@ The STOP sentinel is checked near the top of the termination checklist (right af
 
 ## Configuration
 
-The loop is controlled by `features.autonomousLoop` (default `true`) plus a `loop` block in `.claude/.omh/harness.config.json`. The block is deep-merged into defaults, so you only specify what you want to change. Defaults shown:
+The loop is controlled by `features.autonomousLoop` (on in the `full` profile; a fresh `minimal` config needs `/set-harness features.autonomousLoop true`) plus a `loop` block in `.claude/.omh/harness.config.json`. The block is deep-merged into defaults, so you only specify what you want to change. Defaults shown:
 
 ```jsonc
 "features": { "autonomousLoop": true },
@@ -252,6 +257,7 @@ The loop is controlled by `features.autonomousLoop` (default `true`) plus a `loo
   "maxTotalIterations": 30,         // cross-tier cap
   "stopOnNoProgress": true,
   "quickCheckCommand": "",          // fast rung (lint/typecheck); auto-detected from conventions
+  "contractCommand": "",            // optional rung: API spec diff, migration validate, architecture rules
   "verifyCommand": "",              // full rung (tests/build); auto-detected
   "verifyInHook": true,
   "rungTimeoutSec": { "quickCheck": 30, "verify": 180 },
@@ -278,6 +284,7 @@ The loop is controlled by `features.autonomousLoop` (default `true`) plus a `loo
 | `oneTaskPerIteration` / `maxDiffFilesPerIteration` | One unit of work per iteration; an oversized diff is a smell |
 | `maxTotalIterations` | Cross-tier hard cap (default 30) |
 | `quickCheckCommand` / `verifyCommand` | The two deterministic rungs; auto-detected from project conventions when blank |
+| `contractCommand` | Optional deterministic rung between them; never auto-detected |
 | `rungTimeoutSec` | Per-rung subprocess timeouts |
 | `crossVerify` / `crossVerifyModel` | Enable cross-verification and which (different) model judges |
 | `maxDeepVerifiesPerTask` | Cap on expensive judge runs per task |

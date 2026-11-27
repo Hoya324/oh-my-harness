@@ -56,6 +56,8 @@ Everywhere else, OMH stays the harness you barely notice — advisory defaults g
 - **Project skills** (code-review, test-write, lint-fix) live in `.claude/skills/` for Claude Code and `.agents/skills/` for Codex; `--runtime both` scaffolds both — your project, your rules
 - Run `/init-project` to scaffold, then customize freely
 
+**Start small, grow from evidence.** A fresh config turns on only the guards that pay off immediately (the `minimal` profile). Every hook decision is recorded, and `oh-my-harness why` shows what fired and why, then suggests enabling or disabling features once your sessions show a need.
+
 ---
 
 ## Quick Start
@@ -84,7 +86,18 @@ cd /path/to/your-project
 oh-my-harness init --runtime claude
 oh-my-harness init --runtime codex
 oh-my-harness init --runtime both
+
+# Choose how much to turn on (new configs only; default: minimal)
+oh-my-harness init --profile standard   # or: minimal | full
 ```
+
+| Profile | Features on |
+|---------|-------------|
+| `minimal` (default) | `dangerousGuard`, `verifyGate`, `conventionSetup`, `commitConvention`, `autoGitignore`, `stateSync` |
+| `standard` | minimal + `testEnforcement`, `weightRouting`, `planGate`, `contextSnapshot`, `skillScaffolding`, `contextOptimization` |
+| `full` | every template default (all features except `scopeGuard`) |
+
+An existing config is never re-profiled. In plugin mode, `/harness-setup` asks for the same profiles.
 
 The Claude commands install the Claude Code plugin. The Codex command registers the marketplace source: in the **Codex CLI**, start Codex, enter `/plugins`, choose the configured marketplace, install `oh-my-harness`, then start a **new session**. In **Codex desktop**, open **Plugins**, select the configured marketplace under **Personal**, install `oh-my-harness`, then open a new chat. See the [official Codex plugin guide](https://developers.openai.com/codex/plugins). Marketplace installation automatically bundles the Codex hooks, skills, and MCP server only. To add quick/standard/architect role profiles and durable `AGENTS.md` guidance, invoke the bundled `/harness-setup` and approve those writes, or run `oh-my-harness init --runtime codex`; use `--runtime both` to provision both runtimes. The local CLI default remains `--runtime claude`.
 
@@ -136,23 +149,26 @@ oh-my-harness update --runtime codex
 
 OMH's features fall into three groups — **automatic guards** that fire on every session, **autonomous execution** you invoke explicitly, and the cross-cutting **routing, scaffolding & observability** layer.
 
-### A. Automatic guards & routing — always on
+### A. Automatic guards & routing — fire on every session
 
-| Feature | Hook | Default | What it does |
+The **Profile** column is the smallest profile that turns the feature on (`minimal` ⊂ `standard` ⊂ `full`).
+
+| Feature | Hook | Profile | What it does |
 |---------|------|:-------:|-------------|
-| Convention Auto-Detect | `SessionStart` | ON | Scans project and injects language/test/lint context |
-| Weight Routing (Tier 1/2/3) | `UserPromptSubmit` | ON | Classifies prompt weight and routes guardrails proportionally; Tier 3 enforces verification before completion |
-| Ambiguity Guard | `UserPromptSubmit` | ON | Forces clarification for vague requests |
-| Auto-Plan Mode | `UserPromptSubmit` | ON | Detects 3+ tasks and suggests planning first |
-| Dangerous Guard | `PreToolUse` | ON | Denies destructive commands and sensitive writes until the request is made safe |
-| Plan Gate | `PreToolUse` (plan-gate) | ON | Tier-3 prompts must produce a plan-mode implementation plan before any edit |
-| Commit Convention | `PostToolUse` | ON | Reminds commit format (Conventional / Gitmoji) |
-| Scope Guard | Codex `PreToolUse` / Claude `PostToolUse` | OFF | Codex denies out-of-scope edits and recognized filesystem mutations with no auditable path; Claude reports after the tool |
-| Usage Tracking | `PostToolUse` | ON | Records tool usage per session |
-| Test Enforcement | `Stop` | ON | Reminds to verify tests after every code change |
-| Verify Gate | `Stop` (verify-gate) | ON | Risk-judges each turn's diff and runs the verify ladder itself; blocks on red for sensitive/untested changes (never wedges) |
-| Context Snapshot | `PreCompact` | ON | Saves task state before context compaction |
-| Living State (`STATE.md`) | `SessionStart` / `PreCompact` | ON | Disk-anchored goal/phase/decisions re-injected across sessions to fight context rot |
+| Convention Auto-Detect | `SessionStart` | minimal | Scans project and injects language/test/lint context |
+| Dangerous Guard | `PreToolUse` | minimal | Denies destructive commands and sensitive writes until the request is made safe |
+| Commit Convention | `PostToolUse` | minimal | Reminds commit format (Conventional / Gitmoji) |
+| Verify Gate | `Stop` (verify-gate) | minimal | Risk-judges each turn's diff and runs the verify ladder (quickCheck → contract → verify) itself; blocks on red with a `file:line`-first failure report (never wedges) |
+| Living State (`STATE.md`) | `Stop` / `PreCompact` / `SessionStart` | minimal | Regenerates an `OMH:AUTO` snapshot (branch, recent commits, uncommitted files, loop and verify state) from git and hook state; you own Goal and Decisions; re-injected at session start |
+| Handoff Suggestion | `UserPromptSubmit` | minimal | After a compaction or 40 prompts in one session, suggests `/omh-handoff` and a fresh session, once |
+| Weight Routing (Tier 1/2/3) | `UserPromptSubmit` | standard | Classifies prompt weight and routes guardrails proportionally; Tier 3 enforces verification before completion. `!t1` / `!t3` override it |
+| Plan Gate | `PreToolUse` (plan-gate) | standard | Tier-3 prompts must produce a plan-mode implementation plan before any edit. `!noplan` skips it for one prompt |
+| Test Enforcement | `Stop` | standard | Checks that changed code has tests, and flags code that changed while no test changed in the same diff |
+| Context Snapshot | `PreCompact` | standard | Saves task state before context compaction |
+| Ambiguity Guard | `UserPromptSubmit` | full | Forces clarification for vague requests |
+| Auto-Plan Mode | `UserPromptSubmit` | full | Detects 3+ tasks and suggests planning first |
+| Usage Tracking | `PostToolUse` | full | Records tool usage per session |
+| Scope Guard | Codex `PreToolUse` / Claude `PostToolUse` | off | Codex denies out-of-scope edits and recognized filesystem mutations with no auditable path; Claude reports after the tool |
 
 For Tier-3 work, Claude gates `Edit`/`Write`-class tools and clears on `ExitPlanMode`. Codex maps `apply_patch` to an edit and clears only for a non-empty `update_plan` whose entries each have a nonblank `step` and an allowed `status`; other payloads do not clear the gate. The denial cap remains a final non-wedging escape hatch.
 
@@ -160,23 +176,27 @@ The scope event is intentionally runtime-specific: **Codex PreToolUse** enforcem
 
 ### B. Autonomous execution — you invoke it
 
-| Feature | Trigger | Default | What it does |
+| Feature | Trigger | Profile | What it does |
 |---------|---------|:-------:|-------------|
-| **Autonomous Loop** | `Stop` (loop-guard) + `/omh-loop` | ON | Spec-driven loop: forces continuation until the verify ladder + cross-verify confirm done, with tiered guardrails (budget, timeout, no-progress, oscillation) |
-| Spec Authoring | `/omh-spec` | ON | Writes a machine-checkable `SPEC.md` (EARS acceptance criteria → verify commands) to anchor the loop |
+| **Autonomous Loop** | `Stop` (loop-guard) + `/omh-loop` | full | Spec-driven loop: forces continuation until the verify ladder + cross-verify confirm done, with tiered guardrails (budget, timeout, no-progress, oscillation) |
+| Spec Authoring | `/omh-spec` | — | Writes a machine-checkable `SPEC.md` (EARS acceptance criteria → verify commands) to anchor the loop |
 | N-Round Verify | `/omh-verify` | — | N independent verify+fix rounds with model rotation (Claude → GPT/codex → Gemini); external verifiers run read-only |
-| **Long-Term Memory** | MCP `omh-memory` + `/omh-loop`, `/omh-verify` | ON | Cross-session, cross-runtime knowledge graph (shared with Codex): the loop reads prior learnings and persists reflexions & high-confidence findings |
-| Native Team | `/team-spawn` | ON | Native Claude Code or Codex collaboration with templates |
+| Handoff | `/omh-handoff`, `oh-my-harness handoff` | — | Writes `.claude/.omh/HANDOFF.md` (Tried / Worked / Failed / Next + generated snapshot) to continue in a fresh session |
+| **Long-Term Memory** | MCP `omh-memory` + `/omh-loop`, `/omh-verify` | — | Cross-session, cross-runtime knowledge graph (shared with Codex): the loop reads prior learnings and persists reflexions & high-confidence findings |
+| Native Team | `/team-spawn` | full | Native Claude Code or Codex collaboration with templates |
 | Multi-Agent | `/agent-spawn` | — | Runtime-selectable Claude Code or Codex workers in tmux with git worktrees |
+| Docs Sync (opt-in) | `oh-my-harness docs-sync --install` | — | `pre-push` hook runs `/omh-docs-sync` via `claude -p` and stops the push if docs changed |
 
 ### C. Routing, scaffolding & observability
 
-| Feature | Trigger | Default | What it does |
+| Feature | Trigger | Profile | What it does |
 |---------|---------|:-------:|-------------|
-| Model Routing | CLAUDE.md + agents | ON | Routes subagents to haiku / sonnet / opus by complexity |
-| Skill Scaffolding | `/init-project` | ON | Auto-generates project-specific skills based on detected stack |
-| Auto .gitignore | CLI init | ON | Adds `.claude/.omh/` to `.gitignore` |
-| Status HUD | status line | ON | Real-time rate-limit, context, tool-call, and model dashboard |
+| **Decision Log** | every hook | always | Appends each hook decision (context / warn / block / deny), its `[omh:*]` tags, and tier reasons to `.claude/.omh/decisions.jsonl`. Never stores prompt text |
+| `why` | `oh-my-harness why` | — | Explains recent decisions, override rate, and Stop-hook latency, and suggests feature changes from the log |
+| Model Routing | CLAUDE.md + agents | standard | Routes subagents to haiku / sonnet / opus by complexity |
+| Skill Scaffolding | `/init-project` | standard | Auto-generates project-specific skills based on detected stack |
+| Auto .gitignore | CLI init | minimal | Adds `.claude/.omh/` to `.gitignore` |
+| Status HUD | status line | — | Real-time rate-limit, context, tool-call, and model dashboard |
 
 > See [Feature Details](docs/features.md), the [Autonomous Loop guide](docs/loop.md), and the [Verification guide](docs/verify.md) for full descriptions.
 
@@ -209,7 +229,7 @@ graph TD
     style GUARD fill:#f59e0b,color:#000
 ```
 
-- **Cheap-first verify ladder** — deterministic checks (lint/typecheck → tests/build) run first and fail fast, feeding the *actual* failing output back; the expensive model judge only runs on green.
+- **Cheap-first verify ladder** — deterministic checks (lint/typecheck → optional `contractCommand` for API specs, migrations, or architecture rules → tests/build) run first and fail fast, feeding back a location-first report (`file:line` lines, else the error lines at the end of the output); the expensive model judge only runs on green.
 - **Cross-verification** — a *different* model (opus) scores each acceptance criterion against repo state (not the agent's self-report), runs a revert-and-rerun mutation check, and returns `PASS | FAIL | INCONCLUSIVE` (INCONCLUSIVE fails safe to stop).
 - **Tiered budgets** — `quick` (≤3 iters) · `standard` (≤8) · `deep` (≤20), each with a wall-clock cap and cross-verify policy.
 - **Real guardrails** — per-tier & cross-tier iteration caps, wall-clock timeout, no-progress/plateau and oscillation detection, `stop_hook_active` self-loop guard, concurrent-session/worktree isolation, atomic state, fail-open, and a `STOP` kill switch.
@@ -260,9 +280,9 @@ Not every prompt deserves the same scrutiny. OMH classifies each request by **pr
 /omh-verify add JWT auth with refresh tokens   # N-round independent multi-model verify + fix
 ```
 
-- **Weight routing** — a `UserPromptSubmit` hook scores each prompt into **Tier 1** (trivial), **Tier 2** (standard), or **Tier 3** (heavy/risky). Higher tiers tighten guardrails automatically; **Tier 3 forces verification before completion**.
+- **Weight routing** — a `UserPromptSubmit` hook scores each prompt into **Tier 1** (trivial), **Tier 2** (standard), or **Tier 3** (heavy/risky). Higher tiers tighten guardrails automatically; **Tier 3 forces verification before completion**. Start a prompt with `!t1` or `!t3` to override the tier, or `!noplan` to skip the plan gate, for that prompt only. Each override is recorded, so the override rate measures classifier error. CI holds the classifier to accuracy floors on a labelled corpus of 94 Korean/English prompts.
 - **N-round verification** — `/omh-verify` runs N independent verify-and-fix rounds, **rotating the model lens each round** (Claude → GPT/codex → Gemini) so blind spots in one model are caught by another. External verifiers (codex, gemini) run **read-only** — they critique, they don't write.
-- **Living state anchor** — a disk-anchored `STATE.md` (goal, phase, decisions, progress) is re-injected on `SessionStart` and refreshed before `PreCompact`, so the working context survives compaction and new sessions instead of rotting away.
+- **Living state anchor** — `STATE.md` is split in two: you own Goal and Key Decisions; the `OMH:AUTO` block is regenerated on `Stop` and `PreCompact` from git, loop, and verify-gate state, so progress never depends on someone remembering to update it. It is re-injected on `SessionStart`. When a session runs long, `/omh-handoff` turns it into a `HANDOFF.md` for a fresh session.
 - **Global config fallback** — settings resolve from the project's `harness.config.json` first, then fall back to a global `~/.claude/.omh`, so your defaults follow you across repos.
 
 Full details, the verifier lenses, and the tier policy live in [docs/verify.md](docs/verify.md).
@@ -277,9 +297,9 @@ OMH is built in **four layers**, so load-bearing decisions stay pure and unit-te
 
 | Layer | Components | Role |
 |-------|-----------|------|
-| **① Hooks** | 11 shared scripts (9 lifecycle guards/observers + 2 gates) and 2 Codex bridge modules | Codex uses one orchestrator per event and executes handlers sequentially; critical guards fail closed, advisory hooks continue |
-| **② Pure Core** (`lib/`) | `loop` · `tier` · `detect` · `config` · `verify` · `state` · `dictionary` | All decision logic as **pure functions** (no fs / git / time) → fully unit-tested |
-| **③ Skills** | 13 Claude / 14 Codex skills | User-invoked workflows (`/omh-loop`, `/omh-verify`, `/team-spawn`, `omh-status`, …) |
+| **① Hooks** | 11 shared scripts (9 lifecycle guards/observers + 2 gates) and 2 Codex bridge modules | Codex uses one orchestrator per event and executes handlers sequentially; critical guards fail closed, advisory hooks continue. Every non-silent output is recorded in the Decision Log |
+| **② Core** (`lib/`) | Pure: `loop`, `risk`, `tier`, `profiles`, `failure-format`, `tier-metrics`. I/O helpers: `config`, `detect`, `state`, `decision-log`, `session-health`, `claude-md`, `docs-sync` | Decisions live in **pure functions** (no fs / git / time) and are unit-tested; I/O helpers are fail-open |
+| **③ Skills** | 15 Claude / 16 Codex skills | User-invoked workflows (`/omh-loop`, `/omh-verify`, `/omh-handoff`, `/team-spawn`, `omh-status`, …) |
 | **④ Agents** | `quick` · `standard` · `architect` | Model routing — haiku / sonnet / opus by task weight |
 
 ```mermaid
@@ -312,6 +332,7 @@ graph TB
         SKILLS --> S5["/omh-spec"]
         SKILLS --> S6["/omh-loop"]
         SKILLS --> S7["/omh-verify"]
+        SKILLS --> S8["/omh-handoff"]
 
         AGENTS --> A1["harness:quick (haiku)"]
         AGENTS --> A2["harness:standard (sonnet)"]
@@ -325,6 +346,8 @@ graph TB
         SNAP[context-snapshot.md]
         LOOP[loop-state.json]
         STATE[STATE.md]
+        DEC[decisions.jsonl]
+        HAND[HANDOFF.md]
     end
 
     H1 --> CONV
@@ -333,6 +356,9 @@ graph TB
     H9 --> LOOP
     H1 --> STATE
     H7 --> STATE
+    H8 --> STATE
+    HOOKS --> DEC
+    S8 --> HAND
     H1 --> CONFIG
     H2 --> CONFIG
     H3 --> CONFIG
@@ -349,12 +375,12 @@ Lifecycle events can trigger an ordered OMH hook chain; `PreToolUse`, `PostToolU
 
 | Lifecycle event | Hook | What it does |
 |-----------------|------|-------------|
-| `SessionStart` | `session-start.mjs` | Detect conventions · inject `STATE.md` |
-| `UserPromptSubmit` | `pre-prompt.mjs` | Weight tier · ambiguity guard · auto-plan |
+| `SessionStart` | `session-start.mjs` | Detect conventions, inject `STATE.md` (your lines first, then the snapshot) |
+| `UserPromptSubmit` | `pre-prompt.mjs` | Weight tier and `!t1`/`!t3`/`!noplan` overrides, ambiguity guard, auto-plan, handoff suggestion |
 | `PreToolUse` | `dangerous-guard.mjs` · **`plan-gate.mjs`** · `scope-guard` (Codex) | Deny destructive operations or malformed hook input · **plan gate (Tier 3)** · enforce Codex scope |
 | `PostToolUse` | `commit-convention` · `scope-guard` (Claude) · `usage-tracker` | Commit format · report Claude scope · usage stats |
-| `PreCompact` | `pre-compact.mjs` | Snapshot context · refresh `STATE.md` |
-| `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | **Autonomous loop engine** · **risk-gated verify gate** · test enforcement |
+| `PreCompact` | `pre-compact.mjs` | Count the compaction, regenerate the `STATE.md` snapshot, snapshot context |
+| `Stop` | **`loop-guard.mjs`** · **`verify-gate.mjs`** · `post-task.mjs` | **Autonomous loop engine**, **risk-gated verify gate**, `STATE.md` snapshot and test enforcement |
 
 ```mermaid
 sequenceDiagram
@@ -492,7 +518,7 @@ graph TD
 | **[Features](docs/features.md)** | HUD status line, smart defaults, feature tags, detailed feature descriptions |
 | **[Architecture](docs/architecture.md)** | System diagram, hook pipeline, plugin & local CLI directory structure |
 | **[Multi-Agent](docs/multi-agent.md)** | Spawn commands, workflow, worktree branching model, safety policies |
-| **[Configuration](docs/configuration.md)** | Settings reference, CLI commands, slash commands, OMC compatibility, uninstall |
+| **[Configuration](docs/configuration.md)** | Profiles, settings reference, CLI commands (`why`, `handoff`, `docs-sync`), slash commands, OMC compatibility, uninstall |
 
 ---
 
