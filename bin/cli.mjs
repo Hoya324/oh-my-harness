@@ -20,6 +20,7 @@ import { buildClaudeMdContent } from '../lib/claude-md.mjs';
 import { readDecisions, summarizeDecisions, formatDecision } from '../lib/decision-log.mjs';
 import { writeHandoff, syncAutoState } from '../lib/state.mjs';
 import { applyProfile, suggestProfileChanges, PROFILE_NAMES, DEFAULT_PROFILE } from '../lib/profiles.mjs';
+import { installPrePush, uninstallPrePush, prePushScript } from '../lib/docs-sync.mjs';
 import { parseRuntime, parseScope, runtimeIncludes } from '../lib/runtime.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -1639,6 +1640,7 @@ function showHelp() {
     oh-my-harness usage ${DIM}[--verbose]${RESET}               Show tool statistics
     oh-my-harness why ${DIM}[--last N] [--json]${RESET}         Explain recent hook decisions
     oh-my-harness handoff                        Write .claude/.omh/HANDOFF.md for a fresh session
+    oh-my-harness docs-sync ${DIM}--install|--uninstall${RESET}   Opt-in pre-push hook that syncs docs
     oh-my-harness reset ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
 
   ${BOLD}Skill Scaffolding${RESET}
@@ -1762,6 +1764,25 @@ function handoff(root) {
   log(`  ${DIM}Fill in Tried / Worked / Failed / Next steps, then start a new session with it.${RESET}`);
 }
 
+// --- DOCS SYNC (opt-in pre-push hook) ---
+function docsSync(root) {
+  if (args.includes('--print')) { process.stdout.write(prePushScript()); return; }
+  if (args.includes('--uninstall')) {
+    const r = uninstallPrePush(root);
+    if (!r.ok) { console.error(`  ${WARN} ${r.reason}`); process.exit(1); }
+    log(`  ${CHECK} docs-sync pre-push hook removed`);
+    return;
+  }
+  if (args.includes('--install')) {
+    const r = installPrePush(root, { force: args.includes('--force') });
+    if (!r.ok) { console.error(`  ${WARN} ${r.reason}`); process.exit(1); }
+    log(`  ${CHECK} docs-sync pre-push hook installed: ${r.path}`);
+    log(`  ${DIM}Runs /omh-docs-sync via claude -p on push; skip once with OMH_DOCS_SYNC=0.${RESET}`);
+    return;
+  }
+  log(`  Usage: oh-my-harness docs-sync --install [--force] | --uninstall | --print`);
+}
+
 // --- ENTRY ---
 const root = projectRoot();
 let runtime;
@@ -1801,6 +1822,9 @@ switch (command) {
     break;
   case 'handoff':
     handoff(root);
+    break;
+  case 'docs-sync':
+    docsSync(root);
     break;
   case 'reset':
     reset(root, runtime);
