@@ -3,7 +3,8 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'fs';
 import { join } from 'path';
 import { hookOutput, hookSilent } from './lib/output.mjs';
 import { getDictionary } from './lib/dictionary.mjs';
-import { classifyTier, countTasks } from './lib/tier.mjs';
+import { classifyTier, countTasks, parseOverrides } from './lib/tier.mjs';
+import { setDecisionMeta } from '../lib/decision-log.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
 
 const projectRoot = process.env.PROJECT_PATH || process.cwd();
@@ -21,8 +22,11 @@ try {
   config = loadConfig(projectRoot); if (!config) { console.log(hookSilent()); process.exit(0); }
 
   const input = readStdin();
-  const prompt = input.prompt || input.message || '';
-  if (!prompt.trim()) { console.log(hookSilent()); process.exit(0); }
+  const rawPrompt = input.prompt || input.message || '';
+  if (!rawPrompt.trim()) { console.log(hookSilent()); process.exit(0); }
+  // `!t1` / `!t3` / `!noplan` prefixes override the classifier for this prompt.
+  const overrides = parseOverrides(rawPrompt);
+  const prompt = overrides.rest || rawPrompt;
 
   const dict = getDictionary(prompt);
   const { patterns, messages } = dict;
@@ -53,6 +57,13 @@ try {
 
   // 4-C: Tier classification → weight-proportional routing
   const classification = classifyTier(prompt, config);
+  if (overrides.tier) {
+    classification.reasons.push(`override:t${overrides.tier} (classifier said ${classification.tier})`);
+    classification.tier = overrides.tier;
+  }
+  if (overrides.tokens.length) {
+    result.push(`[omh:override] ${overrides.tokens.join(' ')} applied by the user — treat these tokens as harness directives, not as part of the task.`);
+  }
   if (config.features?.weightRouting) {
     result.push(messages.tierNotice(classification.tier, classification.reasons));
     if (classification.tier === 3) {
@@ -80,7 +91,7 @@ try {
       const omhDir = join(projectRoot, '.claude', '.omh');
       mkdirSync(omhDir, { recursive: true });
       const minTier = config.planGate?.minTier ?? 3;
-      const armed = classification.tier >= minTier;
+      const armed = !overrides.noPlan && classification.tier >= minTier;
       let promptId = 1;
       try { promptId = (JSON.parse(readFileSync(join(omhDir, 'plan-gate.json'), 'utf8')).promptId || 0) + 1; } catch {}
       const marker = {
@@ -98,6 +109,14 @@ try {
   }
 
   if (result.length > 0) {
+    // Explain this prompt's routing in the Decision Log (no prompt text stored).
+    setDecisionMeta({
+      tier: classification.tier,
+      reasons: classification.reasons,
+      taskCount: classification.taskCount,
+      override: overrides.tokens.length ? overrides.tokens.join(' ') : undefined,
+      sessionId: input.session_id || input.sessionId || undefined,
+    });
     console.log(hookOutput('UserPromptSubmit', result.join('\n')));
   }
 } catch {

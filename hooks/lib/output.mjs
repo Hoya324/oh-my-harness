@@ -2,9 +2,21 @@
  * Hook output helpers — standardized JSON format for Claude Code hooks.
  */
 import { createRequire } from 'module';
+import { recordDecision } from '../../lib/decision-log.mjs';
 const _require = createRequire(import.meta.url);
 
+/**
+ * Every emitter below records what it decided in the Decision Log
+ * (lib/decision-log.mjs). Recording is fail-open and never alters the output.
+ * hookSilent() is intentionally NOT recorded: it fires on most tool calls and
+ * carries no decision worth explaining.
+ */
+function record(event, decision, message) {
+  recordDecision({ event, decision, message });
+}
+
 export function hookOutput(hookEventName, additionalContext) {
+  record(hookEventName, 'context', additionalContext);
   return JSON.stringify({
     continue: true,
     hookSpecificOutput: {
@@ -15,6 +27,7 @@ export function hookOutput(hookEventName, additionalContext) {
 }
 
 export function hookBlock(hookEventName, reason) {
+  record(hookEventName, 'block', reason);
   return JSON.stringify({
     continue: true,
     hookSpecificOutput: {
@@ -26,6 +39,7 @@ export function hookBlock(hookEventName, reason) {
 }
 
 export function hookWarn(hookEventName, additionalContext) {
+  record(hookEventName, 'warn', additionalContext);
   return JSON.stringify({
     continue: true,
     hookSpecificOutput: {
@@ -51,6 +65,7 @@ export function hookWarn(hookEventName, additionalContext) {
  * @returns {string} JSON to print on stdout (then exit 0).
  */
 export function hookStopContinue(reason) {
+  record('Stop', 'block', reason);
   return JSON.stringify({ decision: 'block', reason });
 }
 
@@ -61,6 +76,7 @@ export function hookStopContinue(reason) {
  * @returns {string} JSON to print on stdout (then exit 0).
  */
 export function hookPreToolDeny(reason) {
+  record('PreToolUse', 'deny', reason);
   return JSON.stringify({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
@@ -71,6 +87,7 @@ export function hookPreToolDeny(reason) {
 }
 
 export function hookCompact(systemMessage) {
+  record('PreCompact', 'context', systemMessage);
   return JSON.stringify({
     continue: true,
     systemMessage,

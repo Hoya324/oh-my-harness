@@ -17,6 +17,7 @@ import { createInterface } from 'readline';
 import { parse as parseToml } from 'smol-toml';
 import { scaffoldProjectSkills } from '../lib/scaffold-skills.mjs';
 import { buildClaudeMdContent } from '../lib/claude-md.mjs';
+import { readDecisions, summarizeDecisions, formatDecision } from '../lib/decision-log.mjs';
 import { parseRuntime, parseScope, runtimeIncludes } from '../lib/runtime.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -147,6 +148,7 @@ function installClaudeHookRuntime(root, scope) {
   cpSync(join(PKG_ROOT, 'lib', 'detect.mjs'), join(hookLibDir, 'detect.mjs'));
   cpSync(join(PKG_ROOT, 'lib', 'config.mjs'), join(runtimeLibDir, 'config.mjs'));
   cpSync(join(PKG_ROOT, 'lib', 'state.mjs'), join(runtimeLibDir, 'state.mjs'));
+  cpSync(join(PKG_ROOT, 'lib', 'decision-log.mjs'), join(runtimeLibDir, 'decision-log.mjs'));
   const allHooks = [
     'session-start.mjs', 'pre-prompt.mjs', 'post-task.mjs',
     'dangerous-guard.mjs', 'pre-compact.mjs', 'commit-convention.mjs',
@@ -1616,6 +1618,7 @@ function showHelp() {
     oh-my-harness update ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
     oh-my-harness status ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
     oh-my-harness usage ${DIM}[--verbose]${RESET}               Show tool statistics
+    oh-my-harness why ${DIM}[--last N] [--json]${RESET}         Explain recent hook decisions
     oh-my-harness reset ${DIM}[--runtime claude|codex|both] [--scope project|user]${RESET}
 
   ${BOLD}Skill Scaffolding${RESET}
@@ -1681,6 +1684,36 @@ function usage(root) {
   }
 }
 
+// --- WHY (Decision Log) ---
+function why(root) {
+  const entries = readDecisions(root);
+  const asJson = args.includes('--json');
+  const lastIdx = args.indexOf('--last');
+  const last = lastIdx >= 0 ? Math.max(1, Number(args[lastIdx + 1]) || 10) : 10;
+  if (entries.length === 0) {
+    if (asJson) { console.log(JSON.stringify({ entries: [], summary: summarizeDecisions([]) })); return; }
+    log(`  ${DIM}No decisions recorded yet. Hooks log here once .claude/.omh exists in this project.${RESET}`);
+    return;
+  }
+  const recent = entries.slice(-last);
+  const summary = summarizeDecisions(entries);
+  if (asJson) { console.log(JSON.stringify({ entries: recent, summary }, null, 2)); return; }
+  log(`\n  ${BOLD}oh-my-harness${RESET} ${DIM}why — last ${recent.length} of ${entries.length} decisions${RESET}\n`);
+  for (const e of recent) log(`  ${formatDecision(e)}`);
+  log(`\n  ${BOLD}By hook${RESET}`);
+  for (const [hook, counts] of Object.entries(summary.byHook)) {
+    const detail = Object.entries(counts).map(([d, n]) => `${d}=${n}`).join(' ');
+    log(`    ${CYAN}${hook}${RESET}: ${detail}`);
+  }
+  if (summary.overrideRate != null) {
+    log(`\n  Override rate    : ${(summary.overrideRate * 100).toFixed(1)}% (${summary.overrides}/${summary.prompts} routed prompts)`);
+  }
+  if (summary.stopMs.p50 != null) {
+    log(`  Stop hook time   : p50 ${summary.stopMs.p50}ms, p95 ${summary.stopMs.p95}ms`);
+  }
+  log('');
+}
+
 // --- ENTRY ---
 const root = projectRoot();
 let runtime;
@@ -1714,6 +1747,9 @@ switch (command) {
     break;
   case 'usage':
     usage(root);
+    break;
+  case 'why':
+    why(root);
     break;
   case 'reset':
     reset(root, runtime);
