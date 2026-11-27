@@ -7,10 +7,11 @@
  *
  * All decision logic lives in the pure lib/plan-gate.mjs::evaluatePlanGate.
  */
-import { readFileSync, writeFileSync, existsSync, renameSync, unlinkSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, unlinkSync } from 'fs';
 import { join, resolve, sep } from 'path';
 import { homedir } from 'os';
 import { hookPreToolDeny, hookOutput, hookSilent, hookDebug } from './lib/output.mjs';
+import { writeJsonAtomic } from './lib/state-io.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
 import { evaluatePlanGate } from '../lib/plan-gate.mjs';
 
@@ -20,15 +21,7 @@ const markerPath = join(omhDir, 'plan-gate.json');
 
 function readStdin() { try { return JSON.parse(readFileSync(0, 'utf8')); } catch { return {}; } }
 function writeMarkerAtomic(state) {
-  mkdirSync(omhDir, { recursive: true });
-  const tmp = `${markerPath}.${process.pid}.tmp`;
-  try {
-    writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
-    renameSync(tmp, markerPath);
-  } catch (error) {
-    try { unlinkSync(tmp); } catch {}
-    throw error;
-  }
+  writeJsonAtomic(markerPath, state, 'plan-gate');
 }
 
 try {

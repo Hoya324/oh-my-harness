@@ -13,10 +13,11 @@
  * persists state. It is fail-open: any error or corruption -> stay silent / clear
  * state, never trap the user in a wedged session.
  */
-import { readFileSync, writeFileSync, existsSync, renameSync, unlinkSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
 import { execSync, execFileSync } from 'child_process';
 import { hookStopContinue, hookOutput, hookSilent, hookDebug } from './lib/output.mjs';
+import { writeJsonAtomic } from './lib/state-io.mjs';
 import { loadConfig } from './lib/hook-config.mjs';
 import { evaluateLoop, resolveTier, buildLadder } from '../lib/loop.mjs';
 
@@ -31,15 +32,7 @@ function readStdin() {
 
 /** Atomic write: temp file + rename, so a crash can't leave a half-written state. */
 function writeStateAtomic(state) {
-  mkdirSync(omhDir, { recursive: true });
-  const tmp = `${statePath}.${process.pid}.tmp`;
-  try {
-    writeFileSync(tmp, JSON.stringify(state, null, 2) + '\n');
-    renameSync(tmp, statePath);
-  } catch (error) {
-    try { unlinkSync(tmp); } catch {}
-    throw error;
-  }
+  writeJsonAtomic(statePath, state, 'loop-state');
 }
 
 function git(args) {
