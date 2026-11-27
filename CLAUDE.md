@@ -24,6 +24,18 @@ Before destructive ops (rm -rf, force push, DROP TABLE): confirm with user. Neve
 ### Commit Convention
 Follow project convention (auto-detected). Default: `<type>(<scope>): <description>`
 
+### Weight Routing
+Relay `[omh:tier]`. Tier 3 (production, payment/auth, migration, 5+ tasks, `tier3.domainKeywords`): pass the convention checklist and run `/omh-verify` before declaring done. Leading `!t1` / `!t3` / `!noplan` are user overrides, not task text.
+
+### Plan Gate
+On a Tier-3 prompt, EnterPlanMode and present a plan (context, approach, files, verification) before editing; edits are denied until then.
+
+### Living State
+`.claude/.omh/STATE.md` is re-injected at session start. Keep its Goal and Decisions current; hooks maintain the rest.
+
+### Native Team
+On `/team-spawn`: confirm first; never shut down teammates with incomplete tasks. After an approved plan with 2+ independent tasks, suggest `/team-spawn` (never auto-create).
+
 ### Multi-Agent
 On `/agent-spawn`: confirm → worktree `omh/agent-{N}` → never auto-merge → show diffs → warn on unmerged before stop.
 
